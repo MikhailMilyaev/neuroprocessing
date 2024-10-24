@@ -1,25 +1,20 @@
-import logo from './logo.svg';
-import './App.css';
+import React from 'react'
+import { Routes, Route } from 'react-router-dom'
+import Lending from './Lending/Lending.jsx'
+import LoginPage from './Lending/Auth/Login/LoginPage.jsx'
+import CreatePage from './Lending/Auth/Create/CreatePage.jsx'
+import RecoveryPage from './Lending/Auth/Login/RecoveryPage.jsx'
 
-function App() {
+
+const App = () => {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+  <Routes>
+    <Route path='/' element={<Lending />} />
+    <Route path='/login' element={<LoginPage />} />
+    <Route path='/create' element={<CreatePage />} />
+    <Route path='/recovery' element={<RecoveryPage />} />
+  </Routes>
+  )
 }
 
-export default App;
+export default App
