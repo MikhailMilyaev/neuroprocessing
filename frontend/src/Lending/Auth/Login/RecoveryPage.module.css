@@ -1,7 +1,5 @@
-body {
-    overflow: hidden;
-}
-  
+body.overflow-hidden {  overflow: hidden; }
+
 .backImage {
     background: url('https://images.wallpaperscraft.ru/image/single/fon_kapli_svet_83428_1920x1080.jpg');
     background-size: cover;

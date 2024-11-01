@@ -1,0 +1,36 @@
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+.sectionContainer {
+  margin-top: 40px;
+}
+
+.sectionTitle {
+  font-size: 26px;
+} 
+
+.articlesContainer {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); 
+  gap: 2rem;
+  justify-content: space-between; 
+}
+
+.buttonsContainer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.showMoreButton,
+.showLessButton { 
+  padding: 0.5rem 1rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}

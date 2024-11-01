@@ -7,6 +7,7 @@ import RecoveryPage from './Lending/Auth/Login/RecoveryPage.jsx';
 import History from './Application/History/History.jsx';
 import Ideas from './Application/Ideas/Ideas.jsx'
 import Education from './Application/Education/Education.jsx'
+import Community from './Application/Сommunity/Community.jsx'
 import ErrorPage from './ErrorPage.jsx';
 import Layout from './components/Layout/Layout.jsx';
 import PrivateRoute from './Lending/Auth/PrivateRoute.jsx';
@@ -20,10 +21,11 @@ const App = () => {
       <Route path="/create" element={ <CreatePage />} />
       <Route path="/recovery" element={<RecoveryPage />} />
 
-      <Route path='/app' element={<PrivateRoute><Layout /></PrivateRoute>}>
+      <Route path='/' element={<PrivateRoute><Layout /></PrivateRoute>}>
         <Route path="history" element={<History />} />
         <Route path="ideas" element={<Ideas />} />
         <Route path="education" element={<Education />} />
+        <Route path="community" element={<Community />} />
       </Route>
       <Route path="*" element={<ErrorPage />} />
     </Routes>

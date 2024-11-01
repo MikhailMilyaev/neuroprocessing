@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import classes from './RecoveryPage.module.css';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { FaArrowLeftLong } from "react-icons/fa6";
 
 const RecoveryPage = () => {
   const [email, setEmail] = useState('');
   const [errorMessage, setErrorMessage] = useState('')
+  const location = useLocation();
 
   const handleMailChange = (e) => {
     setEmail(e.target.value);
@@ -35,6 +36,7 @@ const RecoveryPage = () => {
    };  
 
   return (
+    <body className={location.pathname === '/create' ? '' : 'overflow-hidden'}>
     <div className={classes.backImage}>
       <div className={classes.inputContainer} onKeyDown={handleKeyDown} tabIndex={0}>
         <div className={classes.header}>
@@ -56,7 +58,7 @@ const RecoveryPage = () => {
 
         <button onClick={handleSubmit} className={classes.sent} style={{ marginTop: errorMessage ? '12.5px' : '20px' }}>Отправить</button>
       </div>
-    </div>
+    </div></body>
   );
 };
 

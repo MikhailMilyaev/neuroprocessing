@@ -17,7 +17,7 @@
   .layoutLinks {
     display: flex;
     gap: 3rem;
-    font-size: 18px;
+    font-size: 20px;
   }
   
   .layoutLinks a {

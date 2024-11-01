@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import classes from './CreatePage.module.css';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai';
 import validator from 'validator';
 // import axios from 'axios'
@@ -13,6 +13,7 @@ const CreatePage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfimedPassword, setShowConfimedPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('')
+  const location = useLocation();
 
   const handleUserNameChange = (e) => {
     setUserName(e.target.value)
@@ -80,6 +81,7 @@ const CreatePage = () => {
    };  
 
   return (
+    <body className={location.pathname === '/create' ? '' : 'overflow-hidden'}>
     <div className={classes.backImage}>
       <div className={classes.inputContainer} onKeyDown={handleKeyDown} tabIndex={0}>
         <Link to="/" className={classes.brandName}>NEUROPROCESSING</Link>
@@ -132,7 +134,7 @@ const CreatePage = () => {
         
         <Link to="/login" className={classes.enter}>Войти</Link>
       </div>
-    </div>
+    </div></body>
   );
 };
 

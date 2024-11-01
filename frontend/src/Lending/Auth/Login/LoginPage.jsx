@@ -1,9 +1,10 @@
 import React, { useState, useContext } from 'react';
 import classes from './LoginPage.module.css';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai';
 import validator from 'validator';
 import { AuthContext } from '../AuthContext';
+
 // import axios from 'axios'
 
 // создать почту для восстановления пароля
@@ -14,6 +15,7 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('')
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useContext(AuthContext);
 
   const clearError = () => {
@@ -59,7 +61,7 @@ const LoginPage = () => {
     setTimeout(() => { 
       if (email === 'test@mail.ru' && password === 'password123') {
         login();
-        navigate('/app');
+        navigate('/history');
       } else {
         setErrorMessage('Неверный логин или пароль');
       }
@@ -73,6 +75,7 @@ const LoginPage = () => {
   };
 
   return (
+    <body className={location.pathname === '/login' ? '' : 'overflow-hidden'}>
     <div className={classes.backImage}>
       <div className={classes.inputContainer} onKeyDown={handleKeyDown} tabIndex={0}>
         <Link to="/" className={classes.brandName}>NEUROPROCESSING</Link> 
@@ -107,7 +110,7 @@ const LoginPage = () => {
 
         <Link to="/create"  className={classes.createAccount} > Создать аккаунт</Link> 
       </div> 
-    </div> 
+    </div> </body>
   ); 
 };
 
