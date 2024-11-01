@@ -73,10 +73,15 @@ const CreatePage = () => {
     // отправка данных на сервер
   }
 
+  const handleKeyDown =  (e)  =>  {  
+    if (e.key  ===  'Enter')  {  
+      handleSubmit(e);
+    }  
+   };  
 
   return (
     <div className={classes.backImage}>
-      <div className={classes.inputContainer}>
+      <div className={classes.inputContainer} onKeyDown={handleKeyDown} tabIndex={0}>
         <Link to="/" className={classes.brandName}>NEUROPROCESSING</Link>
 
         <div className={classes.emailInput}>
@@ -122,7 +127,9 @@ const CreatePage = () => {
         </div>
 
         {errorMessage && <div className={classes.errorMessage}>{errorMessage}</div>} 
+
         <button onClick={handleSubmit} className={classes.createAccount} style={{ marginTop: errorMessage ? '15px' : '30px' }}>Создать аккаунт</button>
+        
         <Link to="/login" className={classes.enter}>Войти</Link>
       </div>
     </div>

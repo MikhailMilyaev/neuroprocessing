@@ -28,9 +28,15 @@ const RecoveryPage = () => {
     }
   }
 
+  const handleKeyDown =  (e)  =>  {  
+    if (e.key  ===  'Enter')  {  
+      handleSubmit(e);
+    }  
+   };  
+
   return (
     <div className={classes.backImage}>
-      <div className={classes.inputContainer}>
+      <div className={classes.inputContainer} onKeyDown={handleKeyDown} tabIndex={0}>
         <div className={classes.header}>
           <Link to='/login' className={classes.backArrow}><FaArrowLeftLong /></Link>
           <Link to='/' className={classes.brandName}>NEUROPROCESSING</Link>

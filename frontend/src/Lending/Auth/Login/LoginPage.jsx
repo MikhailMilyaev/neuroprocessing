@@ -1,19 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import classes from './LoginPage.module.css';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai';
 import validator from 'validator';
+import { AuthContext } from '../AuthContext';
 // import axios from 'axios'
 
-// писать функционал для авторизованных и неавторизованных пользователей
-// создать почту для отправки сообщения
-// где
+// создать почту для восстановления пароля
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('')
+  const navigate = useNavigate();
+  const { login } = useContext(AuthContext);
 
   const clearError = () => {
     setErrorMessage('');
@@ -38,7 +39,7 @@ const LoginPage = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); 
 
     if (!email || !password) {
       setErrorMessage('Пожалуйста, заполните все поля!');
@@ -55,23 +56,33 @@ const LoginPage = () => {
       return; 
     }
 
-// отправка данных на сервер
+    setTimeout(() => { 
+      if (email === 'test@mail.ru' && password === 'password123') {
+        login();
+        navigate('/app');
+      } else {
+        setErrorMessage('Неверный логин или пароль');
+      }
+    }, 500); 
+  };
 
-  }
-
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleSubmit(e); 
+    }
+  };
 
   return (
     <div className={classes.backImage}>
-      <div className={classes.inputContainer}>
-        <Link to="/" className={classes.brandName}>NEUROPROCESSING</Link>
-
+      <div className={classes.inputContainer} onKeyDown={handleKeyDown} tabIndex={0}>
+        <Link to="/" className={classes.brandName}>NEUROPROCESSING</Link> 
         <div className={classes.emailInput}>
           <input
             value={email}
             type="text"
             placeholder="Электронная почта"
             onChange={handleMailChange}
-            className={classes.inputField} />
+            className={classes.inputField}/>
           {email ? (<span className={classes.clearIcon} onClick={handleMailClear}>×</span>) : null}
         </div>
 
@@ -81,18 +92,23 @@ const LoginPage = () => {
             type={showPassword ? 'text' : 'password'}
             placeholder="Пароль"
             onChange={handlePasswordChange}
-            className={classes.inputField} />
-          {password ? (<span className={classes.showPasswordIcon}onClick={togglePasswordVisibility}>
-            {showPassword ? <AiOutlineEye /> : <AiOutlineEyeInvisible />} </span>) : null}
+            className={classes.inputField}/>
+          {password ? (
+            <span className={classes.showPasswordIcon} onClick={togglePasswordVisibility}>
+              {showPassword ? <AiOutlineEye /> : <AiOutlineEyeInvisible />}
+            </span>
+          ) : null}
         </div>
+        <Link to="/recovery" className={classes.recovery} style={{ marginBottom: errorMessage ? '10px' : '20px' }}>Не помню пароль</Link>
 
-        <Link to='/recovery' className={classes.recovery} style={{ marginBottom: errorMessage ? '10px' : '20px' }}>Не помню пароль</Link>
-        {errorMessage && <div className={classes.errorMessage}>{errorMessage}</div>} 
-        <button onClick={handleSubmit} className={classes.enter}>Войти</button>
-        <Link to="/create" className={classes.createAccount}>Создать аккаунт</Link>
-      </div>
-    </div>
-  );
+        {errorMessage && <div className={classes.errorMessage}>{errorMessage}</div>}
+
+        <button onClick={handleSubmit}  className={classes.enter} > Войти</button> 
+
+        <Link to="/create"  className={classes.createAccount} > Создать аккаунт</Link> 
+      </div> 
+    </div> 
+  ); 
 };
 
 export default LoginPage;
