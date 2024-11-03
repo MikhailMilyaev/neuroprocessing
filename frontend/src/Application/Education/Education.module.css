@@ -25,12 +25,15 @@
   margin-top: 1rem;
 }
 
-.showMoreButton,
-.showLessButton { 
+.showArticlesAll { 
   padding: 0.5rem 1rem;
-  background-color: #007bff;
+  background-color: dodgerblue; 
   color: white;
   border: none;
   border-radius: 8px;
   cursor: pointer;
+}
+
+.showArticlesAll:hover { 
+  background-color: #026ee0; 
 }
