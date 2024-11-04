@@ -1,11 +1,12 @@
 import React from 'react';
 import classes from './Layout.module.css';
-import { NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet } from 'react-router-dom'; 
 
 const Layout = () => {
   return (
     <>
       <div className={classes.layout}>
+        <Link to='/' className={classes.brand}>Neuroprocessing</Link>
         <div className={classes.container}>
           <div className={classes.layoutLinks}>
             <NavLink to="history" end className={({ isActive }) => isActive ? classes.active : undefined}>Истории</NavLink>
@@ -14,6 +15,9 @@ const Layout = () => {
             <NavLink to="community" end className={({ isActive }) => isActive ? classes.active : undefined}>Сообщества</NavLink>
           </div>
         </div>
+          <div className={classes.settings}>
+            <span>Настройки</span>
+          </div>
       </div>
 
       <Outlet />

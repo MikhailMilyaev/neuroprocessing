@@ -1,34 +1,59 @@
 .layout {
-    width: 100%;
-    height: 60px;
-    background-color: black;
-    display: flex;
-    align-items: center;
-  }
+  width: 100%;
+  height: 60px;
+  background-color: black;
+  display: flex;
+  align-items: center;
+}
+
+.container {
+  display: flex;
+  justify-content: space-between; 
+  align-items: center;
+  margin: 0 auto;
+  width: 70%;
+}
+
+.layoutLinks {
+  display: flex;
+  gap: 3rem;
+  font-size: 20px;
+}
+
+.brand {
+  margin-left: 15px;
+  color: #f1efef; 
+  cursor: pointer; 
+  font-size: 18px;
+  border: 2px solid white;
+  border-radius: 20px;
+  padding: 5px 10px;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.brand:hover {
+  border: 2px solid lightblue;
+  background-color: #1e1e1e;
+  color: lightblue;
+}
+
+.settings {
+  margin-right: 15px;
+  color: #f1efef; 
+  cursor: pointer; 
+  font-size: 18px;
+}
   
-  .container {
-    display: flex;
-    justify-content: space-between;
-    max-width: 80%;
-    margin: 0 auto;
-    width: 100%;
-  }
-  
-  .layoutLinks {
-    display: flex;
-    gap: 3rem;
-    font-size: 20px;
-  }
-  
-  .layoutLinks a {
+.layoutLinks a {
     color: #f1efef;
     text-decoration: none;
     position: relative;
     cursor: pointer;
     transition: color 0.2s ease;
-  }
+}
   
-  .layoutLinks a::after {
+.layoutLinks a::after {
     content: "";
     position: absolute;
     left: 0;
@@ -37,13 +62,13 @@
     height: 2.5px;
     background-color: transparent;
     transition: background-color 0.2s ease;
-  }
+}
   
-  .layoutLinks a.active {
+.layoutLinks a.active {
     color:  #03a9f4; 
     text-shadow: 0 0 2px rgba(0, 173, 239, 0.6);
-  }
+}
   
-  .layoutLinks a.active::after {
+.layoutLinks a.active::after {
     background-color:  #03a9f4;
-  }
+}

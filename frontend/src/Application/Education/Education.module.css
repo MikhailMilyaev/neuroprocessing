@@ -1,39 +1,70 @@
+.education {
+  width: 100%;
+}
+
 .container {
-  max-width: 1200px;
+  width: 65%;
   margin: 0 auto;
   min-height: 100vh;
 }
 
-.sectionContainer {
-  margin-top: 40px;
+.articlesWrapper {
+  position: relative;
+  margin-bottom: 30px;
 }
-
-.sectionTitle {
-  font-size: 26px;
-} 
 
 .articlesContainer {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr); 
-  gap: 2rem;
-  justify-content: space-between; 
-}
-
-.buttonsContainer {
   display: flex;
-  justify-content: flex-end;
-  margin-top: 1rem;
+  width: 100%;
 }
 
-.showArticlesAll { 
-  padding: 0.5rem 1rem;
-  background-color: dodgerblue; 
-  color: white;
+.articlesContainer::-webkit-scrollbar { 
+  display: none;
+}
+
+.articleItem {
+  flex: 0 0 calc(50% - 1rem); 
+}
+
+.navigationButtons {
+  display: flex;
+  justify-content: space-between;
+  position: absolute;
+  top: 40%;
+  left: 0; 
+  width: 100%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.navigationButtons button {
+  background: none;
   border: none;
-  border-radius: 8px;
+  padding: 10px;
   cursor: pointer;
+  font-size: 1.2rem;
+  color: #333;
+  border-radius: 50%;
+  transition: background-color 0.3s, color 0.3s;
+  pointer-events: auto;
+  position: absolute; /*  Абсолютное позиционирование */
 }
 
-.showArticlesAll:hover { 
-  background-color: #026ee0; 
+.navigationButtons button:first-child {
+  left: -50px; /* Отступ слева от контейнера */
+}
+
+.navigationButtons button:last-child {
+  right: -50px; /*  Отступ справа от контейнера  */
+}
+
+.navigationButtons button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+  color: #000;
+}
+
+.navigationButtons button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
