@@ -1,0 +1,26 @@
+.container {
+    border-bottom: 1px solid grey;
+}
+
+.links {
+    display: flex;
+    gap: 3rem;
+}
+
+.links a {
+    text-decoration: none;
+    color: rgb(53, 53, 53);
+    padding: 10px 20px;
+    position: relative;
+    border-bottom: 2px solid transparent;
+    transition: color 0.3s ease;
+}
+
+.links a:hover {
+    color: black;
+}
+
+.links a.active {
+    border-bottom: 4px solid #00FF00;
+
+}

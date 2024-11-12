@@ -121,3 +121,10 @@ body.overflow-hidden {
   color: red;
   font-size: 15px;
 }
+
+.successMessage {
+  margin-top: 15px;
+  text-align: left;
+  color: green;
+  font-size: 15px;
+}

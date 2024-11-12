@@ -1,0 +1,27 @@
+.container {
+    margin-top: 10px;
+    width: 100%;
+    display: flex;
+    justify-content: center; 
+  }
+  
+  .content {
+    width: 50%;  
+    background-color: blue;
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    align-items: center; 
+    justify-content: space-between; 
+  }
+  
+.ideasType {
+    border: 2px solid black;
+    border-radius: 15px;
+    padding: 5px;
+}
+
+.link {
+    text-decoration: none;
+    color:white
+}

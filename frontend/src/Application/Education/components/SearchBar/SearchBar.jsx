@@ -17,7 +17,7 @@ const SearchBar = () => {
             <input
             className={classes.searchInput}
             type="text"
-            placeholder="Поиск курса или практики..."
+            placeholder="Поиск"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}/>
             {searchTerm && (

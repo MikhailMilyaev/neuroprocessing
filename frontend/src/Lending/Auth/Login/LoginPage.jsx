@@ -5,10 +5,6 @@ import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai';
 import validator from 'validator';
 import { AuthContext } from '../AuthContext';
 
-// import axios from 'axios'
-
-// создать почту для восстановления пароля
-
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -53,7 +49,7 @@ const LoginPage = () => {
       return; 
     }
 
-    if (password.length <= 8) { 
+    if (password.length < 8) { 
       setErrorMessage('Данные введены некорректно');
       return; 
     }

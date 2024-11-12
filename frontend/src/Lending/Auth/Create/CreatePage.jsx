@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import classes from './CreatePage.module.css';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai';
 import validator from 'validator';
-// import axios from 'axios'
+import axios from 'axios'
 
 const CreatePage = () => {
   const [userName, setUserName] = useState('')
@@ -13,7 +13,9 @@ const CreatePage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfimedPassword, setShowConfimedPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('')
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const handleUserNameChange = (e) => {
     setUserName(e.target.value)
@@ -63,7 +65,7 @@ const CreatePage = () => {
     } else if (!validator.isEmail(email)) { 
       setErrorMessage('Электронная почта введена некорректно');
       return; 
-    } else if (password.length <= 8) { 
+    } else if (password.length < 8) { 
       setErrorMessage('Длина пароля должна быть не менее 8 символом');
       return; 
     } else if (password !== confirmedPassword) {
@@ -71,8 +73,30 @@ const CreatePage = () => {
       return
     }
 
-    // отправка данных на сервер
-  }
+    try {
+      const response = await axios.post('/backend/api/create', {
+        userName,
+        email,
+        password,
+      });
+
+      setRegistrationSuccess(true); 
+      setTimeout(() => {
+        navigate('/login'); 
+      }, 2000);
+
+
+    } catch (error) {
+      console.error(error);
+      if (error.response && error.response.status === 409) {  
+        setErrorMessage('Пользователь с такой электронной почтой уже существует.');
+    } else if (error.response && error.response.status === 400) {
+        setErrorMessage('Ошибка валидации данных на сервере.'); 
+    } else {
+        setErrorMessage('Ошибка сервера.'); 
+    }
+    }
+  };
 
   const handleKeyDown =  (e)  =>  {  
     if (e.key  ===  'Enter')  {  
@@ -129,6 +153,10 @@ const CreatePage = () => {
         </div>
 
         {errorMessage && <div className={classes.errorMessage}>{errorMessage}</div>} 
+
+        {registrationSuccess && ( 
+            <div className={classes.successMessage}>Вы успешно зарегистрировались!</div>
+          )}
 
         <button onClick={handleSubmit} className={classes.createAccount} style={{ marginTop: errorMessage ? '15px' : '30px' }}>Создать аккаунт</button>
         

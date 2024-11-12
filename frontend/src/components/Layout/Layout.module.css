@@ -11,38 +11,26 @@
   justify-content: space-between; 
   align-items: center;
   margin: 0 auto;
-  width: 70%;
+  width: 61%;
 }
 
 .layoutLinks {
   display: flex;
   gap: 3rem;
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .brand {
-  margin-left: 15px;
+  margin-left: 20px;
   color: #f1efef; 
   cursor: pointer; 
   font-size: 18px;
-  border: 2px solid white;
-  border-radius: 20px;
-  padding: 5px 10px;
   text-decoration: none;
   transition: color 0.3s ease;
 }
 
 .brand:hover {
-  border: 2px solid lightblue;
-  background-color: #1e1e1e;
-  color: lightblue;
-}
-
-.settings {
-  margin-right: 15px;
-  color: #f1efef; 
-  cursor: pointer; 
-  font-size: 18px;
+  color: lightgreen;
 }
   
 .layoutLinks a {
@@ -65,10 +53,43 @@
 }
   
 .layoutLinks a.active {
-    color:  #03a9f4; 
-    text-shadow: 0 0 2px rgba(0, 173, 239, 0.6);
+    color:  #00FF00; 
+    text-shadow: 0 0 2px rgba(21, 253, 21, 0.397);
 }
   
 .layoutLinks a.active::after {
-    background-color:  #03a9f4;
+    background-color:  #00FF00;
+}
+
+.user {
+  margin-right: 20px;
+  display: flex;
+  align-items: center;
+  background-color: #353535;
+  padding: 5px 7px;
+  border-radius: 5px; 
+}
+
+.userInner {
+  display: flex;
+  align-items: center;
+  gap: 12px; 
+}
+
+.avatar {
+  font-size: 26px;
+  color: white;
+}
+
+.userName {
+  color: white;
+  font-size: 16px;
+}
+
+.subscription {
+  background-color: #0074D9; 
+  color: white;
+  font-size: 16px;
+  padding: 5px 15px;
+  border-radius: 10px;
 }
