@@ -2,7 +2,11 @@ import React, { useState } from 'react'
 import classes from './NavBar.module.css'
 import { IoIosSearch } from "react-icons/io";
 import { TiDelete } from "react-icons/ti";
-import { Link } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
+import { IoIosArrowBack } from "react-icons/io";
+import { IoIosArrowForward } from "react-icons/io";
+import { FcIdea } from "react-icons/fc";
+import { AiTwotoneAppstore } from "react-icons/ai";
 
 const NavBar = () => {
   const [searchInput, setSearchInput] = useState('')
@@ -15,8 +19,8 @@ const NavBar = () => {
     <div className={classes.container}>
         <div className={classes.content}>
             <div className={classes.ideasType}>
-                <Link className={classes.link}>Все идеи</Link>
-                <Link className={classes.link}>По темам</Link>
+            <NavLink to='all' className={({ isActive }) => isActive ? classes.activeLink : classes.link}>Все идеи</NavLink>
+            <NavLink to='themes' className={({ isActive }) => isActive ? classes.activeLink : classes.link}>По темам</NavLink>
             </div>
             <div className={classes.searchInputContainer}>
                 <IoIosSearch className={classes.searchIcon}/>
@@ -32,8 +36,15 @@ const NavBar = () => {
                         onClick={handleClearInput}/>)}
             </div>
             <div className={classes.additional}>
-                <Link className={classes.link}>Отложенные</Link>
-                <Link className={classes.link}>В работе</Link>
+                <NavLink to='saved' className={classes.link}>Отложенные</NavLink>
+                <Link to='/ideas/inprogress' className={classes.link}>В работе</Link>
+            </div>
+
+            <div className={classes.icons}>
+            <IoIosArrowBack />
+            <IoIosArrowForward />
+            <FcIdea />
+            <AiTwotoneAppstore />
             </div>
         </div>
     </div>

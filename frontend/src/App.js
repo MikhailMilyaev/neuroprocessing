@@ -13,6 +13,13 @@ import Layout from './components/Layout/Layout.jsx';
 import PrivateRoute from './Lending/Auth/PrivateRoute.jsx';
 import PracticeList from './Application/Education/components/Content/Practices/PracticeList/PracticeList.jsx';
 import Practice from './Application/Education/components/Content/Practices/Practice/Practice.jsx';
+import IdeasAll from './Application/Ideas/components/IdeasAll/IdeasAll.jsx'
+import IdeasThemes from './Application/Ideas/components/IdeasThemes/IdeasThemes.jsx'
+import IdeasSaved from './Application/Ideas/components/IdeasSaved/IdeasSaved.jsx'
+import IdeasInProgress from './Application/Ideas/components/IdeasInProgress/IdeasInProgress.jsx'
+import ArticleList from './Application/Education/components/Content/Articles/ArticleList.jsx';
+import VideoList from './Application/Education/components/Content/Videos/VideoList.jsx';
+import DictionaryList from './Application/Education/components/Content/Dictionary/DictionaryList.jsx';
 
 const App = () => {
   return (
@@ -24,13 +31,19 @@ const App = () => {
 
       <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
         <Route path="history" element={<History />} />
-        <Route path="ideas" element={<Ideas />} />
+        <Route path="ideas" element={<Ideas />}>
+          <Route path="all" element={<IdeasAll />} />
+          <Route path="themes" element={<IdeasThemes />} />
+          <Route path="saved" element={<IdeasSaved />} />
+          <Route index element={<Navigate to="all" replace />} />
+        </Route>
+        <Route path="ideas/inprogress" element={<IdeasInProgress />} />
         <Route path="community" element={<Community />} />
         <Route path="education" element={<Education />}>
           <Route path="practices" element={<PracticeList />} />
-          {/* <Route path="articles" element={<Articles />} /> 
-          <Route path="videos" element={<Videos />} />
-          <Route path="dictionary" element={<Dictionary />} /> */}
+          <Route path="articles" element={<ArticleList />} /> 
+          <Route path="videos" element={<VideoList />} />
+          <Route path="dictionary" element={<DictionaryList />} /> 
           <Route index element={<Navigate to="practices" replace />} />
         </Route>
       </Route>

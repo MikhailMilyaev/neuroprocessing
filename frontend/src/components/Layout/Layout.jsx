@@ -11,7 +11,8 @@ const Layout = () => {
         <div className={classes.container}>
           <div className={classes.layoutLinks}>
             <NavLink to="history" end className={({ isActive }) => isActive ? classes.active : undefined}>Истории</NavLink>
-            <NavLink to="ideas" end className={({ isActive }) => isActive ? classes.active : undefined}>Идеи</NavLink>
+            <NavLink to="ideas" end className={({ isActive }) => 
+            isActive || window.location.pathname.startsWith('/ideas') ? classes.active : undefined}>Идеи</NavLink>
             <NavLink to="education" className={({ isActive }) => 
            isActive || window.location.pathname.startsWith('/education') ? classes.active : undefined}>Обучение</NavLink>
             <NavLink to="community" end className={({ isActive }) => isActive ? classes.active : undefined}>Сообщества</NavLink>

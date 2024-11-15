@@ -1,27 +1,102 @@
 .container {
-    margin-top: 10px;
-    width: 100%;
-    display: flex;
-    justify-content: center; 
-  }
-  
-  .content {
-    width: 50%;  
-    background-color: blue;
-    border-radius: 10px;
-    padding: 10px;
-    display: flex;
-    align-items: center; 
-    justify-content: space-between; 
-  }
-  
-.ideasType {
-    border: 2px solid black;
-    border-radius: 15px;
-    padding: 5px;
+  margin-top: 10px;
+  width: 100%;
+  display: flex;
+  justify-content: center; 
 }
 
-.link {
-    text-decoration: none;
-    color:white
+.content {
+  width: 65%;  
+  background-color: rgba(211, 211, 211, 0.8); 
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  align-items: center; 
+  justify-content: space-between; 
+  backdrop-filter: blur(5px); 
+}
+
+.ideasType {
+  display: flex;
+  gap: 15px;
+}
+
+.link, .activeLink { 
+  text-decoration: none;
+  color: #333;
+  padding: 8px 16px; 
+  border-radius: 20px;
+  border: 2px solid #ccc;
+  transition: background-color 0.3s ease, color 0.3s ease; 
+}
+
+.link:hover {
+  background-color: rgba(0,0,0,0.1); 
+}
+
+.activeLink {  
+  background-color: white;
+  border-color: black; 
+}
+
+.searchInputContainer {
+  display: flex;
+  align-items: center;
+  background-color: white;
+  border-radius: 20px;
+  padding: 5px;
+  width: 250px; 
+}
+
+.searchInputContainer:focus-within {
+  outline: 2px solid rgb(140, 140, 140); 
+  outline-offset: -2px; 
+}
+
+.searchInput {
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 5px 10px;
+  font-size: 16px;
+  width: calc(100% - 2rem);
+}
+
+.searchIcon, .clearIcon { 
+  font-size: 1.3rem;
+  color: #555;
+  margin: 0;        
+  flex-shrink: 0; 
+}
+
+.searchIcon, .clearIcon {  
+  margin-left: 5px;
+}
+
+.clearIcon {
+  margin-left: 5px;
+  cursor: pointer;
+  margin-right: 5px;
+}
+
+.additional {
+  display: flex;
+  gap: 15px;
+}
+
+.icons {
+  display: flex;
+  gap: 15px;
+}
+
+.icons svg {   
+  font-size: 1.6em;
+  cursor: pointer; 
+  padding: 5px;    
+  border-radius: 50%; 
+  transition: background-color 0.3s ease;
+}
+
+.icons svg:hover {
+  background-color: #ccc;
 }
