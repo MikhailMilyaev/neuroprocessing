@@ -12,13 +12,11 @@ import FormInputPassword from '../../../components/Auth/FormInputPassword/FormIn
 import FormErrorMessage from '../../../components/Auth/FormErrorMessage/FormErrorMessage';
 import { useAuth } from '../../../components/Auth/AuthContext';
 import Cookies from 'js-cookie';
-import FullScreenLoader from '../../../components/Auth/FullScreenLoader/FullScreenLoader';
 
 const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
-  const [isLoading, setIsLoading] = useState(true)
   const navigate = useNavigate();
   const { login } = useAuth()
 
@@ -44,41 +42,37 @@ const Login = () => {
       return; 
     }
 
-    // try {
-    //   setIsLoading(true)
-    //   const response = await axios.post('/api/login', {email, password})
+    try {
+      const response = await axios.post('/api/login', {email, password})
 
-    //   if (!response.data?.token || !response.data?.user) {
-    //     setErrorMessage('Некорректный ответ от сервера');
-    //     setIsLoading(false)
-    //     return;
-    //   }
+      if (!response.data?.token || !response.data?.user) {
+        setErrorMessage('Некорректный ответ от сервера');
+        return;
+      }
 
-    //   Cookies.set('token', response.data.token, {
-    //     expires: 365,
-    //     secure: process.env.NODE_ENV === 'production',
-    //     sameSite: 'Strict'
-    //   })
+      Cookies.set('token', response.data.token, {
+        expires: 365,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'Strict'
+      })
 
-    //   login(response.data.user)
-    //   navigate('/stories')
-    // } catch (error) {
-    //   setIsLoading(false)
-    //   if (error.response) {
-    //     if (error.response.status === 401) {
-    //       setErrorMessage('Данные введены некорректно');
-    //     } else {
-    //       setErrorMessage(error.response.data.message || 'Произошла ошибка на сервере');
-    //     }
-    //   } else {
-    //     setErrorMessage('Произошла ошибка на клиенте');
-    //   }
-    // }
+      login(response.data.user)
+      navigate('/stories')
+    } catch (error) {
+      if (error.response) {
+        if (error.response.status === 401) {
+          setErrorMessage('Данные введены некорректно');
+        } else {
+          setErrorMessage(error.response.data.message || 'Произошла ошибка на сервере');
+        }
+      } else {
+        setErrorMessage('Произошла ошибка на клиенте');
+      }
+    }
   }
 
   return (
     <>
-    <FullScreenLoader isLoading={isLoading}/>
       <div className={classes.container}>
         <Brand />
         <form onSubmit={handleSubmit}>
