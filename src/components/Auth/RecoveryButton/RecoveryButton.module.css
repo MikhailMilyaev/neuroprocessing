@@ -1,0 +1,13 @@
+.recoveryButton {
+    font-size: 14px;
+    color: grey;
+    display: inline-block;
+    text-decoration: none;
+    transition: color 0.3s ease;
+    margin-bottom: 15px;
+}
+
+.recoveryButton:hover {
+    cursor: pointer;
+    color: black;
+}

@@ -1,24 +1,29 @@
-import logo from './logo.svg';
-import './App.css';
+import Education from './pages/Main/Education/Education'
+import Stories from "./pages/Main/Stories/Stories";
+import Login from "./pages/Auth/Login/Login";
+import SignUp from "./pages/Auth/SignUp/SignUp";
+import {Routes, Route} from 'react-router-dom'
+import Recovery from "./pages/Auth/Recovery/Recovery";
+import ProtectedRoute from './components/Auth/ProtectedRoute';
+import NotFoundPage from './pages/NotFoundPage/NotFoundPage';
+import Home from './pages/Lending/Home/Home';
 
-function App() {
+const App = () => {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Routes>
+      <Route path='/' element={<Home />} />
+      <Route path='/login' element={<Login />} />
+      <Route path='/signup' element={<SignUp />} />
+      <Route path='/recovery' element={<Recovery />} />
+      <Route path='*' element={<NotFoundPage />}/>
+      <Route path='/stories' element={<Stories />} />
+      <Route path='/education' element={<Education />} />
+
+      {/* <Route element={<ProtectedRoute />}>
+        <Route path='/stories' element={<Stories />} />
+        <Route path='/education' element={<Education />} />
+      </Route> */}
+    </Routes>
   );
 }
 
