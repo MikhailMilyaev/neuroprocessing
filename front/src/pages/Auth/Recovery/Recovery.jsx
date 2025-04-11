@@ -11,6 +11,7 @@ import FormErrorMessage from '../../../components/Auth/FormErrorMessage/FormErro
 const Recovery = () => {
   const [email, setEmail] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
 
   useEffect(() => {
@@ -31,6 +32,7 @@ const Recovery = () => {
     }
 
     try {
+      setIsLoading(true)
       await axios.post('/api/recovery', {email})
       setSuccess(true)
     } catch (error) {
@@ -43,6 +45,8 @@ const Recovery = () => {
       } else {
         setErrorMessage('Произошла ошибка на клиенте');
       }
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -60,7 +64,7 @@ const Recovery = () => {
           </div>
           {errorMessage && <FormErrorMessage message={errorMessage}/> }
 
-          <SubmitButton>Отправить</SubmitButton>  
+          <SubmitButton isLoading={isLoading}>Отправить</SubmitButton>  
         </form>
          : <p style={{ marginBottom: '30px'}}>На ваш адрес было отправлено письмо с восстановлением пароля</p>
       }

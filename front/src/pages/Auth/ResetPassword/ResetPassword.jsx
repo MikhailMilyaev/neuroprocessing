@@ -12,6 +12,7 @@ const ResetPassword = () => {
   const [newPassword, setNewPassword] = useState('')
   const [newConfirmPassword, setNewConfirmPassword] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
@@ -48,9 +49,10 @@ const ResetPassword = () => {
     }
 
     try {
-        await axios.post('/api/reset', {newPassword, token})
-        setSuccess(true)
-      } catch (error) {
+      setIsLoading(true)
+      await axios.post('/api/reset', {newPassword, token})
+      setSuccess(true)
+    } catch (error) {
         if (error.response) {
           if (error.response.status === 400) {
             setErrorMessage('Ссылка для сброса устарела или некорректна.')
@@ -60,6 +62,8 @@ const ResetPassword = () => {
         } else {
           setErrorMessage('Ошибка при соединении с сервером')
         }
+    } finally {
+        setIsLoading(false)
       }
   }
 
@@ -84,7 +88,7 @@ const ResetPassword = () => {
             
             {errorMessage && <FormErrorMessage message={errorMessage}/>}
 
-            <SubmitButton>Подтвердить</SubmitButton> 
+            <SubmitButton isLoading={isLoading}>Подтвердить</SubmitButton> 
             </form> :  
             <>
                 <p style={{ marginBottom: '30px'}}>Ваш пароль изменён</p>

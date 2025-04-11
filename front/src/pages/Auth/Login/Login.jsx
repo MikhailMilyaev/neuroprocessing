@@ -17,8 +17,15 @@ const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate();
-  const { login } = useAuth()
+  const { user, login } = useAuth()
+
+  useEffect(() => {
+    if (user) {
+      navigate('/stories')
+    }
+  }, [user, navigate])
 
   useEffect(() => {
     setErrorMessage('')
@@ -43,6 +50,7 @@ const Login = () => {
     }
 
     try {
+      setIsLoading(true)
       const response = await axios.post('/api/login', {email, password})
 
       if (!response.data?.token || !response.data?.user) {
@@ -57,7 +65,6 @@ const Login = () => {
       })
 
       login(response.data.user)
-      navigate('/stories')
     } catch (error) {
       if (error.response) {
         if (error.response.status === 401) {
@@ -68,6 +75,8 @@ const Login = () => {
       } else {
         setErrorMessage('Произошла ошибка на клиенте');
       }
+    }  finally {
+      setIsLoading(false)
     }
   }
 
@@ -90,7 +99,7 @@ const Login = () => {
 
           {errorMessage && <div style={{ marginTop: '12px'}}><FormErrorMessage message={errorMessage}/></div>}
 
-          <SubmitButton>Войти</SubmitButton>
+          <SubmitButton isLoading={isLoading}>Войти</SubmitButton>
         </form>
         <AuthSwitcher to={'/signup'}>Создать аккаунт</AuthSwitcher>
       </div>
