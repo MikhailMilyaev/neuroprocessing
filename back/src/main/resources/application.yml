@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: neuroprocessing
+
+  datasource:
+    url: jdbc:postgresql://localhost:5435/neuroprocessing
+    username: dmitry
+    password: 314507
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true

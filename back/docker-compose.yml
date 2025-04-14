@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:latest
+    container_name: neuroprocessing-db
+    environment:
+      POSTGRES_DB: neuroprocessing
+      POSTGRES_USER: dmitry
+      POSTGRES_PASSWORD: 314507
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  app:
+    build: ..
+    container_name: spring-auth-app
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/authdb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: 314507
+    networks:
+      - backend
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: neuro-processing@mail.ru
+      PGADMIN_DEFAULT_PASSWORD: process-service01
+    ports:
+      - "5052:80"
+    depends_on:
+      - db
+    networks:
+      - backend
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+
+volumes:
+  postgres-data:
+  pgadmin-data:
+
+networks:
+  backend:
