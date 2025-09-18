@@ -1,0 +1,180 @@
+:root {
+  --ring: rgba(20,174,92,.35);
+  --ring-strong: rgba(20,174,92,.5);
+  --fg-icon: #111827;
+  --bg-icon: #f3f4f6;
+  --bg-icon-hover: #e5e7eb;
+  --btn-br: rgba(0,0,0,.04);
+  --cta: #14AE5C;
+  --cta-hover: #0f9b52;
+  --badge: #ef4444;
+}
+
+.header {
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr) auto;
+  align-items: center;
+  gap: 16px;
+  position: relative;    
+  z-index: 50;          
+  isolation: isolate;   
+}
+
+.left { display: inline-flex; }
+
+.center {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+.searchWrap {
+  width: 100%;
+  max-width: 640px;
+}
+
+.right {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;position: relative; z-index: 1;
+}
+
+.tbtn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  min-width: 40px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--btn-br);
+  background: var(--bg-icon);
+  color: var(--fg-icon);
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background-color .15s ease,
+    transform .06s ease,
+    box-shadow .15s ease,
+    opacity .15s ease;
+
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.tbtn * { -webkit-user-drag: none; }
+.tbtn:hover { background: var(--bg-icon-hover); }
+.tbtn:active { transform: translateY(1px); }
+.tbtn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+
+.icon {
+  width: 20px;
+  height: 20px;
+  display: block;
+  pointer-events: none;
+}
+
+.iconBox {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.badge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: var(--badge);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 1px 0 rgba(0,0,0,.14);
+}
+
+.primary {
+  background: var(--cta);
+  color: #fff;
+  border-color: var(--cta);
+}
+.primary:hover { background: var(--cta-hover); }
+.primary:focus-visible { box-shadow: 0 0 0 3px var(--ring-strong); }
+
+.primaryLabel {
+  display: none;
+  margin-left: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: .2px;
+}
+@media (min-width: 1280px) {
+  .primaryLabel { display: inline-block; }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tbtn[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: -36px;
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    padding: 6px 8px;
+    background: rgba(17,24,39,.96);
+    color: #fff;
+    font-size: 13px;
+    border-radius: 8px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 100;  
+    transition: opacity .15s ease, transform .15s ease;
+  }
+  .tbtn:hover::after,
+  .tbtn:focus-visible::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  .tbtn:active::after { opacity: 0; }
+}
+
+@media (max-width: 1200px) {
+  .right { gap: 10px; }
+}
+@media (max-width: 980px) {
+  .header { grid-template-columns: 1fr; gap: 12px; }
+  .center { order: 3; }
+  .right  { order: 2; justify-content: flex-end; }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg-icon: #e5e7eb;
+    --bg-icon: #1f2328;
+    --bg-icon-hover: #242a30;
+    --btn-br: rgba(255,255,255,.08);
+    --badge: #f87171;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tbtn, .toolbar { transition: none !important; }
+}

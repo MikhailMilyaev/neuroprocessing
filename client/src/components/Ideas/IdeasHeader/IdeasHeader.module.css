@@ -1,0 +1,35 @@
+.topbar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.hdrBtn {
+  font-size: 15px;
+}
+
+.selectBtn {
+  border: none;
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.title { justify-self: center; font-weight: 600; font-size: 18px; }
+
+.addBtn,
+.moveBtn {
+  border: none;
+  border-radius: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+  color: #fff;
+  font-size: 15px;
+}
+.addBtn { background: #14AE5C; }
+.addBtn:hover { opacity: .95; }
+
+.moveBtn { background: #111827; }
+.moveBtn:disabled { opacity: .5; cursor: not-allowed; }

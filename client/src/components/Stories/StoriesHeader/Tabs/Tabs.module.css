@@ -1,0 +1,58 @@
+.tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.tab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  height: 40px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 24px;
+  color: #111111;
+  cursor: pointer;
+  transition:
+    background-color .12s ease,
+    color .12s ease,
+    transform .06s ease,
+    box-shadow .12s ease;
+}
+
+.tab:not(.tabActive):hover {
+  background: rgba(17, 17, 17, 0.06);
+}
+
+.tab:active {
+  transform: translateY(0.5px);
+}
+
+.tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(20, 174, 92, 0.35);
+}
+
+.tabActive {
+  background: #111111;
+  color: #ffffff;
+}
+
+.tabActive:hover {
+  background: #111111;
+  color: #ffffff;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab { transition: none; }
+}

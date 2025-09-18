@@ -1,0 +1,180 @@
+:root {
+  --fs: 18px;
+  --lh: 24px;
+
+  /* bubble / chip theme */
+  --chip-size: 40px;
+  --chip-radius: 10px;
+  --chip-bg: transparent;
+  --chip-bg-hover: #D9D9D9;
+  --chip-border: rgba(17,24,39,0.08);
+  --chip-border-hover: rgba(17,24,39,0.14);
+  --chip-shadow: 0 2px 8px rgba(16,24,40,.08);
+  --chip-shadow-hover: 0 6px 16px rgba(16,24,40,.12);
+
+  --bubble-shadow: 0 4px 14px rgba(16,24,40,.08);
+  --bubble-shadow-hover: 0 6px 18px rgba(16,24,40,.12);
+  --bubble-ring: rgba(34,197,94,.35);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root{
+    --chip-bg: transparent;
+    --chip-bg-hover: rgba(255,255,255,0.12);
+    --chip-border: rgba(255,255,255,0.10);
+    --chip-border-hover: rgba(255,255,255,0.18);
+    --chip-shadow: 0 6px 16px rgba(0,0,0,.35);
+    --chip-shadow-hover: 0 10px 28px rgba(0,0,0,.45);
+    --bubble-ring: rgba(34,197,94,.50);
+  }
+}
+
+* { box-sizing: border-box; }
+
+.wrapper { position:relative; width:100%; max-width:800px; margin:0 auto; }
+.stage { position:relative; overflow:hidden; border-radius:0; background:transparent; }
+
+.mirror {
+  position:absolute; inset:0; z-index:0;
+  font-size:var(--fs); line-height:var(--lh);
+  white-space:pre-wrap; word-wrap:break-word; padding:0; border:none;
+  pointer-events:none; color:transparent; caret-color:transparent;
+  overflow:hidden; scrollbar-width:none;
+  /* нам не нужна искусственная компенсация — ширину задаём напрямую из JS */
+  /* scrollbar-gutter оставляем по умолчанию */
+}
+.mirror::-webkit-scrollbar { display:none; }
+
+/* синхронизация переносов с textarea */
+.mirrorText{
+  /* ВСЯ типографика копируется из textarea через JS (syncMirrorTypography) */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: manual;
+  padding-right: 0;
+  /* ширина выставляется из JS: mirrorText.style.width = textarea.clientWidth + 'px' */
+}
+
+.underlines { position:absolute; inset:0; z-index:1; pointer-events:none; overflow:visible; padding:0; will-change:transform; }
+.underline { position:absolute; background:#22c55e; height:2px; border-radius:1px; }
+
+/* подсветка фрагмента идеи в тексте */
+.highlights{
+  position:absolute;
+  inset:0;
+  z-index:1;                 /* под textarea (z=2), над зеркалом */
+  pointer-events:none;
+  will-change:transform;
+}
+.highlightRect{
+  position:absolute;
+  background: rgba(253, 230, 138, 0.55);
+  border-radius: 4px;
+}
+
+.textArea{
+  position:relative; z-index:2; width:100%; display:block; padding:0;
+  font-size:var(--fs); line-height:var(--lh); border:none; outline:none; resize:none;
+  background:transparent; border-radius:0!important; overflow-y:scroll;
+  scrollbar-width:thin; scrollbar-color:#bbb transparent;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: manual;
+}
+.textArea::-webkit-scrollbar{ width:8px; }
+.textArea::-webkit-scrollbar-track{ background:transparent; }
+.textArea::-webkit-scrollbar-thumb{ background-color:#999; border-radius:3px; }
+.textArea::-webkit-scrollbar-thumb:hover{ background-color:#666; }
+
+/* gutter */
+.gutter{ position:absolute; top:0; left:-35px; width:32px; height:100%; z-index:3; pointer-events:auto; opacity:0; transition:opacity .15s ease; }
+.wrapper:hover .gutter, .gutter:hover{ opacity:1; }
+.gutterForceVisible{ opacity:1!important; }
+.gutterInner{ position:relative; height:100%; will-change:transform; }
+.gutterBtn{
+  position:absolute; left:6px; width:18px; height:18px; border-radius:999px; border:2px solid #cfd4dc;
+  background:transparent; padding:0; display:grid; place-items:center; cursor:pointer;
+  transition:border-color .15s ease, box-shadow .15s ease, transform .05s ease, opacity .12s ease;
+  transform:translateY(-50%);
+}
+.gutterBtn:hover{ border-color:#98a2b3; box-shadow:0 2px 6px rgba(16,24,40,.12); }
+.gutterBtn:active{ transform:translateY(-50%) scale(.96); }
+.gutterBtn:focus-visible{ outline:none; box-shadow:0 0 0 2px #fff, 0 0 0 4px rgba(34,197,94,.5); }
+.radioDot{ width:10px; height:10px; border-radius:999px; background:transparent; transition:background-color .12s ease; }
+.gutterBtnActive .radioDot{ background:#22c55e; }
+.gutterEdgeBtn{ opacity:0; pointer-events:none; left:6px; z-index:4; }
+.gutterEdgeTop{ top:8px; }
+.gutterEdgeBottom{ bottom:-8px; }
+
+/* bubble (плашка над выделением) */
+.selBubble{
+  position:absolute;
+  z-index:5; /* выше textarea (z=2), но обрезается overflow:hidden у .stage */
+  transform:translateX(-50%);
+  pointer-events:auto;
+  animation:selPop .14s ease-out both;
+}
+@keyframes selPop{ from{opacity:0; transform:translateX(-50%) scale(.98);} to{opacity:1; transform:translateX(-50%) scale(1);} }
+@media (prefers-reduced-motion: reduce){ .selBubble, .selBubbleBelow{ animation:none; } }
+
+/* кнопка-чип */
+.selBubbleBtn{
+  appearance:none;
+  border: none;
+  background: white;
+  border-radius: var(--chip-radius);
+  width: var(--chip-size);
+  height: var(--chip-size);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  line-height: 0;
+  /* box-shadow: var(--chip-shadow); */
+  transition:
+    background-color .15s ease,
+    border-color .15s ease,
+    box-shadow .15s ease,
+    transform .08s ease,
+    filter .12s ease;
+}
+/* .selBubbleBtn:hover{
+  border-color: var(--chip-border-hover);
+  box-shadow: var(--chip-shadow-hover);
+} */
+.selBubbleBtn:active{ transform: translateY(1px) scale(.99); }
+.selBubbleBtn:focus{ outline: none; }
+/* .selBubbleBtn:focus-visible{
+  box-shadow: 0 0 0 2px var(--bubble-ring), var(--chip-shadow-hover);
+} */
+
+/* лампочка */
+.selIdeaIcon{
+  width: 24px;
+  height: 24px;
+  display: block;
+  pointer-events: none;
+  filter: grayscale(1) brightness(.7);
+  transition: filter .15s ease, transform .08s ease;
+}
+.selBubbleBtn:hover .selIdeaIcon,
+.selBubbleBtn:active .selIdeaIcon,
+.selBubbleBtn:focus-visible .selIdeaIcon{
+  filter: none;
+  transform: translateY(-0.5px);
+}
+
+.sttSpinners{
+  position:absolute;
+  inset:0;
+  z-index:4;             /* выше highlights/underlines (z=1), ниже плавающего bubble (z=5) */
+  pointer-events:none;
+}
+.sttSpinner{
+  position:absolute;
+  transform:translate(-50%, -50%);
+}
+

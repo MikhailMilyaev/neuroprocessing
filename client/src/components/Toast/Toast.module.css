@@ -1,0 +1,106 @@
+:root{
+  --toast-bg: #6F6F6F;          
+  --toast-fg: #ffffff;
+  --progress-overlay: rgba(255,255,255,.10);
+  --shadow: 0 8px 24px rgba(0,0,0,.18);
+  --radius: 16px;
+}
+
+/* Позиционирование */
+.host{
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  pointer-events: none; 
+}
+.top{    top:    var(--offset, 28px); }
+.bottom{ bottom: var(--offset, 28px); }
+
+/* Тост */
+.toast{
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(92vw, 640px);
+  color: var(--toast-fg);
+  background: var(--toast-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 10px 24px 10px 8px;
+  pointer-events: auto;
+  overflow: hidden;
+  animation: toastIn .14s ease-out both;  /* проигрывается только при первом маунте */
+}
+@keyframes toastIn{
+  from{ opacity: 0; transform: translateY(4px); }
+  to{   opacity: 1; transform: translateY(0);   }
+}
+
+/* Прогресс-подложка */
+.progress{
+  position: absolute;
+  inset: 0;
+  width: 0%;
+  background: var(--progress-overlay);
+  border-radius: inherit;
+  pointer-events: none;
+  animation: fill linear forwards;
+  animation-duration: var(--duration, 5000ms);
+}
+@keyframes fill{
+  from{ width: 0%; }
+  to{   width: 100%; }
+}
+.paused .progress{ animation-play-state: paused; }
+
+/* Иконки и текст */
+.leadIcon{
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 36px;
+  margin-left: 2px; 
+}
+.leadIconSvg{
+  width: 23px;
+  height: 23px;
+  display: block;
+  color: var(--toast-fg); 
+}
+/* Только info — больше */
+.leadIconSvgInfo{
+  width: 26px;
+  height: 26px;
+  display: block;
+  color: var(--toast-fg);
+}
+
+.text{
+  font-size: 16px;
+  line-height: 1.35;
+  user-select: none;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+/* Темы */
+.success{
+  --toast-bg: #14AE5C;
+  --toast-fg: #ffffff;
+  --progress-overlay: rgba(255,255,255,.14);
+}
+.error{
+  --toast-bg: rgba(255, 80, 80, 0.95);
+  --toast-fg: #ffffff;
+  --progress-overlay: rgba(255,255,255,.10);
+}
+.info{
+  --toast-bg: #6F6F6F;
+  --toast-fg: #ffffff;
+  --progress-overlay: rgba(255,255,255,.10);
+}

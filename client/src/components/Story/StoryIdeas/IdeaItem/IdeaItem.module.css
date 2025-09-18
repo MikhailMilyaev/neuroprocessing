@@ -1,0 +1,191 @@
+:root {
+  /* синхронизировано с JS ANIM_MS = 250 */
+  --anim-ms: 250ms;
+  --anim-ease-out: cubic-bezier(.17,.84,.44,1);
+  --anim-ease-in:  cubic-bezier(.36,0,.66,-0.01);
+  --anim-shift: 6px;
+
+  /* подсветка «вернулась в активные» */
+  --enter-flash: rgba(160, 231, 184, .18);
+}
+
+.beliefWrap {
+  max-width: 800px;
+  margin: 12px auto 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  padding: 4px 0;
+  transition:
+    opacity var(--anim-ms) var(--anim-ease-out),
+    box-shadow .18s ease,
+    background-color .35s ease;
+  will-change: opacity, transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transform-origin: 50% 0;
+}
+
+.beliefWrap:first-child { margin-top: 20px; }
+.beliefWrap:last-child { margin-bottom: 350px; }
+
+.beliefWrap.active .beliefInput { border-bottom-color: #A0E7B8; }
+.beliefWrap.active .beliefScore { border-color: #A0E7B8; }
+
+/* поля */
+.beliefInput {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 18px;
+  padding: 4px 0;
+  border-bottom: 2px solid #C8C8C8;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  transition: border-color .15s ease, color .15s ease, background-color .25s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.beliefScore {
+  width: 38px;
+  height: 22px;
+  border: 1px solid #C8C8C8;
+  border-radius: 12px;
+  background: #fff;
+  text-align: center;
+  outline: none;
+  font-size: 18px;
+  padding: 0 4px;
+  transition:
+    border-color .15s ease,
+    background-color .15s ease,
+    color .15s ease,
+    opacity var(--anim-ms) var(--anim-ease-out),
+    transform var(--anim-ms) var(--anim-ease-out);
+  backface-visibility: hidden;
+}
+.beliefScore::-webkit-outer-spin-button,
+.beliefScore::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.beliefScore[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+
+/* Архивный стиль (без «переезда» при первом рендере) */
+.archived .beliefInput { color: #8b8b8b; border-bottom-color: #DADADA; }
+.archived .beliefScore { color: #666; background: #f7f7f7; border-color: #DADADA; }
+
+/* === АНИМАЦИИ ПЕРЕХОДОВ === */
+
+/* Уход из активных в архив: быстрая «усадка» и растворение вниз */
+.leaving {
+  pointer-events: none;            /* не кликается во время ухода */
+  animation: fadeOutDown var(--anim-ms) var(--anim-ease-in) forwards;
+}
+@keyframes fadeOutDown {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(var(--anim-shift)); }
+}
+
+/* Появление в архиве (в момент переноса) */
+.archivedEnter {
+  animation: archivedIn var(--anim-ms) var(--anim-ease-out);
+}
+@keyframes archivedIn {
+  from { opacity: 0; transform: translateY(calc(var(--anim-shift) * -0.6)); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Уход из архива в активные (вверх) */
+.archivedLeaving {
+  pointer-events: none;
+  animation: fadeOutUp var(--anim-ms) var(--anim-ease-in) forwards;
+}
+@keyframes fadeOutUp {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(calc(var(--anim-shift) * -1)); }
+}
+
+/* Возврат в активные: лёгкий «подъём» + мягкая подсветка */
+.reenter {
+  animation: reenterUp var(--anim-ms) var(--anim-ease-out);
+}
+@keyframes reenterUp {
+  from { opacity: 0; transform: translateY(var(--anim-shift)); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Плавность/микро-взаимодействия */
+.scoreWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  inline-size: max-content;
+  position: relative;
+  z-index: 2;
+}
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: #222;
+  cursor: pointer;
+  transition: transform .08s ease, background .15s ease, opacity .15s ease, box-shadow .18s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.iconBtn:hover { background: rgba(0,0,0,0.06); }
+.iconBtn:active { background: rgba(0,0,0,0.12); transform: translateY(1px); }
+.iconBtn:focus { outline: none; }
+.iconBtn:focus-visible { box-shadow: 0 0 0 2px rgba(0,0,0,.08); border-radius: 999px; }
+.iconBtn svg { display: block; width: 18px; height: 18px; pointer-events: none; }
+.toggleBtn { opacity: .85; }
+.beliefWrap:hover .toggleBtn:not(:disabled) { opacity: 1; }
+.open svg { transform: rotate(180deg); transition: transform .15s ease; }
+
+.practiceSlot { grid-column: 1 / -1; }
+
+/* Disabled */
+.beliefScore:disabled { opacity: .5; cursor: not-allowed; }
+.iconBtn:disabled,
+.iconBtn:disabled:hover,
+.iconBtn:disabled:active,
+.iconBtn:disabled:focus,
+.iconBtn:disabled:focus-visible {
+  color: #888; background: transparent; box-shadow: none; transform: none; opacity: .5;
+  cursor: not-allowed; pointer-events: auto;
+}
+.toggleBtn:disabled { opacity: .5 !important; }
+
+/* Секция архива */
+.archiveHeader {
+  max-width: 800px;
+  margin: 20px auto 6px auto;
+  font-size: 14px;
+  color: #6b7280;
+  letter-spacing: .2px;
+  user-select: none;
+}
+
+/* Глобальный переключатель «без анимаций» (из кода) */
+.noAnim * {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* Уважение accessibility-настроек */
+@media (prefers-reduced-motion: reduce) {
+  .beliefWrap,
+  .archivedEnter,
+  .leaving,
+  .archivedLeaving,
+  .reenter {
+    animation: none !important;
+    transition: none !important;
+  }
+}

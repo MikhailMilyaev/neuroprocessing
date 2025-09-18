@@ -1,0 +1,27 @@
+.resetButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  font-size: 16px;
+  color: #6B7280;
+  text-decoration: none;
+  transition: color .2s ease, background-color .2s ease, transform .1s ease;
+  margin-bottom: 8px;           /* было 10px */
+}
+
+.resetButton:hover {
+  color: #000;
+  background-color: #F5F5F5;
+}
+
+.resetButton:active { transform: translateY(1px); }
+
+.resetButton:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+.icon { font-size: 18px; line-height: 0; }

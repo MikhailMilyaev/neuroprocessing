@@ -1,0 +1,76 @@
+.overlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(17,17,17,.5);
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+}
+
+.card{
+  width: 100%;
+  max-width: 520px;
+  padding: 28px 24px 16px 24px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  text-align: center;
+}
+
+.icon{
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  background: #eef3ff;
+  color: #2a5bd7;
+}
+
+.title{
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #111;
+}
+
+.text{
+  margin: 0 0 18px;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #222;
+}
+
+.actions{
+  display: grid;
+  grid-auto-flow: column;
+  gap: 12px;
+  justify-content: stretch;
+}
+
+.primaryBtn, .secondaryBtn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 11px;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  border: none;
+}
+
+.primaryBtn{
+  background: #2563eb;
+  color: #fff;
+}
+.primaryBtn:hover{ opacity: .85; }
+
+.secondaryBtn{
+  background: #f3f4f6;
+  color: #111;
+}
+.secondaryBtn:hover{ background: #e5e7eb; }

@@ -1,0 +1,33 @@
+.article {
+  width: 50%;
+  max-width: 800px;
+  margin: 30px auto 250px;
+  line-height: 1.6;
+}
+
+.article h2,
+.article h3 { margin-top: 30px; margin-bottom: 15px; }
+.article h4 { margin-top: 18px; margin-bottom: 8px; }
+.article p  { margin-bottom: 10px; }
+
+.list { padding-left: 18px; margin: 0 0 10px; }
+.list li { margin: 6px 0; }
+
+.steps { padding-left: 18px; margin: 0 0 10px; }
+.steps li { margin: 6px 0; }
+
+.block {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 10px 0;
+}
+
+.calloutTip {
+  background: #ecfeff;
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 12px 0;
+}

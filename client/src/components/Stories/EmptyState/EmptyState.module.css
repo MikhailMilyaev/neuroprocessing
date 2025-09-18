@@ -1,0 +1,62 @@
+/* Контейнер: поднимаем выше и убираем излишнюю «полэкранную» высоту */
+.wrapper {
+  display: grid;
+  justify-items: center;
+  align-content: start;         
+  gap: 10px;
+  padding: 0 16px 20px;      
+  min-height: 32vh;             
+  border-radius: 20px;
+  background: transparent;
+}
+
+/* Иллюстрации */
+.illu {
+  width: clamp(220px, 40vw, 420px);
+  height: auto;
+  filter: drop-shadow(0 10px 24px rgba(0,0,0,.08));
+  margin: 0;                    /* на всякий */
+}
+
+.illuTight {
+  margin-bottom: -18px;
+}
+
+.text { text-align: center; }
+
+.title {
+  margin: 0 0 8px;            
+  font-weight: 600;
+  font-size: clamp(20px, 2.2vw, 28px);
+}
+
+.subtitle {
+  margin: 0;
+  color: #6b7280;
+  font-size: clamp(14px, 1.4vw, 16px);
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.primaryBtn,
+.secondaryBtn {
+  border: none;
+  border-radius: 14px;
+  padding: 10px 18px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.primaryBtn { background: #22c55e; color: white; }
+.primaryBtn:hover { opacity: .9; }
+
+.secondaryBtn { background: #2a5bd7; color: white; }
+.secondaryBtn:hover { opacity: .9; }
+
+@media (prefers-color-scheme: dark) {
+  .subtitle { color: #9ca3af; }
+}

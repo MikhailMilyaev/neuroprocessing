@@ -1,0 +1,154 @@
+.menuDialog {
+  position: absolute;
+  border: none;
+  background: transparent;
+  padding: 0;
+  z-index: 1000;
+  overflow: visible;
+  color-scheme: dark; /* чтобы нативные контролы не белели */
+}
+.menuDialog::backdrop { background: transparent; }
+
+.menu {
+  width: 220px;
+  min-width: 243px;
+  max-width: 243px;
+  background: #6F6F6F;
+  color: #fff;
+  border-radius: 16px;
+  padding: 10px;
+  overflow: visible;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 16px;
+  padding: 12px 8px;
+  cursor: pointer;
+  border-radius: 10px;
+  box-sizing: border-box;
+  text-align: left;
+}
+.item:hover { background: rgba(255,255,255,0.16); }
+.item > * { background: transparent; }
+
+.switchRow { cursor: default; }
+
+.icon { font-size: 20px; flex-shrink: 0; color: #fff; }
+.label { flex: 1; }
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 18px;
+  margin-right: 0;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute;
+  inset: 0;
+  background-color: #5f5f5f;
+  transition: .25s ease;
+  border-radius: 999px;
+}
+.slider:before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  transition: .25s ease;
+}
+.switch input:checked + .slider { background-color: #22c55e; }
+.switch input:checked + .slider:before { transform: translateX(16px); }
+
+/* ===== Подменю интервалов ===== */
+.freqPanel {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height .25s ease, opacity .2s ease, padding .2s ease;
+  opacity: 0;
+  background: transparent; 
+  border-radius: 12px;
+  margin-top: 6px;
+  padding: 0 8px;
+}
+.freqPanel.open {
+  max-height: 320px;
+  opacity: 1;
+  padding: 8px;
+}
+
+.submenuTitle {
+  font-size: 12px;
+  opacity: .9;
+  margin: 2px 0 8px 6px;
+  background: transparent;
+}
+
+.submenuOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  transition: background .15s ease;
+  user-select: none;
+  background: transparent; 
+}
+.submenuOption:hover,
+.submenuOption:has(input:focus-visible) {
+  background: rgba(255,255,255,0.16); 
+}
+
+.submenuOption span { background: transparent; }
+
+.submenuOption input[type="radio"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.7);
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+
+  position: relative;     /* для абсолютного центра внутри */
+  display: inline-block;
+  vertical-align: middle;  /* ровно по базовой линии текста */
+  line-height: 1;          /* убираем лишние отступы из шрифта */
+  box-sizing: border-box;
+}
+
+.submenuOption input[type="radio"]::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;             /* внутренняя точка */
+  height: 10px;
+  border-radius: 50%;
+  background: #22c55e;
+  transform: translate(-50%, -50%) scale(0);  /* точный центр */
+  transition: transform .12s ease-in-out;
+}
+
+.submenuOption input[type="radio"]:checked::before {
+  transform: translate(-50%, -50%) scale(1);
+}

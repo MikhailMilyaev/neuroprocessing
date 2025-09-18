@@ -1,0 +1,38 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+
+/* Сброс без фона на всех элементах */
+* {
+  margin: 0;
+  padding: 0;
+  font-family: "Roboto", sans-serif;
+  box-sizing: border-box;
+}
+
+/* Фон страницы — только на корневых элементах */
+html, body, #root {
+  min-height: 100%;
+  background-color: #f5f5f5;
+}
+
+/* Тонкие скроллбары для всей страницы */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #bbb transparent;
+}
+
+html::-webkit-scrollbar {
+  width: 8px;
+}
+
+html::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html::-webkit-scrollbar-thumb {
+  background-color: #999;
+  border-radius: 4px;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background-color: #666;
+}

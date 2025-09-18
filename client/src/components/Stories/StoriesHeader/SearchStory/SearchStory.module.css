@@ -1,0 +1,47 @@
+/* client/src/components/Stories/StoriesHeader/SearchStory/SearchStory.module.css */
+
+.inputContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  /* БЫЛО: width: 600px; — из-за этого распирало хедер
+     СТАЛО: гибко, но не шире 600px */
+  width: 100%;
+  max-width: 600px;
+}
+
+.input {
+  width: 100%;
+  background-color: #fff;
+  padding: 10px 20px 10px 40px;
+  border-radius: 15px;
+  font-size: 16px;
+  border: none;
+  outline: none;
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+.input:focus { box-shadow: 0 0 5px rgba(0,0,0,0.15); }
+
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  font-size: 20px;
+  color: gray;
+  background-color: white;
+}
+
+.clearIcon {
+  position: absolute;
+  right: 10px;
+  font-size: 25px;
+  color: gray;
+  background-color: white;
+  outline: none;
+}
+.clearIcon:hover {
+  cursor: pointer;
+  border-radius: 50%;
+  background-color: rgb(245, 245, 245);
+}

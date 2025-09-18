@@ -1,0 +1,83 @@
+.list { margin-top: 16px; display: grid; gap: 10px; }
+
+/* базовая раскладка строки */
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+}
+
+/* в режиме выбора добавляем колонку под чекбокс */
+.selecting .row {
+  grid-template-columns: auto 1fr auto;
+}
+
+/* ——— активная подсветка как в IdeaItem ——— */
+:root { --active-underline: #A0E7B8; }
+
+.input {
+  width: 100%;
+  border: none;
+  border-bottom: 2px solid #C8C8C8;
+  font-size: 18px;
+  padding: 6px 0;
+  outline: none;
+  background: transparent;
+  transition: border-color .15s ease;
+}
+.input:focus,
+.input:focus-visible,
+.row:focus-within .input {
+  border-bottom-color: var(--active-underline);
+}
+
+/* в режиме выбора отключаем зелёную подсветку */
+.selecting .input,
+.selecting .row:focus-within .input,
+.selecting .input:focus,
+.selecting .input:focus-visible {
+  border-bottom-color: #C8C8C8 !important;
+}
+
+.moreBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: none;
+  background: #f3f4f6;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+}
+.moreBtn:hover { background: #e5e7eb; }
+.moreBtn:disabled { opacity: .35; cursor: default; }
+
+.checkWrap {
+  position: relative;
+  width: 22px; height: 22px;
+  display: inline-grid;
+  place-items: center;
+}
+.checkbox {
+  appearance: none;
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+  opacity: 0;
+}
+.fakeBox {
+  width: 18px; height: 18px;
+  border-radius: 6px;
+  border: 1px solid rgba(0,0,0,.18);
+  background: #fff;
+  box-shadow: 0 1px 0 rgba(0,0,0,.03) inset;
+  transition: background-color .12s ease, border-color .12s ease, box-shadow .12s ease;
+}
+.checkbox:checked + .fakeBox {
+  background: #14AE5C;
+  border-color: #14AE5C;
+  box-shadow: 0 0 0 3px rgba(20,174,92,.25);
+}

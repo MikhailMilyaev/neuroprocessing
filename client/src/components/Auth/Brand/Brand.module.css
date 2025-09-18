@@ -1,0 +1,56 @@
+.brand {
+  /* акцент совпадает с AuthSwitcher */
+  --accent: #AFF4C6;
+
+  display: inline-block;
+  position: relative;
+  padding: 6px 10px;          /* «подушка» вокруг текста */
+  border-radius: 12px;
+  margin-bottom: 5px;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #000;
+  text-decoration: none;
+  transition: transform .15s ease;
+  z-index: 0;
+}
+
+.brand::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 4px;
+  height: 4px;
+  background: var(--accent);
+  border-radius: 6px;
+  transform-origin: 50% 50%;
+  transform: scaleX(0);       
+  opacity: 0;                 
+  z-index: -1;
+  will-change: transform, opacity;
+  transition:
+    transform .5s cubic-bezier(.2,.8,.2,1),
+    opacity   .2s ease;
+}
+
+.brand:hover::before,
+.brand:focus-visible::before {
+  transform: scaleX(1);
+  opacity: 1;
+}
+
+.brand:hover { transform: translateY(-1px); }
+
+.brand:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand::before { transition: none; }
+  .brand:hover { transform: none; }
+}

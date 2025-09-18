@@ -1,0 +1,34 @@
+.container {
+  max-width: 385px;
+  margin: 165px auto 0 auto;
+  text-align: center;
+}
+
+/* строка с брендом и кнопкой назад слева */
+.header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;   /* центрируем бренд */
+  min-height: 36px;
+  margin-bottom: 16px;
+}
+
+/* Кнопка "Связаться с поддержкой" — стили как у .authSwitcher */
+.supportBtn {
+  width: 100%;
+  padding: 13px 11px;
+  border-radius: 11px;
+  display: block;
+  box-sizing: border-box;
+  font-size: 18px;
+  color: black;
+  text-decoration: none;
+  transition: opacity 0.3s ease;
+  background-color: #AFF4C6;
+}
+
+.supportBtn:hover {
+  cursor: pointer;
+  opacity: 0.7;
+}

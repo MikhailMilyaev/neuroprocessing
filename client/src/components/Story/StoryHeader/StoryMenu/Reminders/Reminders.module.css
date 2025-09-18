@@ -1,0 +1,60 @@
+.wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f5f6f7;
+  border-radius: 16px;
+  padding: 10px 0;               
+  max-width: 800px;
+  margin: 20px auto auto auto;     
+}
+
+.question {
+  flex: 1;
+  font-size: 15px;
+  line-height: 1.4;
+  color: #222;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: #222;
+  cursor: pointer;
+  transition: transform .08s ease, background .15s ease, opacity .15s ease;
+}
+.iconBtn:hover { background: rgba(0,0,0,0.08); }
+.iconBtn:active { background: rgba(0,0,0,0.15); transform: translateY(1px); }
+
+.pauseBtn { width: 30px; height: 30px; background: transparent; }
+.pauseBtn:hover { background: rgba(0,0,0,0.08); }
+.pauseBtn:active { background: rgba(0,0,0,0.15); }
+
+.iconBtn svg {
+  display: block;
+  background: transparent !important;
+  border-radius: 0;
+  fill: currentColor;
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+}
+.iconBtn > * { background: transparent !important; }
+
+.iconBtn:focus { outline: none; }
+.iconBtn:focus-visible { box-shadow: 0 0 0 2px rgba(0,0,0,.08); border-radius: 999px; }

@@ -1,0 +1,88 @@
+:root{
+  --sb-h: 8px; /* как в StoryText */
+}
+
+/* Контейнер панели: вертикальная прокрутка вниз */
+.vwrap {
+  position: relative;
+  margin-top: 8px;
+  background: transparent;
+  overflow: hidden;          /* скроем тени у краёв */
+  border-radius: 16px;       /* чтобы список выглядел аккуратнее */
+}
+
+/* Список строк */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 2px 2px  0;
+  margin: 0;
+  list-style: none;
+
+  /* «как в StoryText»: тонкая полоса прокрутки с такими же цветами */
+  max-height: inherit;
+  scrollbar-width: thin;
+  scrollbar-color: #bbb transparent; /* совпадает с .textArea в StoryText */
+
+  /* overflow-y управляется из JS: hidden/auto в зависимости от контента */
+}
+
+/* Полосы прокрутки (WebKit) */
+.list::-webkit-scrollbar { width: var(--sb-h); }
+.list::-webkit-scrollbar-track { background: transparent; }
+.list::-webkit-scrollbar-thumb { background-color: #999; border-radius: 4px; }
+.list::-webkit-scrollbar-thumb:hover { background-color: #666; }
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+
+  background: #fff;
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.05);
+  transition: transform .12s ease, box-shadow .15s ease;
+}
+
+.row:hover,
+.row:focus-within {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 10px rgba(0,0,0,.10);
+}
+
+/* Название практики */
+.title {
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;       /* в одну строку */
+  overflow: hidden;
+  text-overflow: ellipsis;   /* обрезаем, без переноса */
+  flex: 1 1 auto;
+  min-width: 0;              /* важно для ellipsis во flex */
+}
+
+/* Кнопка "Открыть" справа */
+.openBtn {
+  flex: 0 0 auto;
+  padding: 6px 30px;
+  border-radius: 999px;
+  border: none;
+  background: #6F6F6F;
+  color: #fff;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity .15s ease, box-shadow .15s ease;
+}
+
+.openBtn:hover { opacity: .9; }
+
+/* убрано scale(0.98) по вашему запросу ранее */
+.openBtn:focus-visible {
+  outline: 2px solid #111;
+  outline-offset: 2px;
+}

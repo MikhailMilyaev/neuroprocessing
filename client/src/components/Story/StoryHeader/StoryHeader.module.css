@@ -1,0 +1,96 @@
+:root{
+  --header-btn: 36px;   
+  --header-icon: 24px; 
+}
+
+.header {
+  background-color: #E6E6E6;
+  padding: 4px 10px;
+  border-radius: 15px;
+  margin: 20px auto 15px auto;
+  max-width: 800px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: calc(var(--header-btn) + 3px);
+}
+
+.titleInput {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  outline: none;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.iconBtn {
+  width: var(--header-btn);
+  height: var(--header-btn);
+  aspect-ratio: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 999px;
+
+  appearance: none;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+
+  color: #111;
+  cursor: pointer;
+  line-height: 0;
+  transition: background-color .15s ease, opacity .15s ease, color .15s ease, transform .08s ease;
+}
+
+.iconBtn:not(:disabled):hover { background: #D9D9D9; }
+.iconBtn:active { transform: translateY(1px); }
+.iconBtn:disabled { opacity: .35; cursor: default; }
+
+.iconBtn > svg {
+  width: var(--header-icon);
+  height: var(--header-icon);
+  display: block;
+  pointer-events: none;
+}
+
+.lampBtn > svg { filter: grayscale(1) brightness(.7); transition: filter .15s ease; }
+.lampBtn:hover > svg,
+.lampBtn:active > svg { filter: none; }
+
+.menuBtn { color: #6b7280; }
+.menuBtn:hover { color: #000; }
+.menuBtnActive { color: #000; }
+
+/* Синяя плашка «Переоценка N» по умолчанию */
+.reevalPill {
+  margin-left: auto;
+  margin-right: 8px;
+  background: #cde7ff; /* blue tint */
+  color: #0b3a64;
+  padding: 8px 14px;
+  border-radius: 14px;
+  font-size: 15px;
+  line-height: 1;
+  user-select: none;
+  white-space: nowrap;
+  border: none;
+}
+
+.reviewPill {
+  background: #FEF3C7; /* amber-100 */
+  color: #78350F;      /* amber-900 */
+}
+
+.micBtn { color: #6b7280; }
+.micBtn:hover:not(:disabled) { color: #000; }

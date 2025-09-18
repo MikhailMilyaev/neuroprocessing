@@ -1,0 +1,13 @@
+.archiveHeader {
+  max-width: 800px;
+  margin: 20px auto 6px auto;
+  font-size: 14px;
+  color: #6b7280;
+  letter-spacing: .2px;
+  user-select: none;
+}
+
+.noAnim :global(*) {
+  animation: none !important;
+  transition: none !important;
+}
