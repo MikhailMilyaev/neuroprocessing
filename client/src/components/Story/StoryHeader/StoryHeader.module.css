@@ -72,11 +72,10 @@
 .menuBtn:hover { color: #000; }
 .menuBtnActive { color: #000; }
 
-/* Синяя плашка «Переоценка N» по умолчанию */
 .reevalPill {
   margin-left: auto;
   margin-right: 8px;
-  background: #cde7ff; /* blue tint */
+  background: #cde7ff;  
   color: #0b3a64;
   padding: 8px 14px;
   border-radius: 14px;
@@ -88,9 +87,6 @@
 }
 
 .reviewPill {
-  background: #FEF3C7; /* amber-100 */
-  color: #78350F;      /* amber-900 */
+  background: #FEF3C7; 
+  color: #78350F;     
 }
-
-.micBtn { color: #6b7280; }
-.micBtn:hover:not(:disabled) { color: #000; }

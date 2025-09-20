@@ -1,5 +1,4 @@
 export function clearAllStoryCaches() {
-  // localStorage
   try {
     const ls = localStorage;
     const toRemove = [];
@@ -18,7 +17,6 @@ export function clearAllStoryCaches() {
     toRemove.forEach(k => ls.removeItem(k));
   } catch {}
 
-  // sessionStorage
   try {
     const ss = sessionStorage;
     const toRemove = [];

@@ -97,7 +97,7 @@ const Reset = () => {
       if (status === 429 && isDailyLimit) {
         const until = Date.now() + retryAfterSec * 1000;
         sessionStorage.setItem(supKey(eaddr), String(until));
-        updateSupportToast(eaddr); // выставит supportMode и текст с часами
+        updateSupportToast(eaddr); 
       } else {
         const msg = e?.response?.data?.message || 'Ошибка';
         setToastType('error');

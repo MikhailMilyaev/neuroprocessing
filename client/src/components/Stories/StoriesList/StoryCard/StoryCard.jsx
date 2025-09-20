@@ -1,11 +1,7 @@
-// client/src/components/Stories/StoriesList/StoryCard/StoryCard.jsx
 import classes from './StoryCard.module.css';
 import { useNavigate } from 'react-router-dom';
 import { STORY_ROUTE } from '../../../../utils/consts';
 import { useRef, useMemo, useEffect, useState } from 'react';
-
-// Если когда-нибудь снова понадобится «секундный тест» —
-// см. предыдущую версию файла с TEST_SECONDS.
 
 const toDate = (val) => {
   if (!val) return null;
@@ -59,7 +55,6 @@ const StoryCard = ({
   const navigate = useNavigate();
   const btnRef = useRef(null);
 
-  // Форс-перерисовка в полночь, чтобы число дней само обновлялось
   const [, forceDayTick] = useState(0);
   useEffect(() => {
     const now = new Date();
@@ -79,7 +74,6 @@ const StoryCard = ({
 
   const due = toDate(reevalDueAt);
 
-  // >0 — «через N дней», 0 — «сделайте», <0 — «-N дней (просрочка)»
   const daysLeft = useMemo(() => {
     if (!archive || !due) return null;
     const today = startOfDay(new Date());
@@ -124,7 +118,6 @@ const StoryCard = ({
           {displayTitle}
         </span>
 
-        {/* статус «Переоценка …» — только если история архивная */}
         {archive && (
           due && daysLeft !== null ? (
             daysLeft === 0 ? (
@@ -142,12 +135,10 @@ const StoryCard = ({
               </span>
             )
           ) : (
-            // Фолбэк: архивная история без due — тоже просим сделать переоценку.
             <span className={classes.dueBadge}>Сделайте переоценку</span>
           )
         )}
 
-        {/* справа — последнее редактирование */}
         {editedLabel && (
           <span className={classes.timeRight} aria-label="Последнее редактирование">
             {editedLabel}

@@ -1,16 +1,13 @@
-// server/routes/ideaRouter.js
 const { Router } = require('express');
 const router = Router();
-
 const ideaController = require('../controllers/ideaController');
 const authMiddleware = require('../middleware/authMiddleware');
+const validate = require('../middleware/validate');
+const v = require('../middleware/validators');
 
-// Список/создание идей конкретной истории
-router.get('/story/:storyId', authMiddleware, ideaController.listForStory);
-router.post('/story/:storyId', authMiddleware, ideaController.createForStory);
-
-// Обновление/удаление конкретной идеи
-router.patch('/:id', authMiddleware, ideaController.update);
-router.delete('/:id', authMiddleware, ideaController.remove);
+router.get('/story/:storyId', authMiddleware, [v.storyIdParam], validate, ideaController.listForStory);
+router.post('/story/:storyId', authMiddleware, [v.storyIdParam, v.text, v.score, v.sortOrder], validate, ideaController.createForStory);
+router.patch('/:id', authMiddleware, [v.idParam], validate, ideaController.update);
+router.delete('/:id', authMiddleware, [v.idParam], validate, ideaController.remove);
 
 module.exports = router;

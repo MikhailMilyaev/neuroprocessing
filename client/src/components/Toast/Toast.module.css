@@ -6,7 +6,6 @@
   --radius: 16px;
 }
 
-/* Позиционирование */
 .host{
   position: fixed;
   left: 50%;
@@ -17,7 +16,6 @@
 .top{    top:    var(--offset, 28px); }
 .bottom{ bottom: var(--offset, 28px); }
 
-/* Тост */
 .toast{
   position: relative;
   display: inline-flex;
@@ -31,14 +29,13 @@
   padding: 10px 24px 10px 8px;
   pointer-events: auto;
   overflow: hidden;
-  animation: toastIn .14s ease-out both;  /* проигрывается только при первом маунте */
+  animation: toastIn .14s ease-out both; 
 }
 @keyframes toastIn{
   from{ opacity: 0; transform: translateY(4px); }
   to{   opacity: 1; transform: translateY(0);   }
 }
 
-/* Прогресс-подложка */
 .progress{
   position: absolute;
   inset: 0;
@@ -55,7 +52,6 @@
 }
 .paused .progress{ animation-play-state: paused; }
 
-/* Иконки и текст */
 .leadIcon{
   width: 36px;
   height: 36px;
@@ -71,7 +67,6 @@
   display: block;
   color: var(--toast-fg); 
 }
-/* Только info — больше */
 .leadIconSvgInfo{
   width: 26px;
   height: 26px;
@@ -88,7 +83,6 @@
   overflow: hidden;
 }
 
-/* Темы */
 .success{
   --toast-bg: #14AE5C;
   --toast-fg: #ffffff;

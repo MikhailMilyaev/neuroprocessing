@@ -1,11 +1,7 @@
 import classes from "./Tabs.module.css";
 
-/**
- * Сегменты «Активные / Архив» без счётчиков.
- * Управляет showArchive через onToggleArchive(true|false).
- */
 export default function Tabs({
-  showArchive = false,        // false = Активные, true = Архив
+  showArchive = false,         
   onToggleArchive = () => {},
 }) {
   return (

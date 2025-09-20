@@ -15,7 +15,6 @@
   border-radius: 8px;
 }
 
-/* старое поведение */
 .fixed {
   position: fixed;
   top: 25px;
@@ -23,7 +22,6 @@
   font-size: 26px;
 }
 
-/* встроенная в строку с брендом */
 .inline {
   position: absolute;
   left: 0;

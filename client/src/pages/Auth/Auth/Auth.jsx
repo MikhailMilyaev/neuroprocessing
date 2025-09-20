@@ -114,7 +114,7 @@ const Auth = observer(() => {
             onChange={(e) => setPassword(e.target.value)}
             type='password'
             placeholder='Пароль'
-            containerStyle={{ marginBottom: 8 }}   // ← 8px до «Не помню пароль»
+            containerStyle={{ marginBottom: 8 }}    
           />
           <RecoveryButton />
         </form>

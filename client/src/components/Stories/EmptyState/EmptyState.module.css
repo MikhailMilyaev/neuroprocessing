@@ -1,4 +1,3 @@
-/* Контейнер: поднимаем выше и убираем излишнюю «полэкранную» высоту */
 .wrapper {
   display: grid;
   justify-items: center;
@@ -10,12 +9,11 @@
   background: transparent;
 }
 
-/* Иллюстрации */
 .illu {
   width: clamp(220px, 40vw, 420px);
   height: auto;
   filter: drop-shadow(0 10px 24px rgba(0,0,0,.08));
-  margin: 0;                    /* на всякий */
+  margin: 0;                    
 }
 
 .illuTight {

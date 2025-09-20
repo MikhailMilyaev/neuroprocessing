@@ -1,5 +1,5 @@
 import classes from './StoryHeader.module.css';
-import { IoChevronBack, IoChevronForward, IoMic, IoStop } from "react-icons/io5";
+import { IoChevronBack, IoChevronForward } from "react-icons/io5";
 import { FcIdea } from "react-icons/fc";
 import { HiMiniSquares2X2 } from "react-icons/hi2";
 
@@ -15,16 +15,8 @@ const StoryHeader = ({
   onOpenMenu,
   menuOpen,
   reevalRound = 0,
-
-  recState = "idle",             
-  onMicClick,                    
 }) => {
   const hasRound = (reevalRound ?? 0) > 0;
-
-  const micTitle =
-    recState === "recording" ? "Остановить запись" :
-    recState === "uploading" ? "Отправка..." :
-    "Диктовать голосом";
 
   return (
     <div className={classes.header}>
@@ -83,17 +75,6 @@ const StoryHeader = ({
           aria-label="Добавить идею"
         >
           <FcIdea />
-        </button>
-
-        <button
-          type="button"
-          className={`${classes.iconBtn} ${classes.micBtn}`}
-          onClick={onMicClick}
-          disabled={recState === "uploading"}
-          title={micTitle}
-          aria-label={micTitle}
-        >
-          {recState === "recording" ? <IoStop /> : <IoMic />}
         </button>
 
         <button

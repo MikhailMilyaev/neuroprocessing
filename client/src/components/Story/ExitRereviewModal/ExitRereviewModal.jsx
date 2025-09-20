@@ -1,4 +1,3 @@
-// client/src/components/Story/ExitRereviewModal/ExitRereviewModal.jsx
 import { useEffect } from 'react';
 import classes from './ExitRereviewModal.module.css';
 

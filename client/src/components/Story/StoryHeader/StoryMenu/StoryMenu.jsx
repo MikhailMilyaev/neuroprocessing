@@ -30,7 +30,7 @@ const StoryMenu = ({
   archiveEnabled,
   onToggleArchive,
   sorted,
-  onArchiveStory, // ← НОВОЕ
+  onArchiveStory, 
 }) => {
   const dialogRef = useRef(null);
   const [showFreq, setShowFreq] = useState(false);
@@ -111,7 +111,6 @@ const StoryMenu = ({
           <span className={classes.label}>Переоценить</span>
         </button>
 
-        {/* НОВЫЙ пункт меню */}
         <button
           className={classes.item}
           role="menuitem"

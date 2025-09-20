@@ -1,4 +1,3 @@
-// server/controllers/storyController.js
 const { Story, Idea, Reeval, ReevalItem } = require('../models/models');
 const sequelize = require('../db');
 const { Op } = require('sequelize');
@@ -13,17 +12,6 @@ class StoryController {
     } catch (e) { next(e); }
   }
 
-  /**
-   * GET /api/story
-   * Параметры:
-   *  - archive=true|false (опционально, без параметра — все)
-   *  - limit=50 (1..200)
-   *  - cursor=<ISO date> (updatedAt строго меньше)
-   *  - fields=id,title,updatedAt,archive,reevalDueAt (опционально)
-   *
-   * Возврат:
-   *  { rows: [...], meta: { nextCursor, hasMore } }
-   */
   async list(req, res, next) {
     try {
       const userId = req.user.id;
@@ -49,7 +37,6 @@ class StoryController {
 
       const limit = Math.min(Math.max(Number.isFinite(limitParam) ? limitParam : 50, 1), 200);
 
-      // Белый список полей
       const allowed = new Set([
         'id', 'title', 'content', 'archive', 'userId',
         'updatedAt', 'createdAt', 'reevalDueAt',
@@ -97,10 +84,6 @@ class StoryController {
     } catch (e) { next(e); }
   }
 
-  /**
-   * NEW: GET /api/story/:id/full
-   * Атомарный ответ: история + все идеи (в стабильном порядке)
-   */
   async getFull(req, res, next) {
     try {
       const userId = req.user.id;
@@ -112,8 +95,6 @@ class StoryController {
       const ideas = await Idea.findAll({
         where: { storyId: id },
         order: [
-          // стабильный порядок на клиент: сначала активные/архив группируются уже в UI,
-          // но сортировка внутри групп стабильна
           ['sortOrder', 'DESC'],
           ['id', 'DESC'],
         ],
@@ -250,7 +231,6 @@ class StoryController {
     } catch (e) { next(e); }
   }
 
-  // === Переоценка (обычный цикл) ===
   async reeval(req, res, next) {
     const t = await sequelize.transaction();
     try {
@@ -311,7 +291,6 @@ class StoryController {
     }
   }
 
-  // === Старт «Пересмотра» для АРХИВНОЙ истории ===
   async rereviewStart(req, res, next) {
     const t = await sequelize.transaction();
     try {
@@ -353,7 +332,6 @@ class StoryController {
         { where: { storyId: id }, transaction: t }
       );
 
-      // ⛔️ НЕ трогаем reevalDueAt!
       await story.update(
         { reevalCount: nextRound, baselineContent: story.content },
         { transaction: t }

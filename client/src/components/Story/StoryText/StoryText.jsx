@@ -2,8 +2,7 @@ import {
   useRef, useState, useEffect, useLayoutEffect, useCallback, useDeferredValue,
 } from 'react';
 import { FcIdea } from 'react-icons/fc';
-import Spinner from '../../Spinner/Spinner';
-import classes from './StoryTextCE.module.css';
+import classes from './StoryText.module.css';
 import { setStoryStop, clearStoryStop as apiClearStoryStop } from '../../../http/storyApi';
 
 const MIN_H = 120;
@@ -22,7 +21,7 @@ const computeMaxH = (vhRatio = DEFAULT_VH_RATIO) =>
 
 const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
 
-export default function StoryTextCE({
+export default function StoryText({
   value,
   onChange,
   storyId,
@@ -34,7 +33,6 @@ export default function StoryTextCE({
   onStopChange,
   onAddIdeaFromSelection,
   activeHighlight = null,
-  sttEvent = null,
 }) {
   const wrapperRef   = useRef(null);
   const stageRef     = useRef(null);
@@ -62,19 +60,9 @@ export default function StoryTextCE({
   const initialStopAppliedRef = useRef(false);
   const prevGuidesRef = useRef([]);
 
-  /* STT state */
-  const [sttBusy, setSttBusy] = useState(false);
-  const [sttSpin, setSttSpin] = useState({ show: false, x: 0, y: 0 });
-  const sttCaretAbsRef = useRef(null);
-  const sttKeyRef = useRef(null);
-  const sttFuseRef = useRef(null);
-  const sttHandledRef = useRef(new Set());
-  const sttSimpleTokenRef = useRef(null);
-
   const lastChangeTypeRef = useRef(null);
   const lastCaretBeforeChangeRef = useRef(null);
 
-  /* ---------- хелперы без изменений ---------- */
   const getTextNodes = useCallback((root) => {
     const out = [];
     if (!root) return out;
@@ -142,7 +130,6 @@ export default function StoryTextCE({
     const stRect = stage.getBoundingClientRect();
     const sTop = stage.scrollTop || 0;
 
-    /* высота строки */
     const cs = getComputedStyle(pre);
     const lineHpx = (() => {
       const lh = cs.lineHeight || '';
@@ -154,7 +141,6 @@ export default function StoryTextCE({
     const nodes = getTextNodes(pre);
     const pooled = [];
     for (const n of nodes) {
-      const val = n.nodeValue || '';
       const r = document.createRange();
       try { r.selectNodeContents(n); } catch { continue; }
       const rects = Array.from(r.getClientRects()).filter(rc => rc.width > 2 && rc.height > 0);
@@ -165,7 +151,7 @@ export default function StoryTextCE({
             bottom: Math.round(rc.bottom - stRect.top + sTop),
           });
         }
-      } else {                                      // пустая нода
+      } else {                                     
         const top = Math.round((n.parentElement?.offsetTop || 0) - stRect.top + sTop);
         pooled.push({ top, bottom: top + lineHpx });
       }
@@ -195,7 +181,6 @@ export default function StoryTextCE({
     return cleaned.length === 0;
   }, []);
 
-  /* ---------- эффекты без изменений ---------- */
   useEffect(() => {
     const onResize = () => setMaxH(computeMaxH(vhRatio));
     window.addEventListener('resize', onResize);
@@ -339,7 +324,6 @@ export default function StoryTextCE({
       return;
     }
 
-    // 1. попробовать найти ту же гайду по under
     let newIdx = guides.findIndex(g => Math.abs(g.under - (activeUnderRef.current ?? -1)) < 1);
     if (newIdx !== -1) {
       setActiveIdx(newIdx);
@@ -348,7 +332,6 @@ export default function StoryTextCE({
       return;
     }
 
-    // 2. если исчезла – ищем ближайшую ВЫШЕ, но не ниже anchor
     const anchor = prevGuidesRef.current[activeIdx]?.under ?? activeUnderRef.current;
     if (anchor == null) {
       prevGuidesRef.current = guides;
@@ -359,7 +342,7 @@ export default function StoryTextCE({
     for (let i = 0; i < guides.length; i++) {
       const g = guides[i];
       const d = Math.abs(g.under - anchor);
-      if (g.under <= anchor + 1 && d < minDist) {   // только «выше или ровно»
+      if (g.under <= anchor + 1 && d < minDist) {    
         minDist = d;
         candidates = [i];
       } else if (g.under <= anchor + 1 && d === minDist) {
@@ -372,7 +355,7 @@ export default function StoryTextCE({
       onStopChange?.(null);
       clearStop();
     } else {
-      candidates.sort((a, b) => guides[b].under - guides[a].under); // предпочтение выше
+      candidates.sort((a, b) => guides[b].under - guides[a].under);  
       const idx = candidates[0];
       setActiveIdx(idx);
       activeUnderRef.current = guides[idx].under;
@@ -505,7 +488,6 @@ export default function StoryTextCE({
     setHlRects(rcList);
   }, [activeHighlight, deferredText, domRangeFromAbs]);
 
-  /* ---------- gutter helpers ---------- */
   const snapToIdx = useCallback((y, { requireFullyVisible = true } = {}) => {
     if (!guides.length) return null;
     const stage = stageRef.current;
@@ -550,16 +532,6 @@ export default function StoryTextCE({
     };
   }, [selBubble.show, recalcSelectionBubbleSoon]);
 
-  /* ---------- STT ---------- */
-  const recalcSttSpinnerPos = useCallback(() => {
-    const sel = window.getSelection?.();
-    const stage = stageRef.current;
-    if (!sel || !stage || !sel.rangeCount) return setSttSpin(s => ({ ...s, show: false }));
-    const rc = sel.getRangeAt(0).getBoundingClientRect();
-    const st = stage.getBoundingClientRect();
-    setSttSpin({ show: true, x: rc.right - st.left + 8, y: rc.bottom - st.top + 4 });
-  }, []);
-
   const getCaretAbsIndexOrNull = useCallback(() => {
     const pre = editableRef.current;
     const sel = window.getSelection?.();
@@ -570,84 +542,6 @@ export default function StoryTextCE({
     const { start } = absFromDOMRange(pre, r);
     return start;
   }, [selectionIsInsideEditable, absFromDOMRange]);
-
-  const placeCaretAbs = useCallback((absPos) => {
-    const pre = editableRef.current;
-    if (!pre) return;
-    const rng = domRangeFromAbs(pre, absPos, absPos);
-    const sel = window.getSelection?.();
-    try {
-      sel.removeAllRanges();
-      sel.addRange(rng);
-    } catch {}
-  }, [domRangeFromAbs]);
-
-  const normalizeChunk = useCallback((raw) => {
-    if (typeof raw !== 'string') return '';
-    return raw.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
-  }, []);
-
-  const insertAtCaretOrEnd = useCallback((raw) => {
-    const pre = editableRef.current;
-    const chunkRaw = normalizeChunk(raw);
-    if (!chunkRaw || !pre) return;
-    const current = (pre.textContent ?? localText ?? '');
-    const total = current.length;
-    const caret = getCaretAbsIndexOrNull();
-    const basePos = clamp(caret == null ? total : caret, 0, total);
-    const prevChar = basePos > 0 ? current[basePos - 1] : '';
-    const needSpaceLeft  = basePos > 0 && /\S/.test(prevChar);
-    const insertLeft  = needSpaceLeft ? ' ' : '';
-    const insertRight = ' ';
-    const next =
-      current.slice(0, basePos) +
-      insertLeft + chunkRaw + insertRight +
-      current.slice(basePos);
-    if (pre.textContent !== next) pre.textContent = next;
-    handleInput(next);
-    const caretAfter = basePos + insertLeft.length + chunkRaw.length + insertRight.length;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => placeCaretAbs(caretAfter));
-    });
-  }, [normalizeChunk, getCaretAbsIndexOrNull, handleInput, placeCaretAbs, localText]);
-
-  useEffect(() => {
-    if (!sttEvent) return;
-    if (!sttEvent.phase && typeof sttEvent.text === 'string') {
-      const token = JSON.stringify(sttEvent);
-      if (sttSimpleTokenRef.current === token) return;
-      sttSimpleTokenRef.current = token;
-      insertAtCaretOrEnd(sttEvent.text);
-      return;
-    }
-    if (!sttEvent.key) return;
-    const token = `${sttEvent.key}:${sttEvent.phase}`;
-    if (sttHandledRef.current.has(token)) return;
-    sttHandledRef.current.add(token);
-    if (sttEvent.phase === 'start') {
-      const pre = editableRef.current;
-      const curTextLen = pre?.textContent?.length ?? 0;
-      const caret = getCaretAbsIndexOrNull();
-      sttCaretAbsRef.current = (caret == null ? curTextLen : clamp(caret, 0, curTextLen));
-      sttKeyRef.current = sttEvent.key;
-      setSttBusy(true);
-      recalcSttSpinnerPos();
-      if (sttFuseRef.current) clearTimeout(sttFuseRef.current);
-      sttFuseRef.current = setTimeout(() => setSttBusy(false), 30000);
-      return;
-    }
-    if (sttEvent.phase === 'resolve') {
-      if (sttKeyRef.current !== sttEvent.key) return;
-      insertAtCaretOrEnd(sttEvent.text);
-      setSttBusy(false);
-      if (sttFuseRef.current) clearTimeout(sttFuseRef.current);
-      return;
-    }
-    if (sttEvent.phase === 'cancel') {
-      setSttBusy(false);
-      if (sttFuseRef.current) clearTimeout(sttFuseRef.current);
-    }
-  }, [sttEvent, insertAtCaretOrEnd, getCaretAbsIndexOrNull, recalcSttSpinnerPos]);
 
   useEffect(() => {
     const t = requestAnimationFrame(() => onReady?.());
@@ -712,7 +606,6 @@ export default function StoryTextCE({
     return () => editable.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  /* ---------- render ---------- */
   const sTop = stageRef.current?.scrollTop || 0;
   const activeUnderlineY =
     (activeIdx != null && guides[activeIdx]) ? guides[activeIdx].under : null;
@@ -800,12 +693,6 @@ export default function StoryTextCE({
             </div>
           )}
         </div>
-
-        {sttSpin.show && sttBusy && (
-          <div style={{ position: 'absolute', left: sttSpin.x, top: sttSpin.y, transform: 'translate(-50%, -50%)', zIndex: 5, pointerEvents: 'none' }}>
-            <Spinner size={16} />
-          </div>
-        )}
       </div>
 
       <div

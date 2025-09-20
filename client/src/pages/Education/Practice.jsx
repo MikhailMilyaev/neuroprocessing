@@ -5,13 +5,8 @@ import BackBtn from '../../components/BackBtn/BackBtn';
 import Spinner from '../../components/Spinner/Spinner';
 import { practiceMap } from '../../utils/practices';
 
-/** ===== Настройка задержки =====
- * Поставь нужное время в миллисекундах.
- * Поставь 0, когда надо отключить.
- */
 const DELAY_MS = 5000;
 
-/** Обёртка вокруг React.lazy с искусственной задержкой */
 const lazyWithDelay = (factory, delay = DELAY_MS) =>
   lazy(() =>
     Promise.all([

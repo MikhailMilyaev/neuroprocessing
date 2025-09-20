@@ -7,7 +7,6 @@ export default function PracticePanel({ practices = [], maxHeight = 420 }) {
   const navigate = useNavigate();
   const listRef = useRef(null);
 
-  // Хук всегда вызывается, а внутри уже безопасные проверки
   useLayoutEffect(() => {
     const el = listRef.current;
     if (!el) return;
@@ -31,7 +30,6 @@ export default function PracticePanel({ practices = [], maxHeight = 420 }) {
     };
   }, [practices.length, maxHeight]);
 
-  // Условный рендер переносим ПОСЛЕ всех хуков
   if (!practices || practices.length === 0) return null;
 
   const openPractice = (p) => {

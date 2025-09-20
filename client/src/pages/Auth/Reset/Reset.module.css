@@ -4,17 +4,15 @@
   text-align: center;
 }
 
-/* строка с брендом и кнопкой назад слева */
 .header {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;   /* центрируем бренд */
+  justify-content: center;    
   min-height: 36px;
   margin-bottom: 16px;
 }
 
-/* Кнопка "Связаться с поддержкой" — стили как у .authSwitcher */
 .supportBtn {
   width: 100%;
   padding: 13px 11px;

@@ -8,31 +8,29 @@ export default function Toast({
   type = 'success',
   duration = 5000,
   version = 0,
-  placement = 'bottom',   // 'top' | 'bottom'
-  offset = 25,            // отступ от края в px
+  placement = 'bottom',   
+  offset = 25,            
   onClose,
 }) {
   const [open, setOpen] = useState(Boolean(message));
   const [paused, setPaused] = useState(false);
   const [progressSeed, setProgressSeed] = useState(0);
-  const [enterSeed, setEnterSeed] = useState(0); // «влёт» только при открытии
+  const [enterSeed, setEnterSeed] = useState(0);  
 
   const wasOpenRef = useRef(Boolean(message));
   const timerRef = useRef(null);
   const startRef = useRef(0);
   const remainingRef = useRef(duration);
 
-  // При повторном вызове тоста не перезапускаем «влёт» — только таймер и прогресс.
   useEffect(() => {
     const hasMsg = Boolean(message);
 
     if (hasMsg) {
       if (!wasOpenRef.current) {
         setOpen(true);
-        setEnterSeed(n => n + 1); // анимация появления только при закрытом → открытом
+        setEnterSeed(n => n + 1);  
         wasOpenRef.current = true;
       }
-      // всегда перезапускаем таймер и прогресс при повторном вызове
       clearTimer();
       remainingRef.current = duration;
       setProgressSeed(n => n + 1);
@@ -99,7 +97,7 @@ export default function Toast({
   return (
     <div className={hostCls} style={hostStyle}>
       <div
-        key={enterSeed}                 // «влёт» только при открытии; при повторном вызове не ремоунтим
+        key={enterSeed}            
         className={cls}
         style={style}
         onMouseEnter={pause}

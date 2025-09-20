@@ -1,49 +1,45 @@
 .inputContainer {
   position: relative;
   width: 100%;
-  max-width: 385px;              /* было 350 */
-  margin: 11px auto;             /* было 10 */
+  max-width: 385px;               
+  margin: 11px auto;              
   display: block;
 }
 
-/* Инпут в стиле поиска */
 .input {
   width: 100%;
   background-color: #fff;
-  /* слева под иконку 44px (было 40), справа под глаз с учётом нового кружка */
   padding: 11px calc(var(--eye-box, 31px) + 24px) 11px 44px;
-  border-radius: 16px;           /* было 15 */
-  font-size: 18px;               /* было 16 */
+  border-radius: 16px;           
+  font-size: 18px;                
   border: none;
   outline: none;
   transition: box-shadow 0.2s ease-in-out;
-  min-height: 48px;              /* было 44 */
+  min-height: 48px;               
   box-sizing: border-box;
 }
 
 .input:focus {
-  box-shadow: 0 0 6px rgba(0,0,0,0.15);  /* чуть сильнее */
+  box-shadow: 0 0 6px rgba(0,0,0,0.15);  
 }
 
-/* Иконка слева */
 .leftIcon {
   position: absolute;
-  left: 11px;                    /* было 10 */
+  left: 11px;                   
   top: 50%;
   transform: translateY(-50%);
-  font-size: 22px;               /* было 20 */
+  font-size: 22px;               
   color: gray;
   background: white;
   line-height: 0;
   pointer-events: none;
 }
 
-/* Иконка-глаз (кнопка) справа — центрирование */
 .rightIcon {
-  --eye-box: 31px;               /* было 28 */
-  --eye-font: 20px;              /* базовое значение; уточняем классами ниже */
+  --eye-box: 31px;             
+  --eye-font: 20px;               
   position: absolute;
-  right: 11px;                   /* было 10 */
+  right: 11px;                    
   top: 50%;
   transform: translateY(-50%);
   width: var(--eye-box);
@@ -65,13 +61,11 @@
   background-color: rgb(245, 245, 245);
 }
 
-/* Подсветка иконок при фокусе поля */
 .inputContainer:focus-within .leftIcon,
 .inputContainer:focus-within .rightIcon {
   color: black;
 }
 
-/* размеры глазика по size */
-.eyeSm { --eye-box: 26px; --eye-font: 18px; }  /* было 24/16 */
-.eyeMd { --eye-box: 31px; --eye-font: 20px; }  /* было 28/18 */
-.eyeLg { --eye-box: 37px; --eye-font: 22px; }  /* было 34/20 */
+.eyeSm { --eye-box: 26px; --eye-font: 18px; }   
+.eyeMd { --eye-box: 31px; --eye-font: 20px; }  
+.eyeLg { --eye-box: 37px; --eye-font: 22px; } 

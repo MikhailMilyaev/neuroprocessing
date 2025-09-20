@@ -1,19 +1,11 @@
-// server/controllers/ideaController.js
 const { Idea, Story } = require('../models/models');
 
-/**
- * Проверяем, что история принадлежит пользователю
- */
 async function ensureStoryOwner(storyId, userId) {
   const story = await Story.findOne({ where: { id: storyId, userId } });
   return !!story;
 }
 
 class IdeaController {
-  /**
-   * GET /api/idea/story/:storyId
-   * Список идей истории (в порядке sortOrder DESC, затем id DESC)
-   */
   async listForStory(req, res, next) {
     try {
       const userId = req.user?.id;
@@ -42,10 +34,6 @@ class IdeaController {
     }
   }
 
-  /**
-   * POST /api/idea/story/:storyId
-   * Создать идею в истории
-   */
   async createForStory(req, res, next) {
     try {
       const userId = req.user?.id;
@@ -57,9 +45,9 @@ class IdeaController {
 
       const {
         text = '',
-        score = null,           // null | 0..10
-        introducedRound = 0,    // номер раунда, когда появилась идея
-        sortOrder,              // можно передать; по умолчанию Date.now()
+        score = null,            
+        introducedRound = 0,     
+        sortOrder,               
       } = req.body || {};
 
       const owned = await ensureStoryOwner(sid, userId);
@@ -87,10 +75,6 @@ class IdeaController {
     }
   }
 
-  /**
-   * PATCH /api/idea/:id
-   * Частичное обновление идеи
-   */
   async update(req, res, next) {
     try {
       const userId = req.user?.id;
@@ -141,10 +125,6 @@ class IdeaController {
     }
   }
 
-  /**
-   * DELETE /api/idea/:id
-   * Удаление идеи
-   */
   async remove(req, res, next) {
     try {
       const userId = req.user?.id;

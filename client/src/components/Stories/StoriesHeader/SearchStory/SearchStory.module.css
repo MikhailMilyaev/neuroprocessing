@@ -1,12 +1,7 @@
-/* client/src/components/Stories/StoriesHeader/SearchStory/SearchStory.module.css */
-
 .inputContainer {
   position: relative;
   display: flex;
   align-items: center;
-
-  /* БЫЛО: width: 600px; — из-за этого распирало хедер
-     СТАЛО: гибко, но не шире 600px */
   width: 100%;
   max-width: 600px;
 }

@@ -11,5 +11,4 @@ export function currentUserId() {
   }
 }
 
-// Префиксуем любые ключи стораджа id пользователя
 export const ns = (key) => `u:${currentUserId()}:${key}`;

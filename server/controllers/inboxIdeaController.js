@@ -50,7 +50,6 @@ class InboxIdeaController {
     } catch (e) { next(e); }
   }
 
-  // Перенос в существующую историю
   async moveToStory(req, res, next) {
     try {
       const userId = req.user.id;
@@ -79,7 +78,6 @@ class InboxIdeaController {
     } catch (e) { next(e); }
   }
 
-  // Создать новую историю и поместить туда идею
   async createStoryAndMove(req, res, next) {
     try {
       const userId = req.user.id;

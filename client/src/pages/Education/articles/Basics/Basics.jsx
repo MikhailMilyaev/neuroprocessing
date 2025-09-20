@@ -1,11 +1,6 @@
 import BackBtn from '../../../../components/BackBtn/BackBtn';
 import classes from './Basics.module.css';
 
-// картинки для статьи «Основы»
-import image1 from '../../../../assets/educationImages/1.PNG';
-import image2 from '../../../../assets/educationImages/2.PNG';
-import image3 from '../../../../assets/educationImages/3.PNG';
-
 export default function Basics() {
   return (
     <>
@@ -85,10 +80,7 @@ export default function Basics() {
 
         <h2 className={classes.center}>Методика</h2>
         <h3>1. Сформулируйте проблему, которая вас беспокоит, и опишите её</h3>
-        <img className={classes.img} src={image1} alt="Иллюстрация программы" />
-
         <h3>2. Выпишите убеждения в список — так, как будто они навязаны вам извне</h3>
-        <img className={`${classes.img} ${classes.mb20}`} src={image2} alt="Иллюстрация программы" />
         <p>
           Каждое убеждение обладает своим психоэмоциональным зарядом — степенью
           интенсивности эмоциональной реакции, связанной с этим убеждением.
@@ -99,7 +91,6 @@ export default function Basics() {
           Приоритизация помогает определить, какие убеждения обладают наибольшим
           зарядом прямо сейчас. Это делается через сравнение убеждений между собой.
         </p>
-        <img className={`${classes.img} ${classes.mt20} ${classes.mb20}`} src={image3} alt="Иллюстрация программы" />
         <p>
           Определив приоритетные убеждения, можно целенаправленно снижать их
           эмоциональное влияние через вспоминание ситуаций, в которых они проявлялись.

@@ -1,17 +1,15 @@
 :root{
-  --sb-h: 8px; /* как в StoryText */
+  --sb-h: 8px;  
 }
 
-/* Контейнер панели: вертикальная прокрутка вниз */
 .vwrap {
   position: relative;
   margin-top: 8px;
   background: transparent;
-  overflow: hidden;          /* скроем тени у краёв */
-  border-radius: 16px;       /* чтобы список выглядел аккуратнее */
+  overflow: hidden;           
+  border-radius: 16px;        
 }
 
-/* Список строк */
 .list {
   display: flex;
   flex-direction: column;
@@ -19,16 +17,11 @@
   padding: 2px 2px  0;
   margin: 0;
   list-style: none;
-
-  /* «как в StoryText»: тонкая полоса прокрутки с такими же цветами */
   max-height: inherit;
   scrollbar-width: thin;
-  scrollbar-color: #bbb transparent; /* совпадает с .textArea в StoryText */
-
-  /* overflow-y управляется из JS: hidden/auto в зависимости от контента */
+  scrollbar-color: #bbb transparent;  
 }
 
-/* Полосы прокрутки (WebKit) */
 .list::-webkit-scrollbar { width: var(--sb-h); }
 .list::-webkit-scrollbar-track { background: transparent; }
 .list::-webkit-scrollbar-thumb { background-color: #999; border-radius: 4px; }
@@ -53,19 +46,17 @@
   box-shadow: 0 2px 10px rgba(0,0,0,.10);
 }
 
-/* Название практики */
 .title {
   font-size: 20px;
   font-weight: 500;
   line-height: 1.2;
-  white-space: nowrap;       /* в одну строку */
+  white-space: nowrap;       
   overflow: hidden;
-  text-overflow: ellipsis;   /* обрезаем, без переноса */
+  text-overflow: ellipsis;    
   flex: 1 1 auto;
-  min-width: 0;              /* важно для ellipsis во flex */
+  min-width: 0;               
 }
 
-/* Кнопка "Открыть" справа */
 .openBtn {
   flex: 0 0 auto;
   padding: 6px 30px;
@@ -81,7 +72,6 @@
 
 .openBtn:hover { opacity: .9; }
 
-/* убрано scale(0.98) по вашему запросу ранее */
 .openBtn:focus-visible {
   outline: 2px solid #111;
   outline-offset: 2px;

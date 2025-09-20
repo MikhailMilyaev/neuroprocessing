@@ -5,7 +5,7 @@
   padding: 0;
   z-index: 1000;
   overflow: visible;
-  color-scheme: dark; /* чтобы нативные контролы не белели */
+  color-scheme: dark;   
 }
 .menuDialog::backdrop { background: transparent; }
 
@@ -74,7 +74,6 @@
 .switch input:checked + .slider { background-color: #22c55e; }
 .switch input:checked + .slider:before { transform: translateX(16px); }
 
-/* ===== Подменю интервалов ===== */
 .freqPanel {
   max-height: 0;
   overflow: hidden;
@@ -129,10 +128,10 @@
   outline: none;
   flex-shrink: 0;
 
-  position: relative;     /* для абсолютного центра внутри */
+  position: relative;      
   display: inline-block;
-  vertical-align: middle;  /* ровно по базовой линии текста */
-  line-height: 1;          /* убираем лишние отступы из шрифта */
+  vertical-align: middle;   
+  line-height: 1;           
   box-sizing: border-box;
 }
 
@@ -141,11 +140,11 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 10px;             /* внутренняя точка */
+  width: 10px;              
   height: 10px;
   border-radius: 50%;
   background: #22c55e;
-  transform: translate(-50%, -50%) scale(0);  /* точный центр */
+  transform: translate(-50%, -50%) scale(0);   
   transition: transform .12s ease-in-out;
 }
 

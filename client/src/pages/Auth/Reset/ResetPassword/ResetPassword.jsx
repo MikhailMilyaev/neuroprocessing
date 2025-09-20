@@ -15,17 +15,15 @@ const ResetPassword = () => {
   const [p1, setP1] = useState('');
   const [p2, setP2] = useState('');
   const [err, setErr] = useState('');
-  const [errKey, setErrKey] = useState(0); // версия тоста (продлевает без анимации «влёта»)
+  const [errKey, setErrKey] = useState(0); 
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // показывать ошибку каждый раз (даже если текст тот же)
   const showErr = (msg) => {
     setErr(msg);
-    setErrKey((k) => k + 1); // обновляем duration/progress без входной анимации
+    setErrKey((k) => k + 1); 
   };
 
-  // при вводе можно очищать текст ошибки (если нужно)
   useEffect(() => { setErr(''); }, [p1, p2]);
 
   const submit = async (e) => {

@@ -22,11 +22,9 @@ export default function IdeaList({
 }) {
   const lastNonEmptyScoreRef = useRef(new Map());
 
-  // без анимаций на первый кадр/после reconcile
   const [noAnim, setNoAnim] = useState(!!initialHydrate);
   const firstMountRef = useRef(true);
 
-  // refs на score-инпуты и на текстовые инпуты
   const scoreRefs = useRef(new Map());
   const textRefs  = useRef(new Map());
   const registerScoreRef = (id, el) => {
@@ -38,7 +36,6 @@ export default function IdeaList({
     else textRefs.current.delete(id);
   };
 
-  // наборы для переходов
   const [leavingToArchive, setLeavingToArchive] = useState(new Set());
   const [leavingFromArchive, setLeavingFromArchive] = useState(new Set());
   const [enteringToActive, setEnteringToActive] = useState(new Set());
@@ -77,7 +74,6 @@ export default function IdeaList({
     };
   }, [freezeAnimKey]);
 
-  // сброс prev-значений при смене списка/раунда
   useEffect(() => {
     const initMap = new Map();
     (beliefs || []).forEach(b => {
@@ -90,7 +86,6 @@ export default function IdeaList({
     setEnteringToArchive(new Set());
   }, [reevalRound, beliefs]);
 
-  // липкая классификация
   const isArchivedSticky = (b) => {
     const prevMap = lastNonEmptyScoreRef.current;
     const hadPrev = prevMap.has(b.id);
@@ -111,7 +106,6 @@ export default function IdeaList({
     return nowArch;
   };
 
-  // детекция переходов
   useEffect(() => {
     if (firstMountRef.current) {
       const initMap = new Map();
@@ -189,17 +183,14 @@ export default function IdeaList({
     return [...leading, ...rest];
   };
 
-  // итоговые списки
   const active   = noAnim ? activeBase   : bumpFront(activeBase,   enteringToActive);
   const archived = noAnim ? archivedBase : bumpFront(archivedBase, enteringToArchive);
 
   if (!visible) return null;
 
-  // порядки для навигации
   const activeOrder   = active.map(b => b.id);
   const archivedOrder = archived.map(b => b.id);
 
-  // — навигация по score-инпутам (без автоскролла) —
   const focusNextScore = (fromId, direction = 1) => {
     const idx = activeOrder.indexOf(fromId);
     if (idx === -1) return;
@@ -224,7 +215,6 @@ export default function IdeaList({
     focusNextScore(id, dir);
   };
 
-// IdeaList.jsx
 const focusNextText = (fromId, direction = 1, inArchive = false) => {
   const order = inArchive ? archivedOrder : activeOrder;
   const idx = order.indexOf(fromId);
@@ -238,7 +228,7 @@ const focusNextText = (fromId, direction = 1, inArchive = false) => {
     try {
       el.focus();
       const len = el.value?.length ?? 0;
-      el.setSelectionRange?.(len, len);  // курсор в конец
+      el.setSelectionRange?.(len, len);   
     } catch {}
   }
 };
@@ -269,7 +259,6 @@ const focusNextText = (fromId, direction = 1, inArchive = false) => {
           onBlurAll={() => onIdeaBlur?.(b.id)}
           registerScoreRef={registerScoreRef}
           onScoreFinalized={handleScoreFinalized}
-          // новое:
           registerTextRef={registerTextRef}
           onTextArrow={(id2, dir) => handleTextArrow(id2, dir, { inArchive: false })}
         />
@@ -296,7 +285,6 @@ const focusNextText = (fromId, direction = 1, inArchive = false) => {
               onClick={() => onIdeaClick?.(b.id)}
               onFocusAny={() => onIdeaFocus?.(b.id)}
               onBlurAll={() => onIdeaBlur?.(b.id)}
-              // у архива регистрируем только текстовые инпуты (навигация внутри архива)
               registerTextRef={registerTextRef}
               onTextArrow={(id2, dir) => handleTextArrow(id2, dir, { inArchive: true })}
             />

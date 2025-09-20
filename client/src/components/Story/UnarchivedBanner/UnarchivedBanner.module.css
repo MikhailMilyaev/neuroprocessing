@@ -9,8 +9,8 @@
   padding: 10px 12px;
   border-radius: 12px;
 
-  background: #ecfdf5;      /* emerald-50 */
-  border: 1px solid #a7f3d0; /* emerald-200 */
+  background: #ecfdf5;       
+  border: 1px solid #a7f3d0; 
   box-shadow: 0 2px 10px rgba(0,0,0,0.04);
 }
 
@@ -18,7 +18,7 @@
   flex: 1 1 auto;
   font-size: 14px;
   line-height: 1.35;
-  color: #065f46;           /* emerald-900 */
+  color: #065f46;            
 }
 
 .inlineActions {

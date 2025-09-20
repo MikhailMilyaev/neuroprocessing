@@ -6,7 +6,6 @@ export default function CompleteModal({
   onCancel,
   onConfirm,
 }) {
-  // блокируем прокрутку фона
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -14,7 +13,6 @@ export default function CompleteModal({
     return () => { document.body.style.overflow = prev; };
   }, [open]);
 
-  // Esc = отмена
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => {
@@ -25,7 +23,7 @@ export default function CompleteModal({
   }, [open, onCancel]);
 
   const handleOverlayClick = useCallback(() => {
-    onCancel?.();   // клик по фону = отмена
+    onCancel?.();   
   }, [onCancel]);
 
   if (!open) return null;
@@ -38,7 +36,7 @@ export default function CompleteModal({
         aria-modal="true"
         aria-labelledby="complete-title"
         aria-describedby="complete-desc"
-        onClick={(e) => e.stopPropagation()}  // клики внутри карточки не уходят на оверлей
+        onClick={(e) => e.stopPropagation()} 
       >
         <div className={classes.icon} aria-hidden>✅</div>
         <h1 id="complete-title" className={classes.title}>История проработана</h1>

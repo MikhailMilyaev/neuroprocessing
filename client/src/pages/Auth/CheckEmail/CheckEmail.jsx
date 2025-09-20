@@ -31,14 +31,13 @@ const CheckEmail = () => {
   const [loading, setLoading] = useState(false);
   const [supportMode, setSupportMode] = useState(false);
 
-  // Тост
   const [toastMsg, setToastMsg] = useState('');
   const [toastType, setToastType] = useState('success');
   const [toastKey, setToastKey] = useState(0);
   const showToast = (msg, type = 'success') => {
     setToastMsg(msg);
     setToastType(type);
-    setToastKey((k) => k + 1); // продлеваем/обновляем таймер без входной анимации
+    setToastKey((k) => k + 1);  
   };
 
   const webmailUrl = useMemo(() => getWebmailUrl(email), [email]);
@@ -53,7 +52,6 @@ const CheckEmail = () => {
     if (!email) navigate('/404', { replace: true });
   }, [email, navigate]);
 
-  // первичная загрузка статуса
   useEffect(() => {
     if (!email) return;
     let mounted = true;
@@ -90,7 +88,6 @@ const CheckEmail = () => {
     return () => { mounted = false; };
   }, [email, navigate]);
 
-  // тикаем кулдаун
   useEffect(() => {
     if (cooldown <= 0) return;
     const t = setTimeout(() => setCooldown((c) => c - 1), 1000);

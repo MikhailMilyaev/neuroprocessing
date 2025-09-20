@@ -21,11 +21,10 @@ export default function IdeaItem({
   onClick,
   onFocusAny,
   onBlurAll,
-  registerScoreRef,          // (id, el) => void
-  onScoreFinalized,          // (id, value, {direction}) => void
-  // новое:
-  registerTextRef,           // (id, el) => void
-  onTextArrow,               // (id, direction) => void
+  registerScoreRef,          
+  onScoreFinalized,          
+  registerTextRef,           
+  onTextArrow,               
 }) {
   const [open, setOpen] = useState(false);
 
@@ -97,10 +96,8 @@ export default function IdeaItem({
     const slot = practiceSlotRef.current;
     if (!slot) return;
 
-    // автоскролл отключён по просьбе
   }, [isOpen, practices.length]);
 
-  // регистрация ref'ов
   useEffect(() => {
     if (typeof registerScoreRef === 'function') {
       registerScoreRef(id, scoreInputRef.current);
@@ -115,7 +112,6 @@ export default function IdeaItem({
     }
   }, [id, registerTextRef]);
 
-  // финализация ввода оценки (анти-1→10)
   const finalizeTimerRef = useRef(null);
   const clearFinalizeTimer = () => {
     if (finalizeTimerRef.current) {
@@ -145,15 +141,13 @@ export default function IdeaItem({
 
   useEffect(() => () => clearFinalizeTimer(), []);
 
-// IdeaItem.jsx
 const handleTextKeyDown = (e) => {
   if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-    // полностью глушим нативное перемещение каретки по строке
     e.preventDefault();
     e.stopPropagation();
 
     const dir = e.key === 'ArrowUp' ? -1 : 1;
-    onTextArrow?.(id, dir); // переключаемся на соседнюю идею
+    onTextArrow?.(id, dir);  
   }
 };
 

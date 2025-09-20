@@ -68,7 +68,6 @@ const StoriesList = ({
         </div>
       ) : (
         <>
-          {/* ───── режим АКТИВНЫХ ───── */}
           {!showArchive && (
             <>
             <div style={{ marginTop: "25px"}}></div>

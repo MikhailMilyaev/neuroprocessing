@@ -1,4 +1,3 @@
-import React from 'react';
 import s from './UnarchivedBanner.module.css';
 
 export default function UnarchivedBanner({ title, onShowInList, onClose }) {

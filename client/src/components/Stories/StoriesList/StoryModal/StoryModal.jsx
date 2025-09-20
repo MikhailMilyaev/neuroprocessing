@@ -6,7 +6,6 @@ import { MdDeleteOutline } from "react-icons/md";
 const StoryModal = ({ open, position, onClose, onDelete }) => {
   const dialogRef = useRef(null);
 
-  // открытие/закрытие
   useEffect(() => {
     const el = dialogRef.current;
     if (!el) return;
@@ -14,7 +13,6 @@ const StoryModal = ({ open, position, onClose, onDelete }) => {
     else el.close();
   }, [open]);
 
-  // клики/escape
   useEffect(() => {
     const el = dialogRef.current;
     if (!el) return;
@@ -36,16 +34,13 @@ const StoryModal = ({ open, position, onClose, onDelete }) => {
     };
   }, [open, onClose]);
 
-  // выставляем и "клампим" позицию внутри вьюпорта
   useEffect(() => {
     const el = dialogRef.current;
     if (!el || !open) return;
 
-    // предварительно ставим куда просили
     el.style.left = `${position.x}px`;
     el.style.top  = `${position.y}px`;
 
-    // меряем и при необходимости двигаем внутрь экрана
     const pad = 8;
     const rect = el.getBoundingClientRect();
 
@@ -68,7 +63,6 @@ const StoryModal = ({ open, position, onClose, onDelete }) => {
     <dialog
       ref={dialogRef}
       className={classes.dialog}
-      // top/left всё равно задаём инлайном — см. useEffect выше
       style={{ top: position.y, left: position.x }}
       onContextMenu={(e) => e.preventDefault()}
     >

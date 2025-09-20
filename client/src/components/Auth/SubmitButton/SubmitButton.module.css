@@ -1,7 +1,7 @@
 .submitButton {
   width: 100%;
-  padding: 13px 11px;              /* было 12px 10px */
-  border-radius: 11px;             /* было 10px */
+  padding: 13px 11px;               
+  border-radius: 11px;              
   margin-bottom: 11px;
   display: flex;
   align-items: center;      

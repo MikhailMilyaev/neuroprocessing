@@ -3,15 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 
 import { fetchStory, updateStory, reevaluateStory, beginRereview } from '../../http/storyApi';
 import { listIdeas, createIdea, updateIdea, deleteIdea } from '../../http/ideaApi';
-import { useDictation } from '../../hooks/useDictation';
 import { ns } from '../../utils/ns';
 
 import BackBtn from '../../components/BackBtn/BackBtn';
 import StoryHeader from '../../components/Story/StoryHeader/StoryHeader';
 import StoryMenu from '../../components/Story/StoryHeader/StoryMenu/StoryMenu';
-import StoryTextCE from '../../components/Story/StoryText/StoryTextCE';
+import StoryText from '../../components/Story/StoryText/StoryText';
 import IdeaList from '../../components/Story/StoryIdeas/IdeaList/IdeaList';
-import Reminders from '../../components/Story/StoryHeader/StoryMenu/Reminders/Reminders';
+import Tips from '../../components/Story/StoryHeader/StoryMenu/Tips/Tips';
 import Spinner from '../../components/Spinner/Spinner';
 import FullScreenLoader from '../../components/FullScreenLoader/FullScreenLoader';
 import CompleteModal from '../../components/Story/CompleteModal/CompleteModal';
@@ -152,64 +151,6 @@ export default function Story() {
     () => history[pointer] ?? { title: '', content: '', beliefs: [] },
     [history, pointer]
   );
-
-  const STT_TIMEOUT_MS = 25000; 
-  const [sttEvent, setSttEvent] = useState(null);   
-  const sttKeyRef = useRef(null);
-  const sttResolvedRef = useRef(false);
-  const sttFuseRef = useRef(null);
-
-  const { state: recState, toggle: toggleRec } = useDictation({
-    onText: (payload) => {
-      const text =
-        typeof payload === 'string'
-          ? payload
-          : (payload && typeof payload.text === 'string' ? payload.text : '');
-
-      sttResolvedRef.current = true;
-      if (sttFuseRef.current) { clearTimeout(sttFuseRef.current); sttFuseRef.current = null; }
-
-      const key = sttKeyRef.current;
-      if (key) {
-        setSttEvent({ key, phase: 'resolve', text });
-      }
-    },
-    onError: (msg) => {
-      if (sttKeyRef.current) {
-        if (sttFuseRef.current) { clearTimeout(sttFuseRef.current); sttFuseRef.current = null; }
-        setSttEvent({ key: sttKeyRef.current, phase: 'cancel' });
-        sttKeyRef.current = null;
-      }
-      showError(msg || 'Ошибка диктовки');
-    },
-  });
-
-  useEffect(() => {
-    const busy = recState && recState !== 'idle';
-
-    if (busy && !sttKeyRef.current) {
-      sttResolvedRef.current = false;
-      const k = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      sttKeyRef.current = k;
-      setSttEvent({ key: k, phase: 'start' });
-      if (sttFuseRef.current) clearTimeout(sttFuseRef.current);
-      sttFuseRef.current = setTimeout(() => {
-        if (sttKeyRef.current && !sttResolvedRef.current) {
-          setSttEvent({ key: sttKeyRef.current, phase: 'cancel' });
-          sttKeyRef.current = null;
-          showError('Диктовка не ответила. Попробуйте ещё раз.');
-        }
-      }, STT_TIMEOUT_MS);
-    }
-
-    if (!busy && sttKeyRef.current) {
-      if (!sttResolvedRef.current) {
-        setSttEvent({ key: sttKeyRef.current, phase: 'cancel' });
-      }
-      if (sttFuseRef.current) { clearTimeout(sttFuseRef.current); sttFuseRef.current = null; }
-      sttKeyRef.current = null;
-    }
-  }, [recState]);
 
   const [isArchivedStory, setIsArchivedStory] = useState(!!initialSnap?.archive);
 
@@ -1070,12 +1011,10 @@ export default function Story() {
         onOpenMenu={(e) => openMenu(e)}
         menuOpen={menuOpen}
         reevalRound={reevalRound}
-        recState={recState}
-        onMicClick={toggleRec}
       />
 
       <div style={textAreaStyle}>
-        <StoryTextCE
+        <StoryText
           value={current.content}
           onChange={(v) => changeField('content', v)}
           storyId={id}
@@ -1089,12 +1028,11 @@ export default function Story() {
           vhRatio={0.50}
           onAddIdeaFromSelection={handleAddIdeaFromSelection}
           activeHighlight={activeHighlight}
-          sttEvent={sttEvent}
         />
       </div>
 
       {remindersOn !== null && (
-        <Reminders
+        <Tips
           visible={!!remindersOn}
           index={reminderIdx}
           onIndexChange={handleReminderIndexChange}

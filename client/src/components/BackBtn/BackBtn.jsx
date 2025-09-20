@@ -2,11 +2,6 @@ import { FaArrowLeftLong } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
 import classes from "./BackBtn.module.css";
 
-/**
- * variant:
- *  - "fixed"  — как раньше: фиксированная кнопка в углу
- *  - "inline" — внутри контейнера/строки (используем на экране Reset)
- */
 const BackBtn = ({ className = "", variant = "fixed", onClick }) => {
   const navigate = useNavigate();
   const handleClick = () => {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import classes from "./Reminders.module.css";
+import classes from "./Tips.module.css";
 import { IoPlay, IoPause } from "react-icons/io5";
 import { IoChevronBack, IoChevronForward } from "react-icons/io5";
 
@@ -11,32 +11,23 @@ const DEFAULT_ITEMS = [
   "Если бы можно было возвращаться — что бы вы сделали иначе?"
 ];
 
-// стабильная пустая ссылка для линтера/мемо
 const EMPTY = Object.freeze([]);
 
-export default function Reminders({
+export default function Tips({
   visible = false,
   items = DEFAULT_ITEMS,
-
-  // контролируемый индекс (персист из БД)
-  index,                 // number | undefined
-  onIndexChange,         // (nextIdx:number) => void
-
-  // частота автопереключения; null/undefined/<=0 = таймер не крутится
+  index,         
+  onIndexChange,       
   freqSec = 30,
-
-  // внешняя пауза (из родителя/БД)
   pausedExternal = false,
-  onPauseChange,         // (paused:boolean) => void
+  onPauseChange,          
 }) {
   const controlled = typeof index === "number";
   const [idx, setIdx] = useState(controlled ? index : 0);
 
-  // актуальный индекс в ref для setInterval
   const currentIdxRef = useRef(idx);
   useEffect(() => { currentIdxRef.current = controlled ? index : idx; }, [controlled, index, idx]);
 
-  // единый сеттер индекса (исправляет линтер и др.)
   const setIdxBoth = useCallback((next) => {
     const value = (typeof next === "function") ? next(currentIdxRef.current) : next;
     if (!controlled) setIdx(value);

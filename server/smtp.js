@@ -83,15 +83,21 @@ async function verifyTransporter() {
 }
 
 async function sendMail({ to, subject, text, html }) {
-  return transporter.sendMail({
-    from: `${MAIL_FROM_NAME} <${SMTP_USER}>`,
-    replyTo: MAIL_REPLY_TO,
-    to,
-    subject,
-    text,
-    html,
-  });
+  try {
+    return await transporter.sendMail({
+      from: `${MAIL_FROM_NAME} <${SMTP_USER}>`,
+      replyTo: MAIL_REPLY_TO,
+      to,
+      subject,
+      text,
+      html,
+    });
+  } catch (e) {
+    if (process.env.NODE_ENV !== 'production') console.error('SMTP error', e);
+    throw e;
+  }
 }
+
 
 async function sendVerificationEmail({ to, name, verifyLink }) {
   const { subject, text, html } = buildVerifyEmail({ name, link: verifyLink });

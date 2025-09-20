@@ -1,11 +1,9 @@
 :root {
-  /* синхронизировано с JS ANIM_MS = 250 */
   --anim-ms: 250ms;
   --anim-ease-out: cubic-bezier(.17,.84,.44,1);
   --anim-ease-in:  cubic-bezier(.36,0,.66,-0.01);
   --anim-shift: 6px;
 
-  /* подсветка «вернулась в активные» */
   --enter-flash: rgba(160, 231, 184, .18);
 }
 
@@ -32,7 +30,6 @@
 .beliefWrap.active .beliefInput { border-bottom-color: #A0E7B8; }
 .beliefWrap.active .beliefScore { border-color: #A0E7B8; }
 
-/* поля */
 .beliefInput {
   border: none;
   outline: none;
@@ -71,15 +68,11 @@
 .beliefScore::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .beliefScore[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 
-/* Архивный стиль (без «переезда» при первом рендере) */
 .archived .beliefInput { color: #8b8b8b; border-bottom-color: #DADADA; }
 .archived .beliefScore { color: #666; background: #f7f7f7; border-color: #DADADA; }
 
-/* === АНИМАЦИИ ПЕРЕХОДОВ === */
-
-/* Уход из активных в архив: быстрая «усадка» и растворение вниз */
 .leaving {
-  pointer-events: none;            /* не кликается во время ухода */
+  pointer-events: none;         
   animation: fadeOutDown var(--anim-ms) var(--anim-ease-in) forwards;
 }
 @keyframes fadeOutDown {
@@ -87,7 +80,6 @@
   to   { opacity: 0; transform: translateY(var(--anim-shift)); }
 }
 
-/* Появление в архиве (в момент переноса) */
 .archivedEnter {
   animation: archivedIn var(--anim-ms) var(--anim-ease-out);
 }
@@ -96,7 +88,6 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Уход из архива в активные (вверх) */
 .archivedLeaving {
   pointer-events: none;
   animation: fadeOutUp var(--anim-ms) var(--anim-ease-in) forwards;
@@ -106,7 +97,6 @@
   to   { opacity: 0; transform: translateY(calc(var(--anim-shift) * -1)); }
 }
 
-/* Возврат в активные: лёгкий «подъём» + мягкая подсветка */
 .reenter {
   animation: reenterUp var(--anim-ms) var(--anim-ease-out);
 }
@@ -115,7 +105,6 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Плавность/микро-взаимодействия */
 .scoreWrap {
   display: inline-flex;
   align-items: center;
@@ -150,7 +139,6 @@
 
 .practiceSlot { grid-column: 1 / -1; }
 
-/* Disabled */
 .beliefScore:disabled { opacity: .5; cursor: not-allowed; }
 .iconBtn:disabled,
 .iconBtn:disabled:hover,
@@ -162,7 +150,6 @@
 }
 .toggleBtn:disabled { opacity: .5 !important; }
 
-/* Секция архива */
 .archiveHeader {
   max-width: 800px;
   margin: 20px auto 6px auto;
@@ -172,13 +159,11 @@
   user-select: none;
 }
 
-/* Глобальный переключатель «без анимаций» (из кода) */
 .noAnim * {
   animation: none !important;
   transition: none !important;
 }
 
-/* Уважение accessibility-настроек */
 @media (prefers-reduced-motion: reduce) {
   .beliefWrap,
   .archivedEnter,

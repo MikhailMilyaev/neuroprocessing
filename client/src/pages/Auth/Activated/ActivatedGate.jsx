@@ -4,18 +4,16 @@ import Activated from './Activated';
 import { activationLandingGate } from '../../../http/userApi';
 import { NOTFOUND_ROUTE } from '../../../utils/consts';
 
-// Рендерит Activated ТОЛЬКО если токен валиден
 const ActivatedGate = () => {
   const location = useLocation();
   const sp = new URLSearchParams(location.search);
   const lt = sp.get('lt');
 
-  const [allowed, setAllowed] = useState(null); // null = ждём проверку
+  const [allowed, setAllowed] = useState(null); 
 
   useEffect(() => {
     let canceled = false;
 
-    // если токена нет — мгновенно запрещаем
     if (!lt) { setAllowed(false); return; }
 
     (async () => {
@@ -30,7 +28,7 @@ const ActivatedGate = () => {
     return () => { canceled = true; };
   }, [lt]);
 
-  if (allowed === null) return null; // ничего не рисуем во время проверки
+  if (allowed === null) return null;  
   if (!allowed) return <Navigate to={NOTFOUND_ROUTE} replace />;
 
   return <Activated />;

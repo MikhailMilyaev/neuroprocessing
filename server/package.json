@@ -4,32 +4,36 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "start": "node app.js",
+    "migrate": "sequelize-cli db:migrate --config config/config.js --migrations-path migrations",
+    "migrate:undo": "sequelize-cli db:migrate:undo --config config/config.js --migrations-path migrations",
+    "migrate:undo:all": "sequelize-cli db:migrate:undo:all --config config/config.js --migrations-path migrations"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@xenova/transformers": "^2.17.2",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
     "express-validator": "^7.2.1",
-    "ffmpeg-static": "^5.2.0",
+    "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.1",
     "multer": "^2.0.2",
-    "node-wav": "^0.0.2",
     "nodemailer": "^7.0.5",
     "pg": "^8.16.3",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.7",
     "uuid": "^11.1.0",
-    "which": "^5.0.0",
     "ws": "^8.18.3"
   },
   "devDependencies": {
     "dotenv-safe": "^9.1.0",
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "sequelize-cli": "^6.6.3"
   }
 }

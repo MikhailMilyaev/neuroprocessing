@@ -15,9 +15,9 @@ const FormInput = ({
   type = 'text',
   name,
   autoComplete,
-  size = 'md',        // 'sm' | 'md' | 'lg'
-  containerStyle,     // ← добавлено
-  className,          // ← добавлено
+  size = 'md',        
+  containerStyle,      
+  className,       
 }) => {
   const [isFocus, setIsFocus] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
