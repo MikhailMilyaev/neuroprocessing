@@ -84,7 +84,7 @@ class IdeaController {
         include: { model: Story, as: 'story' },
       });
       if (!idea || idea?.story?.userId !== userId) {
-        return res.status(404).json({ message: 'Убеждение не найдено' });
+        return res.status(404).json({ message: 'Идея не найдена' });
       }
 
       const { text, score, sortOrder, introducedRound } = req.body || {};
@@ -135,7 +135,7 @@ class IdeaController {
       });
 
       if (!idea || idea?.story?.userId !== userId) {
-        return res.status(404).json({ message: 'Убеждение не найдено' });
+        return res.status(404).json({ message: 'Идея не найдена' });
       }
 
       await idea.destroy();

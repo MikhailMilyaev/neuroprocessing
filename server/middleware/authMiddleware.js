@@ -3,13 +3,14 @@ const jwt = require('jsonwebtoken');
 module.exports = function (req, res, next) {
   if (req.method === 'OPTIONS') return next();
 
-  const h = req.headers.authorization || '';
-  const [scheme, token] = h.split(' ');
-  if (scheme !== 'Bearer' || !token) {
+  const [scheme, token] = (req.headers.authorization || '').split(' ');
+
+  if (String(scheme || '').toLowerCase() !== 'bearer' || !token) {
     return res.status(401).json({ message: 'Не авторизован.' });
   }
+
   try {
-    const decoded = jwt.verify(token, process.env.SECRET_KEY);
+    const decoded = jwt.verify(token, process.env.SECRET_KEY, { algorithms: ['HS256'] });
     req.user = decoded;
     next();
   } catch {

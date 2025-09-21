@@ -1,6 +1,7 @@
 import { $host, $authHost, ACCESS_KEY, REFRESH_KEY } from './index';
 import { jwtDecode } from 'jwt-decode';
 import { clearAllStoryCaches } from '../utils/cache/clearAllStoryCaches';
+import { getDeviceId } from './deviceId'
 
 export const registration = async (name, email, password) => {
   const { data } = await $host.post('api/user/registration', { name, email, password, role: 'USER' });
@@ -8,7 +9,8 @@ export const registration = async (name, email, password) => {
 };
 
 export const login = async (email, password, userStore) => {
-  const { data } = await $host.post('api/user/login', { email, password });
+  const deviceId = getDeviceId();
+  const { data } = await $host.post('api/user/login', { email, password, deviceId });
   localStorage.setItem(ACCESS_KEY, data.access);
   localStorage.setItem(REFRESH_KEY, data.refresh);
 
@@ -36,7 +38,8 @@ export const check = async (userStore) => {
 export const refreshTokens = async () => {
   const refresh = localStorage.getItem(REFRESH_KEY);
   if (!refresh) throw new Error('No refresh token');
-  const { data } = await $host.post('api/user/token/refresh', { refresh });
+  const deviceId = getDeviceId();
+  const { data } = await $host.post('api/user/token/refresh', { refresh, deviceId });
   localStorage.setItem(ACCESS_KEY, data.access);
   localStorage.setItem(REFRESH_KEY, data.refresh);
   return data;
@@ -56,7 +59,6 @@ export const logoutAll = async () => {
   localStorage.removeItem(ACCESS_KEY);
   localStorage.removeItem(REFRESH_KEY);
   clearAllStoryCaches();
-  try { await $authHost.post('api/user/logout-all'); } catch {}
   return { ok: true };
 };
 

@@ -135,12 +135,16 @@ class StoryController {
 
       if (title !== undefined) updateData.title = title;
       if (content !== undefined) updateData.content = content;
-      if (archive !== undefined) updateData.archive = archive;
       if (baselineContent !== undefined) updateData.baselineContent = baselineContent;
 
       if (showArchiveSection !== undefined || showArchive !== undefined) {
         const v = (showArchiveSection !== undefined) ? showArchiveSection : showArchive;
         updateData.showArchiveSection = (v === true || v === 'true' || v === 1 || v === '1');
+      }
+
+      if (archive !== undefined) {
+        const v = archive;
+        updateData.archive = (v === true || v === 'true' || v === 1 || v === '1');
       }
 
       if (remindersEnabled !== undefined) {
@@ -206,11 +210,13 @@ class StoryController {
       const { id } = req.params;
       const { stopContentY } = req.body;
 
-    if (typeof stopContentY !== 'number')
-        return res.status(400).json({ message: 'stopContentY must be a number' });
+      const n = Number(stopContentY);
+      if (!Number.isFinite(n) || n < 0) {
+        return res.status(400).json({ message: 'stopContentY must be a non-negative number' });
+      }
 
       const [count, rows] = await Story.update(
-        { stopContentY },
+        { stopContentY: Math.round(n) },
         { where: { id, userId }, returning: true }
       );
       if (!count) return res.status(404).json({ message: 'История не найдена' });

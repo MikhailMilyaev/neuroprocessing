@@ -13,3 +13,10 @@ exports.emailFlowLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false
 });
+
+exports.refreshLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+});

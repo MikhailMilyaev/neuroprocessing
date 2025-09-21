@@ -3,9 +3,9 @@ const { DataTypes } = require('sequelize');
 
 const User = sequelize.define('user', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  name: DataTypes.STRING,
-  email: { type: DataTypes.STRING, unique: true },
-  password: DataTypes.STRING,
+  name: { type: DataTypes.STRING, allowNull: false },
+  email: { type: DataTypes.STRING, unique: true, allowNull: false },
+  password: { type: DataTypes.STRING, allowNull: false },
   prevPasswordHash: { type: DataTypes.STRING, allowNull: true },
   role: { type: DataTypes.STRING, defaultValue: 'USER' },
   isVerified: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
@@ -86,8 +86,14 @@ const RefreshToken = sequelize.define('refresh_token', {
   revokedAt: { type: DataTypes.DATE, allowNull: true, field: 'revoked_at' },
   userAgent: { type: DataTypes.STRING, allowNull: true, field: 'user_agent' },
   ip: { type: DataTypes.STRING, allowNull: true },
+  deviceId:  { type: DataTypes.STRING, allowNull: true, field: 'device_id' },
 }, {
-  indexes: [{ fields: ['user_id'] }, { fields: ['token_hash'], unique: true }],
+  indexes: [
+    { fields: ['user_id'] },
+    { fields: ['token_hash'], unique: true },
+    { fields: ['user_id', 'device_id'] },
+    { fields: ['createdAt'] },
+  ],
 });
 
 User.hasMany(InboxIdea, { as: 'inboxIdeas', foreignKey: 'user_id', sourceKey: 'id', onDelete: 'CASCADE', onUpdate: 'CASCADE' });

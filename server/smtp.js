@@ -1,14 +1,14 @@
 const nodemailer = require('nodemailer');
 
 const SMTP_HOST   = process.env.SMTP_HOST || 'smtp.yandex.ru';
-const SMTP_PORT   = Number(process.env.SMTP_PORT || 465); 
+const SMTP_PORT   = Number(process.env.SMTP_PORT || 465);
 const SMTP_SECURE =
   typeof process.env.SMTP_SECURE !== 'undefined'
     ? String(process.env.SMTP_SECURE).toLowerCase() === 'true'
     : SMTP_PORT === 465;
 
 const SMTP_USER = process.env.YANDEX_USER || 'neuroprocessing@yandex.ru';
-const SMTP_PASS = process.env.YANDEX_PASS; 
+const SMTP_PASS = process.env.YANDEX_PASS;
 
 const MAIL_FROM_NAME = process.env.MAIL_FROM_NAME || 'Neuroprocessing';
 const MAIL_REPLY_TO  = process.env.MAIL_REPLY_TO  || SMTP_USER;
@@ -18,6 +18,13 @@ const transporter = nodemailer.createTransport({
   port: SMTP_PORT,
   secure: SMTP_SECURE,
   auth: { user: SMTP_USER, pass: SMTP_PASS },
+  pool: true,
+  maxConnections: 5,
+  maxMessages: 100,
+  connectionTimeout: 20_000,
+  greetingTimeout: 10_000,
+  socketTimeout: 30_000,
+  tls: { servername: SMTP_HOST, rejectUnauthorized: true }
 });
 
 function escapeHtml(s = '') {
@@ -31,7 +38,7 @@ function buildVerifyEmail({ name, link }) {
 
   const text =
     `Здравствуйте${name ? ', ' + name : ''}!\n` +
-    `Чтобы завершить регистрацию, нажмите кнопку «Подтвердить адрес» в письме.\n` +
+    `Чтобы завершить регистрацию, откройте ссылку:\n${link}\n\n` +
     `Если это были не вы — просто проигнорируйте письмо.`;
 
   const html = `
@@ -54,7 +61,7 @@ function buildVerifyEmail({ name, link }) {
     </p>
 
     <p style="margin: 0;">
-      <a href="${link}" style="
+      <a href="${link}" target="_blank" rel="nofollow noopener noreferrer" style="
         display: inline-block;
         padding: 10px 15px;
         border-radius: 12px;
@@ -71,7 +78,6 @@ function buildVerifyEmail({ name, link }) {
 
   return { subject, text, html };
 }
-
 
 async function verifyTransporter() {
   try {
@@ -91,13 +97,13 @@ async function sendMail({ to, subject, text, html }) {
       subject,
       text,
       html,
+      headers: { 'List-Unsubscribe': `<mailto:${MAIL_REPLY_TO}>` },
     });
   } catch (e) {
     if (process.env.NODE_ENV !== 'production') console.error('SMTP error', e);
     throw e;
   }
 }
-
 
 async function sendVerificationEmail({ to, name, verifyLink }) {
   const { subject, text, html } = buildVerifyEmail({ name, link: verifyLink });
@@ -106,9 +112,10 @@ async function sendVerificationEmail({ to, name, verifyLink }) {
 
 function buildResetEmail({ name, link }) {
   const subject = 'Восстановление пароля';
+
   const text =
     `Здравствуйте${name ? ', ' + name : ''}!\n` +
-    `Чтобы задать новый пароль, нажмите кнопку «Сбросить пароль» в письме.\n` +
+    `Чтобы задать новый пароль, откройте ссылку:\n${link}\n\n` +
     `Если это были не вы — просто проигнорируйте письмо.`;
 
   const html = `
@@ -131,7 +138,7 @@ function buildResetEmail({ name, link }) {
     </p>
 
     <p style="margin: 0;">
-      <a href="${link}" style="
+      <a href="${link}" target="_blank" rel="nofollow noopener noreferrer" style="
         display: inline-block;
         padding: 10px 15px;
         border-radius: 12px;

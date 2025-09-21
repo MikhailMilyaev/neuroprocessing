@@ -6,7 +6,7 @@ class InboxIdeaController {
       const userId = req.user.id;
       const ideas = await InboxIdea.findAll({
         where: { userId },
-        order: [['sort_order', 'DESC'], ['id', 'DESC']],
+        order: [['sortOrder', 'DESC'], ['id', 'DESC']],
       });
       res.json(ideas || []);
     } catch (e) { next(e); }

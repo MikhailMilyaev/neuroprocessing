@@ -6,32 +6,36 @@ const { Op } = require('sequelize');
 const { User, RefreshToken } = require('../models/models');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../smtp');
 
-const VERIFY_RESEND_COOLDOWN = Number(process.env.VERIFY_RESEND_COOLDOWN || 60);
-const VERIFY_DAILY_LIMIT = Number(process.env.VERIFY_DAILY_LIMIT || 2);
-const VERIFY_DAILY_WINDOW_HOURS = Number(process.env.VERIFY_DAILY_WINDOW_HOURS || 24);
-const VERIFY_TOKEN_TTL_HOURS = Number(process.env.VERIFY_TOKEN_TTL_HOURS || 24);
-const VERIFY_LANDING_TTL_MIN = Number(process.env.VERIFY_LANDING_TTL_MIN || 5);
+const VERIFY_RESEND_COOLDOWN      = Number(process.env.VERIFY_RESEND_COOLDOWN || 60);
+const VERIFY_DAILY_LIMIT          = Number(process.env.VERIFY_DAILY_LIMIT || 2);
+const VERIFY_DAILY_WINDOW_HOURS   = Number(process.env.VERIFY_DAILY_WINDOW_HOURS || 24);
+const VERIFY_TOKEN_TTL_HOURS      = Number(process.env.VERIFY_TOKEN_TTL_HOURS || 24);
+const VERIFY_LANDING_TTL_MIN      = Number(process.env.VERIFY_LANDING_TTL_MIN || 5);
 
-const RESET_RESEND_COOLDOWN = Number(process.env.RESET_RESEND_COOLDOWN || 60);
-const RESET_DAILY_LIMIT = Number(process.env.RESET_DAILY_LIMIT || 2);
-const RESET_DAILY_WINDOW_HOURS = Number(process.env.RESET_DAILY_WINDOW_HOURS || 24);
-const RESET_TOKEN_TTL_HOURS = Number(process.env.RESET_TOKEN_TTL_HOURS || 1);
-const RESET_GATES_TTL_MIN = Number(process.env.RESET_GATES_TTL_MIN || 15);
+const RESET_RESEND_COOLDOWN       = Number(process.env.RESET_RESEND_COOLDOWN || 60);
+const RESET_DAILY_LIMIT           = Number(process.env.RESET_DAILY_LIMIT || 2);
+const RESET_DAILY_WINDOW_HOURS    = Number(process.env.RESET_DAILY_WINDOW_HOURS || 24);
+const RESET_TOKEN_TTL_HOURS       = Number(process.env.RESET_TOKEN_TTL_HOURS || 1);
+const RESET_GATES_TTL_MIN         = Number(process.env.RESET_GATES_TTL_MIN || 15);
 
-const ACCESS_TTL_MIN = Number(process.env.ACCESS_TTL_MIN || 15);
-const REFRESH_TTL_DAYS = Number(process.env.REFRESH_TTL_DAYS || 30);
+const ACCESS_TTL_MIN              = Number(process.env.ACCESS_TTL_MIN || 15);
+const REFRESH_TTL_DAYS            = Number(process.env.REFRESH_TTL_DAYS || 30);
 
 const signAccess = (u) =>
-  jwt.sign({ id: u.id, name: u.name, email: u.email, role: u.role }, process.env.SECRET_KEY, { expiresIn: `${ACCESS_TTL_MIN}m` });
+  jwt.sign(
+    { id: u.id, name: u.name, email: u.email, role: u.role },
+    process.env.SECRET_KEY,
+    { algorithm: 'HS256', expiresIn: `${ACCESS_TTL_MIN}m` }
+  );
 
 const genRefresh = () => crypto.randomBytes(48).toString('hex');
-
-const hashToken = (t) => crypto.createHash('sha256').update(t).digest('hex');
+const hashToken  = (t) => crypto.createHash('sha256').update(t).digest('hex');
 
 function computeVerifyState(user, now = new Date()) {
   const last = user.verificationLastSentAt ? user.verificationLastSentAt.getTime() : 0;
   const diffSec = last ? Math.floor((now.getTime() - last) / 1000) : Infinity;
   const cooldownLeft = Math.max(0, VERIFY_RESEND_COOLDOWN - diffSec);
+
   let support = false;
   let supportLeftSec = 0;
   if (user.verificationResendResetAt && now <= user.verificationResendResetAt) {
@@ -48,6 +52,7 @@ function computeResetState(user, now = new Date()) {
   const last = user.resetLastSentAt ? user.resetLastSentAt.getTime() : 0;
   const diffSec = last ? Math.floor((now.getTime() - last) / 1000) : Infinity;
   const cooldownLeft = Math.max(0, RESET_RESEND_COOLDOWN - diffSec);
+
   let limit = false;
   let retryAfter = 0;
   if (user.resetResendResetAt && now <= user.resetResendResetAt) {
@@ -60,87 +65,227 @@ function computeResetState(user, now = new Date()) {
   return { cooldownLeft, canSend, limit, retryAfter };
 }
 
+const MAX_ACTIVE_SESSIONS = 5;
+
+async function enforceGlobalSessionLimit(userId) {
+  const active = await RefreshToken.findAll({
+    where: { userId, revokedAt: null, expiresAt: { [Op.gt]: new Date() } },
+    order: [['createdAt', 'DESC']],
+  });
+  if (active.length > MAX_ACTIVE_SESSIONS) {
+    const toRevoke = active.slice(MAX_ACTIVE_SESSIONS);
+    const ids = toRevoke.map(r => r.id);
+    if (ids.length) {
+      await RefreshToken.update({ revokedAt: new Date() }, { where: { id: ids } });
+    }
+  }
+}
+
 class userController {
   async registration(req, res, next) {
-    const { name, email, password, role } = req.body;
-    if (!name || !email || !password) {
-      return next(ApiError.badRequest('Заполните все поля.'));
-    }
-    const exist = await User.findOne({ where: { email } });
-    if (exist) {
-      if (exist.isVerified) {
-        return next(ApiError.badRequest('Пользователь с таким email уже существует'));
-      }
-      const now = new Date();
-      const { support, supportLeftSec } = computeVerifyState(exist, now);
-      return res.status(409).json({
-        code: 'UNVERIFIED_EXISTS',
-        message: 'Email уже зарегистрирован, но не подтверждён.',
-        support: support || exist.verificationResendCount >= VERIFY_DAILY_LIMIT,
-        retryAfter: supportLeftSec || Math.max(1, Math.ceil(((exist.verificationResendResetAt || now) - now) / 1000)),
-      });
-    }
-    const hashPassword = await bcrypt.hash(password, 12);
-    const rawToken = crypto.randomBytes(32).toString('hex');
-    const tokenHash = hashToken(rawToken);
-    const now = new Date();
-    const expires = new Date(now.getTime() + VERIFY_TOKEN_TTL_HOURS * 3600 * 1000);
-    const user = await User.create({
-      name, email, role,
-      password: hashPassword,
-      isVerified: false,
-      verificationToken: tokenHash,
-      verificationTokenExpires: expires,
-      verificationLastSentAt: now,
-      verificationResendCount: 1,
-      verificationResendResetAt: new Date(now.getTime() + VERIFY_DAILY_WINDOW_HOURS * 3600 * 1000),
-    });
-    const verifyLink = `${process.env.API_URL}/api/user/verify?token=${rawToken}`;
     try {
-      await sendVerificationEmail({ to: user.email, name: user.name, verifyLink });
-    } catch (e) {
-      await user.destroy().catch(() => {});
-      return next(ApiError.internal('Не удалось отправить письмо подтверждения. Попробуйте позже.'));
+      const rawName = req.body?.name ?? '';
+      const rawEmail = req.body?.email ?? '';
+      const password = req.body?.password ?? '';
+
+      const name = String(rawName).trim();
+      const email = String(rawEmail).trim().toLowerCase();
+
+      if (!name || !email || !password) {
+        return next(ApiError.badRequest('Заполните все поля.'));
+      }
+
+      const exist = await User.findOne({ where: { email } });
+
+      if (exist) {
+        try {
+          if (!exist.isVerified) {
+            const now = new Date();
+
+            if (!exist.verificationResendResetAt || now > exist.verificationResendResetAt) {
+              exist.verificationResendCount = 0;
+              exist.verificationResendResetAt = new Date(
+                now.getTime() + VERIFY_DAILY_WINDOW_HOURS * 3600 * 1000
+              );
+            }
+
+            const { cooldownLeft, support } = computeVerifyState(exist, now);
+
+            if (!support && cooldownLeft === 0) {
+              const rawToken = crypto.randomBytes(32).toString('hex');
+              exist.verificationToken = hashToken(rawToken);
+              exist.verificationTokenExpires = new Date(
+                now.getTime() + VERIFY_TOKEN_TTL_HOURS * 3600 * 1000
+              );
+              exist.verificationLastSentAt = now;
+              exist.verificationResendCount += 1;
+              await exist.save();
+
+              const verifyLink = `${process.env.API_URL}/api/user/verify?token=${rawToken}`;
+              await sendVerificationEmail({ to: exist.email, name: exist.name, verifyLink });
+            }
+          }
+        } catch {
+        }
+
+        return res.status(200).json({ message: 'Если аккаунт существует, письмо отправлено.' });
+      }
+
+      const hashPassword = await bcrypt.hash(password, 12);
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      const tokenHash = hashToken(rawToken);
+      const now = new Date();
+      const expires = new Date(now.getTime() + VERIFY_TOKEN_TTL_HOURS * 3600 * 1000);
+
+      let user;
+      try {
+        user = await User.create({
+          name,
+          email,               
+          role: 'USER',
+          password: hashPassword,
+          isVerified: false,
+          verificationToken: tokenHash,
+          verificationTokenExpires: expires,
+          verificationLastSentAt: now,
+          verificationResendCount: 1,
+          verificationResendResetAt: new Date(
+            now.getTime() + VERIFY_DAILY_WINDOW_HOURS * 3600 * 1000
+          ),
+        });
+      } catch (e) {
+        const already = await User.findOne({ where: { email } });
+        if (already) {
+          try {
+            if (!already.isVerified) {
+              const now2 = new Date();
+              if (!already.verificationResendResetAt || now2 > already.verificationResendResetAt) {
+                already.verificationResendCount = 0;
+                already.verificationResendResetAt = new Date(
+                  now2.getTime() + VERIFY_DAILY_WINDOW_HOURS * 3600 * 1000
+                );
+              }
+              const { cooldownLeft, support } = computeVerifyState(already, now2);
+              if (!support && cooldownLeft === 0) {
+                const raw2 = crypto.randomBytes(32).toString('hex');
+                already.verificationToken = hashToken(raw2);
+                already.verificationTokenExpires = new Date(
+                  now2.getTime() + VERIFY_TOKEN_TTL_HOURS * 3600 * 1000
+                );
+                already.verificationLastSentAt = now2;
+                already.verificationResendCount += 1;
+                await already.save();
+
+                const link2 = `${process.env.API_URL}/api/user/verify?token=${raw2}`;
+                await sendVerificationEmail({ to: already.email, name: already.name, verifyLink: link2 });
+              }
+            }
+          } catch {
+          }
+          return res.status(200).json({ message: 'Если аккаунт существует, письмо отправлено.' });
+        }
+        return next(ApiError.internal('Не удалось создать аккаунт. Попробуйте позже.'));
+      }
+
+      const verifyLink = `${process.env.API_URL}/api/user/verify?token=${rawToken}`;
+      try {
+        await sendVerificationEmail({ to: user.email, name: user.name, verifyLink });
+      } catch (e) {
+        await user.destroy().catch(() => {});
+        return next(ApiError.internal('Не удалось отправить письмо подтверждения. Попробуйте позже.'));
+      }
+
+      return res.status(201).json({ message: 'Если аккаунт существует, письмо отправлено.' });
+    } catch (err) {
+      return next(err);
     }
-    return res.status(201).json({ message: 'Проверьте почту — мы отправили ссылку для подтверждения.' });
   }
 
   async login(req, res, next) {
-    const { email, password } = req.body;
+    const { email, password, deviceId } = req.body;
     if (!email || !password) return next(ApiError.badRequest('Заполните все поля.'));
+
     const user = await User.findOne({ where: { email } });
-    if (!user) return next(ApiError.internal('Неверный email или пароль.'));
+    if (!user) return next(ApiError.unauthorized('Неверный email или пароль.'));
     const ok = await bcrypt.compare(password, user.password);
-    if (!ok) return next(ApiError.internal('Неверный email или пароль.'));
+    if (!ok) return next(ApiError.unauthorized('Неверный email или пароль.'));
     if (!user.isVerified) {
       return next(ApiError.forbidden('Email не подтверждён. Проверьте почту или запросите повторную отправку.'));
     }
+
+    if (deviceId) {
+      await RefreshToken.update(
+        { revokedAt: new Date() },
+        { where: { userId: user.id, deviceId, revokedAt: null } }
+      );
+    }
+
     const access = signAccess(user);
     const rawRefresh = genRefresh();
+
     await RefreshToken.create({
       userId: user.id,
       tokenHash: hashToken(rawRefresh),
       expiresAt: new Date(Date.now() + REFRESH_TTL_DAYS * 24 * 3600 * 1000),
       userAgent: req.headers['user-agent'] || null,
-      ip: req.ip || null
+      ip: req.ip || null,
+      deviceId: deviceId || null,
     });
+
+    await enforceGlobalSessionLimit(user.id);
+
     return res.json({ access, refresh: rawRefresh });
   }
 
   async refresh(req, res) {
-    const { refresh } = req.body || {};
+    const { refresh, deviceId } = req.body || {};
     if (!refresh) return res.status(400).json({ message: 'Нет refresh токена' });
-    const row = await RefreshToken.findOne({ where: { tokenHash: hashToken(refresh) } });
-    if (!row || row.revokedAt || row.expiresAt <= new Date()) return res.status(401).json({ message: 'Недействительный токен' });
+
+    const oldHash = hashToken(refresh);
+    const row = await RefreshToken.findOne({ where: { tokenHash: oldHash } });
+
+    if (!row) {
+      const reused = await RefreshToken.findOne({
+        where: { tokenHash: oldHash, revokedAt: { [Op.ne]: null } },
+      });
+      if (reused) {
+        await RefreshToken.update(
+          { revokedAt: new Date() },
+          { where: { userId: reused.userId, revokedAt: null } }
+        );
+      }
+      return res.status(401).json({ message: 'Недействительный токен' });
+    }
+
+    if (row.revokedAt || row.expiresAt <= new Date()) {
+      if (row.revokedAt) {
+        await RefreshToken.update({ revokedAt: new Date() }, { where: { userId: row.userId, revokedAt: null } });
+      }
+      return res.status(401).json({ message: 'Недействительный токен' });
+    }
+
     const user = await User.findByPk(row.userId);
-    if (!user || !user.isVerified) return res.status(401).json({ message: 'Недействительный токен' });
-    const access = signAccess(user);
-    const newRaw = genRefresh();
-    row.tokenHash = hashToken(newRaw);
-    row.expiresAt = new Date(Date.now() + REFRESH_TTL_DAYS * 24 * 3600 * 1000);
-    row.userAgent = req.headers['user-agent'] || null;
-    row.ip = req.ip || null;
+    if (!user || !user.isVerified) {
+      return res.status(401).json({ message: 'Недействительный токен' });
+    }
+
+    row.revokedAt = new Date();
     await row.save();
+
+    const newRaw = genRefresh();
+    await RefreshToken.create({
+      userId: user.id,
+      tokenHash: hashToken(newRaw),
+      expiresAt: new Date(Date.now() + REFRESH_TTL_DAYS * 24 * 3600 * 1000),
+      userAgent: req.headers['user-agent'] || row.userAgent || null,
+      ip: req.ip || row.ip || null,
+      deviceId: row.deviceId || deviceId || null,
+    });
+
+    const access = signAccess(user);
+
+    await enforceGlobalSessionLimit(user.id);
+
     return res.json({ access, refresh: newRaw });
   }
 
@@ -148,7 +293,7 @@ class userController {
     const { refresh } = req.body || {};
     if (!refresh) return res.json({ ok: true });
     const row = await RefreshToken.findOne({ where: { tokenHash: hashToken(refresh) } });
-    if (row) {
+    if (row && !row.revokedAt) {
       row.revokedAt = new Date();
       await row.save();
     }
@@ -170,6 +315,7 @@ class userController {
   async verifyEmail(req, res, next) {
     const { token } = req.query;
     if (!token) return next(ApiError.badRequest('Токен не указан.'));
+
     const tokenHash = hashToken(token);
     const user = await User.findOne({
       where: {
@@ -178,14 +324,16 @@ class userController {
       },
     });
     if (!user) return next(ApiError.badRequest('Ссылка недействительна или устарела.'));
+
     user.isVerified = true;
     user.verificationToken = null;
     user.verificationTokenExpires = null;
     await user.save();
+
     const landingJwt = jwt.sign(
       { uid: user.id, purpose: 'activation-landing' },
       process.env.SECRET_KEY,
-      { expiresIn: `${VERIFY_LANDING_TTL_MIN}m` }
+      { algorithm: 'HS256', expiresIn: `${VERIFY_LANDING_TTL_MIN}m` }
     );
     const redirectUrl = `${process.env.CLIENT_URL}/account-activated?lt=${landingJwt}`;
     return res.redirect(302, redirectUrl);
@@ -194,14 +342,17 @@ class userController {
   async resendVerification(req, res, next) {
     const { email } = req.body;
     if (!email) return next(ApiError.badRequest('Укажите email.'));
+
     const user = await User.findOne({ where: { email } });
     if (!user) return res.json({ message: 'Если аккаунт существует, письмо отправлено.' });
     if (user.isVerified) return res.json({ message: 'Email уже подтверждён.' });
+
     const now = new Date();
     if (!user.verificationResendResetAt || now > user.verificationResendResetAt) {
-      user.verificationResendCount = 1;
+      user.verificationResendCount = 0;
       user.verificationResendResetAt = new Date(now.getTime() + VERIFY_DAILY_WINDOW_HOURS * 3600 * 1000);
     }
+
     const { cooldownLeft, support, supportLeftSec } = computeVerifyState(user, now);
     if (support) {
       res.set('Retry-After', String(supportLeftSec));
@@ -218,15 +369,7 @@ class userController {
         retryAfter: cooldownLeft,
       });
     }
-    if (user.verificationResendCount >= VERIFY_DAILY_LIMIT) {
-      const leftSec = Math.max(1, Math.ceil((user.verificationResendResetAt - now) / 1000));
-      res.set('Retry-After', String(leftSec));
-      return res.status(429).json({
-        message: 'Достигнут лимит отправок. Свяжитесь с поддержкой.',
-        retryAfter: leftSec,
-        support: true,
-      });
-    }
+
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = hashToken(rawToken);
     user.verificationToken = tokenHash;
@@ -234,23 +377,23 @@ class userController {
     user.verificationLastSentAt = now;
     user.verificationResendCount += 1;
     await user.save();
+
     const verifyLink = `${process.env.API_URL}/api/user/verify?token=${rawToken}`;
     await sendVerificationEmail({ to: user.email, name: user.name, verifyLink });
+
     return res.json({ message: 'Если аккаунт существует, письмо отправлено.' });
   }
 
   async verifyStatus(req, res) {
     const { email } = req.query;
-    if (!email) {
-      return res.status(400).json({ ok: false });
-    }
+    if (!email) return res.status(400).json({ ok: false });
+
     const user = await User.findOne({ where: { email } });
-    if (!user || user.isVerified) {
-      return res.status(404).json({ ok: false });
-    }
+    if (!user || user.isVerified) return res.status(404).json({ ok: false });
+
     const now = new Date();
     if (!user.verificationResendResetAt || now > user.verificationResendResetAt) {
-      user.verificationResendCount = Math.min(user.verificationResendCount, 1);
+      user.verificationResendCount = 0;
       user.verificationResendResetAt = new Date(now.getTime() + VERIFY_DAILY_WINDOW_HOURS * 3600 * 1000);
       await user.save();
     }
@@ -262,7 +405,7 @@ class userController {
     const { lt } = req.query;
     if (!lt) return res.status(400).json({ ok: false });
     try {
-      const payload = jwt.verify(lt, process.env.SECRET_KEY);
+      const payload = jwt.verify(lt, process.env.SECRET_KEY, { algorithms: ['HS256'] });
       if (payload?.purpose !== 'activation-landing' || !payload?.uid) {
         return res.status(400).json({ ok: false });
       }
@@ -277,13 +420,16 @@ class userController {
   async requestPasswordReset(req, res) {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: 'Укажите email.' });
+
     const user = await User.findOne({ where: { email } });
-    if (!user) return res.status(404).json({ message: 'Пользователь с таким email не найден.' });
+    if (!user) return res.json({ message: 'Если аккаунт существует, письмо отправлено.' });
+
     const now = new Date();
     if (!user.resetResendResetAt || now > user.resetResendResetAt) {
       user.resetResendCount = 0;
       user.resetResendResetAt = new Date(now.getTime() + RESET_DAILY_WINDOW_HOURS * 3600 * 1000);
     }
+
     const { cooldownLeft, canSend, limit, retryAfter } = computeResetState(user, now);
     if (limit) {
       res.set('Retry-After', String(retryAfter));
@@ -293,6 +439,7 @@ class userController {
       res.set('Retry-After', String(cooldownLeft));
       return res.status(429).json({ message: `Слишком часто. Подождите ${cooldownLeft} сек.`, retryAfter: cooldownLeft });
     }
+
     const raw = crypto.randomBytes(32).toString('hex');
     const hash = hashToken(raw);
     user.passwordResetToken = hash;
@@ -300,12 +447,14 @@ class userController {
     user.resetLastSentAt = now;
     user.resetResendCount += 1;
     await user.save();
+
     const resetLink = `${process.env.API_URL}/api/user/password-reset?token=${raw}`;
     await sendPasswordResetEmail({ to: user.email, name: user.name, resetLink });
+
     const rst = jwt.sign(
       { email: user.email, purpose: 'reset-sent' },
       process.env.SECRET_KEY,
-      { expiresIn: `${RESET_GATES_TTL_MIN}m` }
+      { algorithm: 'HS256', expiresIn: `${RESET_GATES_TTL_MIN}m` }
     );
     return res.json({ message: 'Ссылка отправлена на почту.', rst });
   }
@@ -313,6 +462,7 @@ class userController {
   async passwordResetFromEmail(req, res) {
     const { token } = req.query;
     if (!token) return res.status(400).send('Bad request');
+
     const tokenHash = hashToken(token);
     const user = await User.findOne({
       where: {
@@ -324,10 +474,11 @@ class userController {
       const url = `${process.env.CLIENT_URL}/recovery?bad=1`;
       return res.redirect(302, url);
     }
+
     const pr = jwt.sign(
       { uid: user.id, th: tokenHash, purpose: 'password-reset' },
       process.env.SECRET_KEY,
-      { expiresIn: `${RESET_GATES_TTL_MIN}m` }
+      { algorithm: 'HS256', expiresIn: `${RESET_GATES_TTL_MIN}m` }
     );
     const url = `${process.env.CLIENT_URL}/reset-password?pr=${pr}`;
     return res.redirect(302, url);
@@ -337,7 +488,7 @@ class userController {
     const { pr } = req.query;
     if (!pr) return res.status(400).json({ ok: false });
     try {
-      const payload = jwt.verify(pr, process.env.SECRET_KEY);
+      const payload = jwt.verify(pr, process.env.SECRET_KEY, { algorithms: ['HS256'] });
       if (payload?.purpose !== 'password-reset' || !payload?.uid || !payload?.th) {
         return res.status(400).json({ ok: false });
       }
@@ -360,15 +511,17 @@ class userController {
   async passwordResetConfirm(req, res) {
     const { pr, newPassword } = req.body;
     if (!pr || !newPassword) return res.status(400).json({ message: 'Некорректные данные.' });
+
     let payload;
     try {
-      payload = jwt.verify(pr, process.env.SECRET_KEY);
+      payload = jwt.verify(pr, process.env.SECRET_KEY, { algorithms: ['HS256'] });
     } catch {
       return res.status(400).json({ message: 'Ссылка устарела. Запросите сброс ещё раз.' });
     }
     if (payload?.purpose !== 'password-reset' || !payload?.uid || !payload?.th) {
       return res.status(400).json({ message: 'Некорректные данные.' });
     }
+
     const user = await User.findByPk(payload.uid);
     if (
       !user ||
@@ -379,6 +532,7 @@ class userController {
     ) {
       return res.status(400).json({ message: 'Ссылка для сброса устарела или некорректна.' });
     }
+
     const sameAsCurrent = await bcrypt.compare(newPassword, user.password);
     if (sameAsCurrent) {
       return res.status(400).json({ message: 'Новый пароль не должен совпадать с текущим.' });
@@ -389,16 +543,23 @@ class userController {
         return res.status(400).json({ message: 'Новый пароль не должен совпадать с предыдущим.' });
       }
     }
+
     const newHash = await bcrypt.hash(newPassword, 12);
     user.prevPasswordHash = user.password;
     user.password = newHash;
     user.passwordResetToken = null;
     user.passwordResetExpires = null;
     await user.save();
+
+    await RefreshToken.update(
+      { revokedAt: new Date() },
+      { where: { userId: user.id, revokedAt: null } }
+    );
+
     const ps = jwt.sign(
       { uid: user.id, purpose: 'password-reset-success' },
       process.env.SECRET_KEY,
-      { expiresIn: `${RESET_GATES_TTL_MIN}m` }
+      { algorithm: 'HS256', expiresIn: `${RESET_GATES_TTL_MIN}m` }
     );
     return res.json({ ok: true, ps });
   }
@@ -407,7 +568,7 @@ class userController {
     const { rst } = req.query;
     if (!rst) return res.status(400).json({ ok: false });
     try {
-      const payload = jwt.verify(rst, process.env.SECRET_KEY);
+      const payload = jwt.verify(rst, process.env.SECRET_KEY, { algorithms: ['HS256'] });
       if (payload?.purpose !== 'reset-sent' || !payload?.email) return res.status(400).json({ ok: false });
       return res.json({ ok: true });
     } catch {
@@ -419,12 +580,35 @@ class userController {
     const { ps } = req.query;
     if (!ps) return res.status(400).json({ ok: false });
     try {
-      const payload = jwt.verify(ps, process.env.SECRET_KEY);
+      const payload = jwt.verify(ps, process.env.SECRET_KEY, { algorithms: ['HS256'] });
       if (payload?.purpose !== 'password-reset-success' || !payload?.uid) return res.status(400).json({ ok: false });
       return res.json({ ok: true });
     } catch {
       return res.status(400).json({ ok: false });
     }
+  }
+
+  async listSessions(req, res) {
+    const userId = req.user.id;
+    const rows = await RefreshToken.findAll({
+      where: { userId, revokedAt: null, expiresAt: { [Op.gt]: new Date() } },
+      order: [['createdAt', 'DESC']],
+      attributes: ['id','createdAt','expiresAt','userAgent','ip','deviceId']
+    });
+    return res.json(rows);
+  }
+
+  async revokeSession(req, res) {
+    const userId = req.user.id;
+    const { id, deviceId } = req.body || {};
+    if (!id && !deviceId) return res.status(400).json({ message: 'Укажите id или deviceId' });
+
+    const where = { userId, revokedAt: null };
+    if (id) where.id = id;
+    if (deviceId) where.deviceId = deviceId;
+
+    const [count] = await RefreshToken.update({ revokedAt: new Date() }, { where });
+    return res.json({ ok: true, count });
   }
 }
 
