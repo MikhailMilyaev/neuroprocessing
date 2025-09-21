@@ -4,6 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
+const cookieParser = require('cookie-parser');
 require('dotenv-safe').config({ example: './.env.example' });
 
 const sequelize = require('./db');
@@ -33,6 +34,7 @@ app.use(globalLimiter);
 
 app.get('/healthz', (req, res) => res.status(200).json({ ok: true }));
 
+app.use(cookieParser());
 app.use('/api', router);
 app.use(errorHandler);
 

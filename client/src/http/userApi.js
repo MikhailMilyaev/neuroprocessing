@@ -1,7 +1,7 @@
-import { $host, $authHost, ACCESS_KEY, REFRESH_KEY } from './index';
+import { $host, $authHost, ACCESS_KEY } from './index';
 import { jwtDecode } from 'jwt-decode';
 import { clearAllStoryCaches } from '../utils/cache/clearAllStoryCaches';
-import { getDeviceId } from './deviceId'
+import { getDeviceId } from './deviceId';
 
 export const registration = async (name, email, password) => {
   const { data } = await $host.post('api/user/registration', { name, email, password, role: 'USER' });
@@ -12,7 +12,6 @@ export const login = async (email, password, userStore) => {
   const deviceId = getDeviceId();
   const { data } = await $host.post('api/user/login', { email, password, deviceId });
   localStorage.setItem(ACCESS_KEY, data.access);
-  localStorage.setItem(REFRESH_KEY, data.refresh);
 
   const decoded = jwtDecode(data.access);
   if (userStore) {
@@ -36,20 +35,15 @@ export const check = async (userStore) => {
 };
 
 export const refreshTokens = async () => {
-  const refresh = localStorage.getItem(REFRESH_KEY);
-  if (!refresh) throw new Error('No refresh token');
-  const deviceId = getDeviceId();
-  const { data } = await $host.post('api/user/token/refresh', { refresh, deviceId });
+  const deviceId = getDeviceId();  
+  const { data } = await $host.post('api/user/token/refresh', { deviceId });
   localStorage.setItem(ACCESS_KEY, data.access);
-  localStorage.setItem(REFRESH_KEY, data.refresh);
   return data;
 };
 
 export const logout = async () => {
-  const refresh = localStorage.getItem(REFRESH_KEY);
-  try { await $host.post('api/user/logout', { refresh }); } catch {}
+  try { await $host.post('api/user/logout'); } catch {}
   localStorage.removeItem(ACCESS_KEY);
-  localStorage.removeItem(REFRESH_KEY);
   clearAllStoryCaches();
   return { ok: true };
 };
@@ -57,7 +51,6 @@ export const logout = async () => {
 export const logoutAll = async () => {
   try { await $authHost.post('api/user/logout-all'); } catch {}
   localStorage.removeItem(ACCESS_KEY);
-  localStorage.removeItem(REFRESH_KEY);
   clearAllStoryCaches();
   return { ok: true };
 };

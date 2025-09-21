@@ -1,7 +1,7 @@
 import { makeAutoObservable } from 'mobx';
 import { clearAllStoryCaches } from '../utils/cache/clearAllStoryCaches';
 import { logout as apiLogout } from '../http/userApi';
-import { ACCESS_KEY, REFRESH_KEY } from '../http';
+import { ACCESS_KEY } from '../http';
 
 export default class UserStore {
   constructor() { this._isAuth = false; this._user = {}; makeAutoObservable(this); }
@@ -15,7 +15,6 @@ export default class UserStore {
   async logout() {
     try { await apiLogout(); } catch {}
     localStorage.removeItem(ACCESS_KEY);
-    localStorage.removeItem(REFRESH_KEY);
     clearAllStoryCaches();
     this.setUser({});
     this.setIsAuth(false);

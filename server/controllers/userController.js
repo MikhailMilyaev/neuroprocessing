@@ -21,6 +21,19 @@ const RESET_GATES_TTL_MIN         = Number(process.env.RESET_GATES_TTL_MIN || 15
 const ACCESS_TTL_MIN              = Number(process.env.ACCESS_TTL_MIN || 15);
 const REFRESH_TTL_DAYS            = Number(process.env.REFRESH_TTL_DAYS || 30);
 
+const REFRESH_COOKIE_NAME = 'refresh_token';
+const isProd = process.env.NODE_ENV === 'production';
+
+const sameSite = process.env.CROSS_SITE === '1' ? 'none' : 'lax';
+
+const REFRESH_COOKIE_OPTS = {
+  httpOnly: true,
+  sameSite,           
+  secure: sameSite === 'none' ? true : isProd,  
+  path: '/api/user',    
+  maxAge: Number(process.env.REFRESH_TTL_DAYS || 30) * 24 * 3600 * 1000,
+};
+
 const signAccess = (u) =>
   jwt.sign(
     { id: u.id, name: u.name, email: u.email, role: u.role },
@@ -234,11 +247,14 @@ class userController {
 
     await enforceGlobalSessionLimit(user.id);
 
-    return res.json({ access, refresh: rawRefresh });
+    res.cookie(REFRESH_COOKIE_NAME, rawRefresh, REFRESH_COOKIE_OPTS);
+
+    return res.json({ access });
   }
 
   async refresh(req, res) {
-    const { refresh, deviceId } = req.body || {};
+    const { deviceId } = req.body || {};
+    const refresh = req.cookies?.[REFRESH_COOKIE_NAME];
     if (!refresh) return res.status(400).json({ message: 'Нет refresh токена' });
 
     const oldHash = hashToken(refresh);
@@ -286,17 +302,23 @@ class userController {
 
     await enforceGlobalSessionLimit(user.id);
 
-    return res.json({ access, refresh: newRaw });
+    res.cookie(REFRESH_COOKIE_NAME, newRaw, REFRESH_COOKIE_OPTS);
+
+    return res.json({ access });
   }
 
   async logout(req, res) {
-    const { refresh } = req.body || {};
-    if (!refresh) return res.json({ ok: true });
+    const refresh = req.cookies?.[REFRESH_COOKIE_NAME];
+    if (!refresh) {
+    res.clearCookie(REFRESH_COOKIE_NAME, REFRESH_COOKIE_OPTS);
+    return res.json({ ok: true });
+    }
     const row = await RefreshToken.findOne({ where: { tokenHash: hashToken(refresh) } });
     if (row && !row.revokedAt) {
       row.revokedAt = new Date();
       await row.save();
     }
+    res.clearCookie(REFRESH_COOKIE_NAME, REFRESH_COOKIE_OPTS);
     return res.json({ ok: true });
   }
 
@@ -304,6 +326,7 @@ class userController {
     const uid = req.user?.id;
     if (!uid) return res.status(401).json({ message: 'Не авторизован.' });
     await RefreshToken.update({ revokedAt: new Date() }, { where: { userId: uid, revokedAt: null } });
+    res.clearCookie(REFRESH_COOKIE_NAME, REFRESH_COOKIE_OPTS);
     return res.json({ ok: true });
   }
 

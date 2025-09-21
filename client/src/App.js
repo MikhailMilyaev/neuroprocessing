@@ -7,7 +7,7 @@ import { observer } from 'mobx-react-lite';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicOnlyRoute from './components/PublicOnlyRoute';
 import FullScreenLoader from './components/FullScreenLoader/FullScreenLoader';
-import { ACCESS_KEY, REFRESH_KEY } from './http';
+import { ACCESS_KEY } from './http';
 
 const App = observer(() => {
   const { user } = useContext(Context);
@@ -15,12 +15,9 @@ const App = observer(() => {
 
   useEffect(() => {
     (async () => {
-      const access  = localStorage.getItem(ACCESS_KEY);
-      const refresh = localStorage.getItem(REFRESH_KEY);
-
       try {
-        if (!access && refresh) {
-          await refreshTokens();
+        if (!localStorage.getItem(ACCESS_KEY)) {
+          await refreshTokens();  
         }
         if (localStorage.getItem(ACCESS_KEY)) {
           await check(user);
