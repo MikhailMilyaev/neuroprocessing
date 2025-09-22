@@ -23,6 +23,7 @@ const User = sequelize.define('user', {
 
 const Story = sequelize.define('story', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  slug: { type: DataTypes.STRING(255), allowNull: false },
   title: { type: DataTypes.STRING(200), allowNull: false, defaultValue: '' },
   content: { type: DataTypes.TEXT, allowNull: false, defaultValue: '' },
   archive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
@@ -38,7 +39,7 @@ const Story = sequelize.define('story', {
   remindersPaused: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false, field: 'reminders_paused' },
   reevalDueAt: { type: DataTypes.DATE, allowNull: true, field: 'reeval_due_at' },
 }, {
-  indexes: [{ fields: ['userId'] }, { fields: ['createdAt'] }, { fields: ['reeval_due_at'] }],
+  indexes: [{ fields: ['userId'] }, { fields: ['createdAt'] }, { fields: ['reeval_due_at'] }, { unique: true, fields: ['userId', 'slug'] },],
 });
 
 const Idea = sequelize.define('idea', {

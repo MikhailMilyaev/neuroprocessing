@@ -10,6 +10,11 @@ export const fetchStories = async (params = {}) => {
   return data;
 };
 
+export const fetchStoryBySlug = async (slug) => {
+  const { data } = await $authHost.get(`/api/story/slug/${encodeURIComponent(slug)}`);
+  return data;
+};
+
 export const fetchStory = async (id) => {
   const { data } = await $authHost.get(`/api/story/${id}`);
   return data;

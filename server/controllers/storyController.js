@@ -1,16 +1,46 @@
 const { Story, Idea, Reeval, ReevalItem } = require('../models/models');
 const sequelize = require('../db');
 const { Op } = require('sequelize');
+const { slugify, draftSlug } = require('../utils/slug');
+
+async function ensureUniqueSlug(userId, rawSlug, excludeId = null) {
+  let base = rawSlug || draftSlug();
+  let attempt = 0;
+  while (true) {
+    const candidate = attempt ? `${base}-${attempt}` : base;
+    const where = { userId, slug: candidate };
+    if (excludeId) where.id = { [Op.ne]: excludeId };
+    const exists = await Story.findOne({ where });
+    if (!exists) return candidate;
+    attempt++;
+  }
+}
+function pickSlugFromTitle(title) {
+  const s = slugify(title || '');
+  return s || draftSlug();
+}
 
 class StoryController {
   async create(req, res, next) {
     try {
       const userId = req.user.id;
-      const { title = 'Новая история', content = '' } = req.body || {};
-      const story = await Story.create({ userId, title, content, archive: false });
+      const { title = '', content = '' } = req.body || {};
+      const raw = pickSlugFromTitle(title);
+      const unique = await ensureUniqueSlug(userId, raw);
+      const story = await Story.create({ userId, title: title || '', content, archive: false, slug: unique });
       return res.json(story);
     } catch (e) { next(e); }
   }
+
+  async getBySlug(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const { slug } = req.params;
+    const story = await Story.findOne({ where: { userId, slug } });
+    if (!story) return res.status(404).json({ message: 'История не найдена' });
+    return res.json(story);
+  } catch (e) { next(e); }
+}
 
   async list(req, res, next) {
     try {
@@ -38,7 +68,7 @@ class StoryController {
       const limit = Math.min(Math.max(Number.isFinite(limitParam) ? limitParam : 50, 1), 200);
 
       const allowed = new Set([
-        'id', 'title', 'content', 'archive', 'userId',
+        'id', 'slug', 'title', 'content', 'archive', 'userId',
         'updatedAt', 'createdAt', 'reevalDueAt',
         'stopContentY', 'baselineContent', 'reevalCount',
         'showArchiveSection', 'lastViewContentY',
@@ -112,6 +142,9 @@ class StoryController {
       const userId = req.user.id;
       const { id } = req.params;
 
+      const prev = await Story.findOne({ where: { id, userId } });
+      if (!prev) return res.status(404).json({ message: 'История не найдена' });
+
       const {
         title,
         content,
@@ -133,7 +166,12 @@ class StoryController {
 
       const updateData = {};
 
-      if (title !== undefined) updateData.title = title;
+      if (title !== undefined) {
+        updateData.title = title;
+        const base = pickSlugFromTitle(title);
+        updateData.slug = await ensureUniqueSlug(userId, base, prev.id);
+      }
+
       if (content !== undefined) updateData.content = content;
       if (baselineContent !== undefined) updateData.baselineContent = baselineContent;
 
@@ -190,7 +228,7 @@ class StoryController {
       );
 
       if (!count) return res.status(404).json({ message: 'История не найдена' });
-      return res.json(rows[0]);
+      return res.json(rows[0]);  
     } catch (e) { next(e); }
   }
 

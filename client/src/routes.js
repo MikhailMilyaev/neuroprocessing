@@ -27,7 +27,7 @@ import {
 
 export const authRoutes = [
   { path: STORIES_ROUTE, element: <Stories /> },
-  { path: STORY_ROUTE + '/:id', element: <Story /> },
+  { path: STORY_ROUTE + '/:slug', element: <Story /> },
   { path: IDEAS_ROUTE, element: <Ideas /> },
 
   { path: EDUCATION_ROUTE, element: <Education /> },

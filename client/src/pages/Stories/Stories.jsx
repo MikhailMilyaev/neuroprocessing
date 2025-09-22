@@ -24,12 +24,13 @@ const getTs = (s) => {
 };
 const sortByUpdated = (arr) => (arr || []).slice().sort((a, b) => getTs(b) - getTs(a));
 
-const mapForIndex = ({ id, title, archive, updatedAt, updated_at, reevalDueAt, reeval_due_at }) => ({
-  id,
-  title,
-  archive,
-  updatedAt: updatedAt ?? updated_at,
-  reevalDueAt: reevalDueAt ?? reeval_due_at ?? null,
+const mapForIndex = ({ id, slug, title, archive, updatedAt, updated_at, reevalDueAt, reeval_due_at }) => ({
+   id,
+   slug,
+    title,
+    archive,
+    updatedAt: updatedAt ?? updated_at,
+    reevalDueAt: reevalDueAt ?? reeval_due_at ?? null,
 });
 
 const warmStoryChunk = (() => {
@@ -156,7 +157,7 @@ const Stories = () => {
     fetchStories({
       archive: false,
       limit: 200,
-      fields: 'id,title,archive,updatedAt,reevalDueAt',
+      fields: 'id,slug,title,archive,updatedAt,reevalDueAt',
     })
       .then((server) => {
         if (cancelled) return;
@@ -198,7 +199,7 @@ const Stories = () => {
     fetchStories({
       archive: true,
       limit: 200,
-      fields: 'id,title,archive,updatedAt,reevalDueAt',
+      fields: 'id,slug,title,archive,updatedAt,reevalDueAt',
     })
       .then((server) => {
         if (cancelled) return;
@@ -345,7 +346,7 @@ const Stories = () => {
         return next;
       });
 
-      navigate(`${STORY_ROUTE}/${story.id}`);
+      navigate(`${STORY_ROUTE}/${story.slug}`);
     } catch (e) {
       console.error(e);
       alert('Не удалось создать историю. Проверьте соединение и попробуйте ещё раз.');

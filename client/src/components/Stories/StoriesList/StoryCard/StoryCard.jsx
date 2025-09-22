@@ -44,6 +44,7 @@ const formatEditedAt = (raw) => {
 
 const StoryCard = ({
   id,
+  slug,               // ← новый проп
   title,
   archive,
   reevalDueAt,
@@ -55,6 +56,7 @@ const StoryCard = ({
   const navigate = useNavigate();
   const btnRef = useRef(null);
 
+  // пересчёт бейджа «вчера/сегодня» после полуночи
   const [, forceDayTick] = useState(0);
   useEffect(() => {
     const now = new Date();
@@ -102,6 +104,9 @@ const StoryCard = ({
     wave.addEventListener('animationend', () => wave.remove());
   };
 
+  // Если slug есть — идём по slug; если нет — фолбэк на id
+  const targetUrl = `${STORY_ROUTE}/${slug || id}`;
+
   return (
     <div className={classes.storiesList}>
       <button
@@ -110,7 +115,7 @@ const StoryCard = ({
         data-story-card=""
         className={`${classes.storyCard} ${isHighlighted ? classes.storyCardActive : ''}`}
         onMouseDown={handleRightRipple}
-        onClick={() => navigate(`${STORY_ROUTE}/${id}`)}
+        onClick={() => navigate(targetUrl)}
         onContextMenu={onContextMenu}
         aria-label={displayTitle}
       >

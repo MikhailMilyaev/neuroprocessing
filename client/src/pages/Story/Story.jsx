@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
-import { fetchStory, updateStory, reevaluateStory, beginRereview } from '../../http/storyApi';
+import { fetchStoryBySlug, fetchStory, updateStory, reevaluateStory, beginRereview } from '../../http/storyApi';
 import { listIdeas, createIdea, updateIdea, deleteIdea } from '../../http/ideaApi';
 import { ns } from '../../utils/ns';
 
@@ -17,7 +17,6 @@ import CompleteModal from '../../components/Story/CompleteModal/CompleteModal';
 import Toast from '../../components/Toast/Toast';
 
 import { PRACTICES } from '../../utils/practices';
-
 import {
   readSnapshot,
   writeSnapshot,
@@ -77,11 +76,13 @@ const mapIdeasToBeliefs = (ideas = []) =>
   }));
 
 export default function Story() {
-  const { id } = useParams();
+  const { slug } = useParams();
   const navigate = useNavigate();
 
-  const initialSnap = (() => readSnapshot(id))();
-  if (initialSnap && (initialSnap.reevalCount ?? 0) > 0) {
+  const [id, setId] = useState(null);
+
+  const initialSnap = id ? readSnapshot(id) : null;
+  if (id && initialSnap && (initialSnap.reevalCount ?? 0) > 0) {
     const hasZeroes = Array.isArray(initialSnap.ideas) && initialSnap.ideas.some(i => i?.score === 0);
     if (hasZeroes) {
       writeSnapshot(id, {
@@ -91,15 +92,10 @@ export default function Story() {
     }
   }
 
-  const canTrustCache = !!initialSnap;
-  const shouldOverlayFirst = !initialSnap && !isSeenThisSession(id);
+  const canTrustCache = !!(id && initialSnap);
 
   const [history, setHistory] = useState(() => [
-    {
-      title: initialSnap?.title || '',
-      content: initialSnap?.content || '',
-      beliefs: mapIdeasToBeliefs(initialSnap?.ideas || []),
-    },
+    { title: '', content: '', beliefs: [] },
   ]);
   const [pointer, setPointer] = useState(0);
   const [showBelief, setShowBelief] = useState(false);
@@ -119,14 +115,13 @@ export default function Story() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ x: '0px', y: '0px' });
 
-  const [remindersOn, setRemindersOn] = useState(initialSnap?.remindersEnabled ?? null);
-  const [reminderFreqSec, setReminderFreqSec] = useState(initialSnap?.remindersFreqSec ?? 30);
-  const [reminderPaused, setReminderPaused] = useState(initialSnap?.remindersPaused ?? false);
-  const [reminderIdx, setReminderIdx] = useState(initialSnap?.remindersIndex ?? 0);
+  const [remindersOn, setRemindersOn] = useState(null);
+  const [reminderFreqSec, setReminderFreqSec] = useState(30);
+  const [reminderPaused, setReminderPaused] = useState(false);
+  const [reminderIdx, setReminderIdx] = useState(0);
 
-  const [archiveOn, setArchiveOn] = useState(initialSnap?.showArchiveSection ?? true);
-
-  const [initialViewY, setInitialViewY] = useState(() => pickInitialViewYFromStorages(id, initialSnap));
+  const [archiveOn, setArchiveOn] = useState(true);
+  const [initialViewY, setInitialViewY] = useState(null);
 
   const [toastMsg, setToastMsg] = useState('');
   const [toastType, setToastType] = useState('error');
@@ -138,21 +133,18 @@ export default function Story() {
 
   const [stopY, setStopY] = useState(null);
 
-  const [reevalRound, setReevalRound] = useState(initialSnap?.reevalCount ?? 0);
-  const [baseline, setBaseline] = useState(initialSnap?.baselineContent ?? initialSnap?.content ?? '');
+  const [reevalRound, setReevalRound] = useState(0);
+  const [baseline, setBaseline] = useState('');
 
-  const [ideasLoading, setIdeasLoading] = useState(!canTrustCache);
-  const [isDataLoaded, setIsDataLoaded] = useState(!!initialSnap);
-  const [isTextReady, setIsTextReady] = useState(false);
-  const [showOverlay, setShowOverlay] = useState(shouldOverlayFirst);
-  const pageReady = isDataLoaded && isTextReady;
+  const [ideasLoading, setIdeasLoading] = useState(true);
+  const [showOverlay, setShowOverlay] = useState(false);
 
   const current = useMemo(
     () => history[pointer] ?? { title: '', content: '', beliefs: [] },
     [history, pointer]
   );
 
-  const [isArchivedStory, setIsArchivedStory] = useState(!!initialSnap?.archive);
+  const [isArchivedStory, setIsArchivedStory] = useState(false);
 
   const isArchived = (b) => b?.score !== '' && b?.score != null && Number(b.score) === 0;
 
@@ -178,16 +170,46 @@ export default function Story() {
   const hydratedFromCacheRef = useRef(canTrustCache);
   const [freezeAnimKey, setFreezeAnimKey] = useState(0);
 
+  // 1) Загружаем историю по slug (получаем id) и подхватываем снапшот
   useEffect(() => {
     let cancelled = false;
 
-    setIsTextReady(false);
-    if (!initialSnap) {
-      setShowOverlay(!isSeenThisSession(id));
-    } else {
-      setShowOverlay(false);
-      setIsDataLoaded(true);
-    }
+    setIdeasLoading(true);
+    setShowOverlay(true);
+
+    (async () => {
+      try {
+        const story = await fetchStoryBySlug(slug);
+        if (cancelled) return;
+
+        setId(story.id);
+
+        const snap = readSnapshot(story.id);
+        if (snap) {
+          setShowOverlay(false);
+          setRemindersOn(snap.remindersEnabled ?? null);
+          setReminderFreqSec(snap.remindersFreqSec ?? 30);
+          setReminderPaused(snap.remindersPaused ?? false);
+          setReminderIdx(snap.remindersIndex ?? 0);
+          setArchiveOn(snap.showArchiveSection ?? true);
+          setInitialViewY(pickInitialViewYFromStorages(story.id, snap));
+        }
+      } catch {
+        navigate('/stories', { replace: true });
+      } finally {
+        if (!cancelled) setIdeasLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [slug, navigate]);
+
+  // 2) При наличии id — подгружаем полную историю и идеи
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+
+    setShowOverlay(!initialSnap ? !isSeenThisSession(id) : false);
 
     (async () => {
       try {
@@ -292,7 +314,6 @@ export default function Story() {
         }
 
         markSeenThisSession(id);
-        setIsDataLoaded(true);
         setShowOverlay(false);
         setIdeasLoading(false);
 
@@ -302,7 +323,6 @@ export default function Story() {
         }
       } catch (e) {
         console.warn('failed to load story', e);
-        setIsDataLoaded(true);
         setShowOverlay(false);
         setIdeasLoading(false);
       }
@@ -373,15 +393,20 @@ export default function Story() {
   };
 
   const scheduleSave = (payload) => {
-    lastStoryPayloadRef.current = {
-      ...(lastStoryPayloadRef.current || {}),
-      ...payload,
-    };
+    lastStoryPayloadRef.current = { ...(lastStoryPayloadRef.current || {}), ...payload };
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
+    saveTimerRef.current = setTimeout(async () => {
       const p = lastStoryPayloadRef.current;
-      if (p) {
-        updateStory(id, p).catch(console.error);
+      if (p && id) {
+        try {
+          const saved = await updateStory(id, p);
+          if (saved?.slug && typeof saved.slug === 'string') {
+            const newUrl = `/story/${saved.slug}`;
+            if (window.location.pathname !== newUrl) {
+              navigate(newUrl, { replace: true });
+            }
+          }
+        } catch {}
         lastStoryPayloadRef.current = null;
       }
       saveTimerRef.current = null;
@@ -458,7 +483,7 @@ export default function Story() {
       localStorage.setItem(ARCHIVE_KEY(), 'false');
       sessionStorage.setItem(ACTIVE_HIGHLIGHT_KEY(), String(id));
     } catch {}
-      openUnarchivedToast();
+    openUnarchivedToast();
   };
 
   const changeField = async (field, value) => {
@@ -957,7 +982,7 @@ export default function Story() {
     description: p.description,
   }));
 
-  const textAreaStyle = {}
+  const textAreaStyle = {};
 
   const net = navigator.connection?.effectiveType || '';
   const isSlow = /(^2g|3g)/i.test(net);
@@ -994,6 +1019,10 @@ export default function Story() {
 
   const ideasReady = canTrustCache || !ideasLoading;
 
+  if (!id) {
+    return <FullScreenLoader />;
+  }
+
   return (
     <div key={id}>
       {showOverlaySmart && <FullScreenLoader />}
@@ -1021,7 +1050,7 @@ export default function Story() {
           initialStopContentY={stopY}
           initialViewContentY={initialViewY}
           onViewYChange={handleViewYChange}
-          onReady={() => setIsTextReady(true)}
+          onReady={() => {}}
           onStopChange={handleStopChange}
           baseline={baseline}
           reevalRound={reevalRound}
