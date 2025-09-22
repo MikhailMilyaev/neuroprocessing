@@ -1,7 +1,7 @@
 .storiesContainer {
     max-width: 1000px;
     margin: 20px auto 0;
-}/* ── Баннер «история архивирована, архив скрыт» ───────────────────────────── */
+}
 
 .revealBanner {
   display: flex;
@@ -10,7 +10,7 @@
   padding: 12px 14px;
   margin: 8px 0 12px;
   border-radius: 12px;
-  background: #fff8e1; /* мяглый жёлтый */
+  background: #fff8e1; 
   border: 1px solid #ffe29a;
   box-shadow: 0 2px 10px rgba(0,0,0,0.04);
 }
@@ -55,7 +55,6 @@
 .revealBtnSecondary:hover { transform: translateY(-1px); }
 .revealBtnSecondary:active { transform: translateY(0); opacity: .9; }
 
-/* ── «Мягкая» подсветка карточки ──────────────────────────────────────────── */
 
 .flashHighlight {
   position: relative;
@@ -72,7 +71,6 @@
   100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(17,24,39,0.08), 0 0 0 0 rgba(255,199,0,0.0); }
 }
 
-/* уважение к настройкам пользователя */
 @media (prefers-reduced-motion: reduce) {
   .flashHighlight { animation: none; outline: 2px solid rgba(255,199,0,0.45); }
 }

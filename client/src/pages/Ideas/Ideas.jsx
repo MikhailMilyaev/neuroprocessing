@@ -46,10 +46,14 @@ export default function Ideas() {
           fetchStories({ archive: true,  limit: 200, fields: 'id,title,archive,updatedAt' }),
         ]);
         if (cancel) return;
-
         setItems((inbox || []).map(it => ({ ...it, uiKey: it.id })));
         const mapRows = (r) => (Array.isArray(r) ? r : (r?.rows || []));
         setStories({ active: mapRows(act), archive: mapRows(arc) });
+      } catch {
+        if (!cancel) {
+          setItems([]);
+          setStories({ active: [], archive: [] });
+        }
       } finally {
         if (!cancel) setLoading(false);
       }

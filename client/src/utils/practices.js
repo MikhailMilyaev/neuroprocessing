@@ -5,7 +5,7 @@ export const PRACTICES = [
     description: 'Совсем скоро..',
   },
   {
-    slug: 'self-destructive',     
+    slug: 'importance-comparing',     
     title: 'Сравнение важностей',
     description: 'Совсем скоро...'
   },

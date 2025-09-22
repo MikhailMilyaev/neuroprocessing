@@ -5,14 +5,15 @@ const authMiddleware = require('../middleware/authMiddleware');
 const { authLimiter, emailFlowLimiter, refreshLimiter } = require('../middleware/limits');
 const validate = require('../middleware/validate');
 const v = require('../middleware/validators');
+const enforceOrigin = require('../middleware/enforceOrigin');
 
 router.post('/registration', authLimiter, [v.name, v.email, v.password], validate, userController.registration);
-router.post('/login', authLimiter, [v.email, v.password, v.deviceId], validate, userController.login);
+router.post('/login', enforceOrigin, authLimiter, [v.email, v.password, v.deviceId], validate, userController.login);
 router.get('/check', authMiddleware, userController.check);
 
-router.post('/token/refresh', refreshLimiter, [v.refresh, v.deviceId], validate, userController.refresh);
-router.post('/logout', userController.logout);
-router.post('/logout-all', authMiddleware, userController.logoutAll);
+router.post('/token/refresh', enforceOrigin, refreshLimiter, [v.deviceId], validate, userController.refresh);
+router.post('/logout', enforceOrigin, userController.logout);
+router.post('/logout-all', enforceOrigin, authMiddleware, userController.logoutAll);
 
 router.get('/verify', emailFlowLimiter, userController.verifyEmail);
 router.post('/resend-verification', emailFlowLimiter, userController.resendVerification);

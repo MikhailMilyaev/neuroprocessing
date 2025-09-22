@@ -1,10 +1,11 @@
 import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
+import { getDeviceId } from './deviceId';
 
 export const ACCESS_KEY = 'access';
-
 const baseURL = process.env.REACT_APP_API_URL;
 
-const common = { baseURL, withCredentials: true }; 
+const common = { baseURL, withCredentials: true };
 
 const $host = axios.create(common);
 const $authHost = axios.create(common);
@@ -17,10 +18,45 @@ $authHost.interceptors.request.use((config) => {
 
 let isRefreshing = false;
 let queue = [];
+let softRedirectDone = false;
+let refreshTimerId;
+
+function softRedirectToLoginOnce() {
+  if (softRedirectDone) return;
+  softRedirectDone = true;
+  try { localStorage.removeItem(ACCESS_KEY); } catch {}
+  if (typeof window !== 'undefined') {
+    const from = window.location?.pathname || '/';
+    const sp = new URLSearchParams({ from }).toString();
+    window.location.replace(`/login?${sp}`);
+  }
+}
+
+export function cancelAutoRefresh() {
+  clearTimeout(refreshTimerId);
+}
+
+export function scheduleAutoRefresh() {
+  clearTimeout(refreshTimerId);
+  const access = localStorage.getItem(ACCESS_KEY);
+  if (!access) return;
+  try {
+    const { exp } = jwtDecode(access);
+    const ms = exp * 1000 - Date.now() - 60_000;  
+    if (ms > 0) {
+      refreshTimerId = setTimeout(() => {
+        runRefresh().catch(() => softRedirectToLoginOnce());
+      }, ms);
+    }
+  } catch {
+  }
+}
 
 async function runRefresh() {
-  const { data } = await $host.post('/api/user/token/refresh', {});
+  const deviceId = getDeviceId();
+  const { data } = await $host.post('/api/user/token/refresh', { deviceId });
   localStorage.setItem(ACCESS_KEY, data.access);
+  scheduleAutoRefresh();  
   return data.access;
 }
 
@@ -39,8 +75,8 @@ $authHost.interceptors.response.use(
           queue.forEach(({ resolve }) => resolve(newAccess));
         })
         .catch((err) => {
-          try { localStorage.removeItem(ACCESS_KEY); } catch {}
           queue.forEach(({ reject }) => reject(err));
+          softRedirectToLoginOnce();
         })
         .finally(() => {
           queue = [];

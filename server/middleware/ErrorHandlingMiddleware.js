@@ -2,10 +2,8 @@ const ApiError = require('../error/ApiError');
 
 module.exports = function (err, req, res, next) {
   if (err instanceof ApiError) {
-    return res.status(err.status).json({ message: err.message });
+    return res.status(err.status).json({ message: err.message, requestId: req.id });
   }
-  if (process.env.NODE_ENV !== 'production') {
-    console.error(err);
-  }
-  return res.status(500).json({ message: 'Непредвиденная ошибка' });
+  console.error(`[${req.id || '-'}]`, err);
+  return res.status(500).json({ message: 'Непредвиденная ошибка', requestId: req.id });
 };
