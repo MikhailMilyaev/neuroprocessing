@@ -8,12 +8,14 @@ const User = sequelize.define('user', {
   password: { type: DataTypes.STRING, allowNull: false },
   prevPasswordHash: { type: DataTypes.STRING, allowNull: true },
   role: { type: DataTypes.STRING, defaultValue: 'USER' },
+
   isVerified: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   verificationToken: { type: DataTypes.STRING, allowNull: true },
   verificationTokenExpires: { type: DataTypes.DATE, allowNull: true },
   verificationLastSentAt: { type: DataTypes.DATE, allowNull: true },
   verificationResendCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
   verificationResendResetAt: { type: DataTypes.DATE, allowNull: true },
+
   passwordResetToken: { type: DataTypes.STRING, allowNull: true },
   passwordResetExpires: { type: DataTypes.DATE, allowNull: true },
   resetLastSentAt: { type: DataTypes.DATE, allowNull: true },
@@ -21,25 +23,48 @@ const User = sequelize.define('user', {
   resetResendResetAt: { type: DataTypes.DATE, allowNull: true },
 });
 
+const IdentityLink = sequelize.define('identity_link', {
+  id: { type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true },
+  user_id: { type: DataTypes.BIGINT, allowNull: false, unique: true },
+  cipher_blob: { type: DataTypes.TEXT, allowNull: false },
+  key_version: { type: DataTypes.STRING(20), allowNull: false, defaultValue: 'v1' },
+}, {
+  tableName: 'identity_links',
+  timestamps: true,
+  underscored: true,
+  indexes: [{ fields: ['user_id'] }],
+});
+IdentityLink.belongsTo(User, { foreignKey: 'user_id', onDelete: 'CASCADE' });
+
 const Story = sequelize.define('story', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+
+  actor_id: { type: DataTypes.UUID, allowNull: false },
+
   slug: { type: DataTypes.STRING(255), allowNull: false },
   title: { type: DataTypes.STRING(200), allowNull: false, defaultValue: '' },
   content: { type: DataTypes.TEXT, allowNull: false, defaultValue: '' },
   archive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
-  userId: { type: DataTypes.INTEGER, allowNull: false },
+
   stopContentY: { type: DataTypes.INTEGER, allowNull: true, field: 'stop_content_y' },
   baselineContent: { type: DataTypes.TEXT, allowNull: true, field: 'baseline_content' },
   reevalCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0, field: 'reeval_count' },
   showArchiveSection: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true, field: 'show_archive_section' },
   lastViewContentY: { type: DataTypes.INTEGER, allowNull: true, field: 'last_view_content_y' },
+
   remindersEnabled: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true, field: 'reminders_enabled' },
   remindersFreqSec: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 30, field: 'reminders_freq_sec' },
   remindersIndex: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0, field: 'reminders_index' },
   remindersPaused: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false, field: 'reminders_paused' },
+
   reevalDueAt: { type: DataTypes.DATE, allowNull: true, field: 'reeval_due_at' },
 }, {
-  indexes: [{ fields: ['userId'] }, { fields: ['createdAt'] }, { fields: ['reeval_due_at'] }, { unique: true, fields: ['userId', 'slug'] },],
+  indexes: [
+    { fields: ['actor_id'] },
+    { fields: ['createdAt'] },
+    { fields: ['reeval_due_at'] },
+    { unique: true, fields: ['actor_id', 'slug'] },
+  ],
 });
 
 const Idea = sequelize.define('idea', {
@@ -72,11 +97,13 @@ const ReevalItem = sequelize.define('reeval_item', {
 
 const InboxIdea = sequelize.define('inbox_idea', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  userId: { type: DataTypes.INTEGER, allowNull: false, field: 'user_id' },
+
+  actor_id: { type: DataTypes.UUID, allowNull: false },
+
   text: { type: DataTypes.TEXT, allowNull: false, defaultValue: '' },
   sortOrder: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0, field: 'sort_order' },
 }, {
-  indexes: [{ fields: ['user_id'] }, { fields: ['user_id', 'sort_order'] }],
+  indexes: [{ fields: ['actor_id'] }, { fields: ['actor_id', 'sort_order'] }],
 });
 
 const RefreshToken = sequelize.define('refresh_token', {
@@ -96,12 +123,8 @@ const RefreshToken = sequelize.define('refresh_token', {
     { fields: ['createdAt'] },
   ],
 });
-
-User.hasMany(InboxIdea, { as: 'inboxIdeas', foreignKey: 'user_id', sourceKey: 'id', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
-InboxIdea.belongsTo(User, { as: 'author', foreignKey: 'user_id', targetKey: 'id' });
-
-User.hasMany(Story, { as: 'stories', foreignKey: 'userId', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
-Story.belongsTo(User, { as: 'author', foreignKey: 'userId' });
+RefreshToken.belongsTo(User, { as: 'user', foreignKey: 'user_id' });
+User.hasMany(RefreshToken, { as: 'rtokens', foreignKey: 'user_id', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
 Story.hasMany(Idea, { as: 'ideas', foreignKey: 'storyId', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 Idea.belongsTo(Story, { as: 'story', foreignKey: 'storyId' });
@@ -115,9 +138,6 @@ ReevalItem.belongsTo(Reeval, { as: 'reeval', foreignKey: 'reevalId' });
 Idea.hasMany(ReevalItem, { as: 'history', foreignKey: 'ideaId', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 ReevalItem.belongsTo(Idea, { as: 'idea', foreignKey: 'ideaId' });
 
-User.hasMany(RefreshToken, { as: 'rtokens', foreignKey: 'user_id', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
-RefreshToken.belongsTo(User, { as: 'user', foreignKey: 'user_id' });
-
 async function bumpStoryUpdated(storyId) {
   await Story.update(
     { updatedAt: sequelize.literal('CURRENT_TIMESTAMP') },
@@ -128,4 +148,4 @@ Idea.addHook('afterCreate', async (idea) => { await bumpStoryUpdated(idea.storyI
 Idea.addHook('afterUpdate', async (idea) => { await bumpStoryUpdated(idea.storyId); });
 Idea.addHook('afterDestroy', async (idea) => { await bumpStoryUpdated(idea.storyId); });
 
-module.exports = { User, Story, Idea, Reeval, ReevalItem, InboxIdea, RefreshToken };
+module.exports = { User, IdentityLink, Story, Idea, Reeval, ReevalItem, InboxIdea, RefreshToken };

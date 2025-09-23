@@ -1,149 +1,113 @@
-const { Idea, Story } = require('../models/models');
+const { Story, Idea } = require('../models/models');
+const sequelize = require('../db');
 
-async function ensureStoryOwner(storyId, userId) {
-  const story = await Story.findOne({ where: { id: storyId, userId } });
-  return !!story;
+async function ensureStoryOwner(actor_id, storyId) {
+  const story = await Story.findOne({ where: { id: storyId, actor_id } });
+  return story ? story : null;
 }
 
 class IdeaController {
   async listForStory(req, res, next) {
     try {
-      const userId = req.user?.id;
+      const actor_id = req.actorId;
       const { storyId } = req.params;
-
-      const sid = Number(storyId);
-      if (!Number.isFinite(sid)) {
-        return res.status(400).json({ message: 'Некорректный storyId' });
-      }
-
-      const owned = await ensureStoryOwner(sid, userId);
-      if (!owned) return res.status(404).json({ message: 'История не найдена' });
+      const story = await ensureStoryOwner(actor_id, storyId);
+      if (!story) return res.status(404).json({ message: 'История не найдена' });
 
       const ideas = await Idea.findAll({
-        where: { storyId: sid },
-        order: [
-          ['sortOrder', 'DESC'],
-          ['id', 'DESC'],
-        ],
+        where: { storyId },
+        order: [['sortOrder', 'DESC'], ['id', 'DESC']],
       });
+      res.json(ideas);
+    } catch (e) { next(e); }
+  }
 
-      return res.json(ideas || []);
-    } catch (e) {
-      console.error('Ошибка при listForStory:', e);
-      return next(e);
-    }
+  async create(req, res, next) {
+    try {
+      const storyId = req.params?.storyId ?? req.body?.storyId;
+      if (!storyId) return res.status(400).json({ message: 'Не указан storyId' });
+
+      const actor_id = req.actorId;
+      const story = await ensureStoryOwner(actor_id, storyId);
+      if (!story) return res.status(404).json({ message: 'История не найдена' });
+
+      const last = await Idea.findOne({
+        where: { storyId },
+        order: [['sortOrder', 'DESC'], ['id', 'DESC']],
+        attributes: ['sortOrder'],
+      });
+      const sortOrder = last ? (Number(last.sortOrder) + 1) : 1;
+      const text  = req.body.text != null ? String(req.body.text) : '';
+      const score = req.body.score == null ? null : Number(req.body.score);
+
+      const idea = await Idea.create({ storyId, text, score, sortOrder });
+      res.status(201).json(idea);
+    } catch (e) { next(e); }
   }
 
   async createForStory(req, res, next) {
-    try {
-      const userId = req.user?.id;
-      const { storyId } = req.params;
-      const sid = Number(storyId);
-      if (!Number.isFinite(sid)) {
-        return res.status(400).json({ message: 'Некорректный storyId' });
-      }
-
-      const {
-        text = '',
-        score = null,            
-        introducedRound = 0,     
-        sortOrder,               
-      } = req.body || {};
-
-      const owned = await ensureStoryOwner(sid, userId);
-      if (!owned) return res.status(404).json({ message: 'История не найдена' });
-
-      const preparedScore =
-        score == null || score === '' ? null : Number(score);
-
-      if (preparedScore != null && (preparedScore < 0 || preparedScore > 10)) {
-        return res.status(400).json({ message: 'score должен быть от 0 до 10' });
-      }
-
-      const created = await Idea.create({
-        storyId: sid,
-        text: String(text || ''),
-        score: preparedScore,
-        introducedRound: Number.isFinite(+introducedRound) ? +introducedRound : 0,
-        sortOrder: Number.isFinite(+sortOrder) ? +sortOrder : Date.now(),
-      });
-
-      return res.json(created);
-    } catch (e) {
-      console.error('Ошибка при createForStory:', e);
-      return next(e);
-    }
+    return this.create(req, res, next);
   }
 
   async update(req, res, next) {
     try {
-      const userId = req.user?.id;
+      const actor_id = req.actorId;
       const { id } = req.params;
+      const idea = await Idea.findByPk(id);
+      if (!idea) return res.status(404).json({ message: 'Идея не найдена' });
 
-      const idea = await Idea.findByPk(id, {
-        include: { model: Story, as: 'story' },
-      });
-      if (!idea || idea?.story?.userId !== userId) {
-        return res.status(404).json({ message: 'Идея не найдена' });
-      }
+      const story = await ensureStoryOwner(actor_id, idea.storyId);
+      if (!story) return res.status(404).json({ message: 'История не найдена' });
 
-      const { text, score, sortOrder, introducedRound } = req.body || {};
-      const patch = {};
+      const data = {};
+      if (req.body.text !== undefined) data.text = String(req.body.text);
+      if (req.body.score !== undefined) data.score = req.body.score == null ? null : Number(req.body.score);
+      if (req.body.sortOrder !== undefined) data.sortOrder = Number(req.body.sortOrder);
 
-      if (text !== undefined) {
-        patch.text = String(text);
-      }
-
-      let newScoreNorm;
-      const scoreProvided = score !== undefined;
-
-      if (scoreProvided) {
-        const s = score == null || score === '' ? null : Number(score);
-        if (s != null && (s < 0 || s > 10)) {
-          return res.status(400).json({ message: 'score должен быть от 0 до 10' });
-        }
-        patch.score = s;
-        newScoreNorm = s;
-      }
-
-      if (scoreProvided) {
-        const wasArchived = idea.score === 0;
-        const becomesArchived = newScoreNorm === 0;
-        if (wasArchived !== becomesArchived) {
-          patch.sortOrder = Date.now();
-        }
-      }
-
-      if (sortOrder !== undefined) patch.sortOrder = Number(sortOrder);
-      if (introducedRound !== undefined) patch.introducedRound = Number(introducedRound);
-
-      await idea.update(patch);
-      return res.json(idea);
-    } catch (e) {
-      console.error('Ошибка при update idea:', e);
-      return next(e);
-    }
+      const [count, rows] = await Idea.update(data, { where: { id }, returning: true });
+      if (!count) return res.status(404).json({ message: 'Идея не найдена' });
+      res.json(rows[0]);
+    } catch (e) { next(e); }
   }
 
   async remove(req, res, next) {
     try {
-      const userId = req.user?.id;
+      const actor_id = req.actorId;
       const { id } = req.params;
+      const idea = await Idea.findByPk(id);
+      if (!idea) return res.status(404).json({ message: 'Идея не найдена' });
 
-      const idea = await Idea.findByPk(id, {
-        include: { model: Story, as: 'story' },
-      });
+      const story = await ensureStoryOwner(actor_id, idea.storyId);
+      if (!story) return res.status(404).json({ message: 'История не найдена' });
 
-      if (!idea || idea?.story?.userId !== userId) {
-        return res.status(404).json({ message: 'Идея не найдена' });
+      await Idea.destroy({ where: { id } });
+      res.json({ ok: true });
+    } catch (e) { next(e); }
+  }
+
+  async reorder(req, res, next) {
+    const t = await sequelize.transaction();
+    try {
+      const actor_id = req.actorId;
+      const { storyId, order } = req.body || {};
+      const story = await ensureStoryOwner(actor_id, storyId);
+      if (!story) { await t.rollback(); return res.status(404).json({ message: 'История не найдена' }); }
+
+      if (!Array.isArray(order) || !order.length) {
+        await t.rollback(); return res.status(400).json({ message: 'Некорректный список' });
       }
-
-      await idea.destroy();
-      return res.json({ ok: true });
-    } catch (e) {
-      console.error('Ошибка при remove idea:', e);
-      return next(e);
-    }
+      const ideas = await Idea.findAll({ where: { storyId }, attributes: ['id'], transaction: t });
+      const set = new Set(ideas.map(i => String(i.id)));
+      for (const x of order) if (!set.has(String(x))) {
+        await t.rollback(); return res.status(400).json({ message: 'Несоответствие id' });
+      }
+      let idx = 1;
+      for (const ideaId of order) {
+        await Idea.update({ sortOrder: idx++ }, { where: { id: ideaId }, transaction: t });
+      }
+      await t.commit();
+      res.json({ ok: true });
+    } catch (e) { await t.rollback(); next(e); }
   }
 }
 

@@ -3,8 +3,10 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { Op } = require('sequelize');
-const { User, RefreshToken } = require('../models/models');
+const { User, RefreshToken, IdentityLink } = require('../models/models');
+const { encryptLink, KEY_VERSION } = require('../utils/cryptoIdentity');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../smtp');
+const { v4: uuidv4 } = require('uuid');
 
 const VERIFY_RESEND_COOLDOWN      = Number(process.env.VERIFY_RESEND_COOLDOWN || 60);
 const VERIFY_DAILY_LIMIT          = Number(process.env.VERIFY_DAILY_LIMIT || 2);
@@ -23,14 +25,13 @@ const REFRESH_TTL_DAYS            = Number(process.env.REFRESH_TTL_DAYS || 30);
 
 const REFRESH_COOKIE_NAME = 'refresh_token';
 const isProd = process.env.NODE_ENV === 'production';
-
 const sameSite = process.env.CROSS_SITE === '1' ? 'none' : 'lax';
 
 const REFRESH_COOKIE_OPTS = {
   httpOnly: true,
-  sameSite,           
-  secure: sameSite === 'none' ? true : isProd,  
-  path: '/api/user',    
+  sameSite,
+  secure: sameSite === 'none' ? true : isProd,
+  path: '/api/user',
   maxAge: Number(process.env.REFRESH_TTL_DAYS || 30) * 24 * 3600 * 1000,
 };
 
@@ -109,38 +110,7 @@ class userController {
       }
 
       const exist = await User.findOne({ where: { email } });
-
       if (exist) {
-        try {
-          if (!exist.isVerified) {
-            const now = new Date();
-
-            if (!exist.verificationResendResetAt || now > exist.verificationResendResetAt) {
-              exist.verificationResendCount = 0;
-              exist.verificationResendResetAt = new Date(
-                now.getTime() + VERIFY_DAILY_WINDOW_HOURS * 3600 * 1000
-              );
-            }
-
-            const { cooldownLeft, support } = computeVerifyState(exist, now);
-
-            if (!support && cooldownLeft === 0) {
-              const rawToken = crypto.randomBytes(32).toString('hex');
-              exist.verificationToken = hashToken(rawToken);
-              exist.verificationTokenExpires = new Date(
-                now.getTime() + VERIFY_TOKEN_TTL_HOURS * 3600 * 1000
-              );
-              exist.verificationLastSentAt = now;
-              exist.verificationResendCount += 1;
-              await exist.save();
-
-              const verifyLink = `${process.env.API_URL}/api/user/verify?token=${rawToken}`;
-              await sendVerificationEmail({ to: exist.email, name: exist.name, verifyLink });
-            }
-          }
-        } catch {
-        }
-
         return res.status(200).json({ message: 'Если аккаунт существует, письмо отправлено.' });
       }
 
@@ -150,55 +120,28 @@ class userController {
       const now = new Date();
       const expires = new Date(now.getTime() + VERIFY_TOKEN_TTL_HOURS * 3600 * 1000);
 
-      let user;
-      try {
-        user = await User.create({
-          name,
-          email,               
-          role: 'USER',
-          password: hashPassword,
-          isVerified: false,
-          verificationToken: tokenHash,
-          verificationTokenExpires: expires,
-          verificationLastSentAt: now,
-          verificationResendCount: 1,
-          verificationResendResetAt: new Date(
-            now.getTime() + VERIFY_DAILY_WINDOW_HOURS * 3600 * 1000
-          ),
-        });
-      } catch (e) {
-        const already = await User.findOne({ where: { email } });
-        if (already) {
-          try {
-            if (!already.isVerified) {
-              const now2 = new Date();
-              if (!already.verificationResendResetAt || now2 > already.verificationResendResetAt) {
-                already.verificationResendCount = 0;
-                already.verificationResendResetAt = new Date(
-                  now2.getTime() + VERIFY_DAILY_WINDOW_HOURS * 3600 * 1000
-                );
-              }
-              const { cooldownLeft, support } = computeVerifyState(already, now2);
-              if (!support && cooldownLeft === 0) {
-                const raw2 = crypto.randomBytes(32).toString('hex');
-                already.verificationToken = hashToken(raw2);
-                already.verificationTokenExpires = new Date(
-                  now2.getTime() + VERIFY_TOKEN_TTL_HOURS * 3600 * 1000
-                );
-                already.verificationLastSentAt = now2;
-                already.verificationResendCount += 1;
-                await already.save();
+      const user = await User.create({
+        name,
+        email,
+        role: 'USER',
+        password: hashPassword,
+        isVerified: false,
+        verificationToken: tokenHash,
+        verificationTokenExpires: expires,
+        verificationLastSentAt: now,
+        verificationResendCount: 1,
+        verificationResendResetAt: new Date(
+          now.getTime() + VERIFY_DAILY_WINDOW_HOURS * 3600 * 1000
+        ),
+      });
 
-                const link2 = `${process.env.API_URL}/api/user/verify?token=${raw2}`;
-                await sendVerificationEmail({ to: already.email, name: already.name, verifyLink: link2 });
-              }
-            }
-          } catch {
-          }
-          return res.status(200).json({ message: 'Если аккаунт существует, письмо отправлено.' });
-        }
-        return next(ApiError.internal('Не удалось создать аккаунт. Попробуйте позже.'));
-      }
+      const actorId = uuidv4();
+      const cipher_blob = encryptLink({ actor_id: actorId });
+      await IdentityLink.create({
+        user_id: user.id,
+        cipher_blob,
+        key_version: KEY_VERSION,
+      });
 
       const verifyLink = `${process.env.API_URL}/api/user/verify?token=${rawToken}`;
       try {
@@ -310,8 +253,8 @@ class userController {
   async logout(req, res) {
     const refresh = req.cookies?.[REFRESH_COOKIE_NAME];
     if (!refresh) {
-    res.clearCookie(REFRESH_COOKIE_NAME, REFRESH_COOKIE_OPTS);
-    return res.json({ ok: true });
+      res.clearCookie(REFRESH_COOKIE_NAME, REFRESH_COOKIE_OPTS);
+      return res.json({ ok: true });
     }
     const row = await RefreshToken.findOne({ where: { tokenHash: hashToken(refresh) } });
     if (row && !row.revokedAt) {

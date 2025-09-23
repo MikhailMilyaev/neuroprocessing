@@ -1,103 +1,123 @@
 const { InboxIdea, Story, Idea } = require('../models/models');
+const sequelize = require('../db');
+
+async function ensureInboxOwner(actor_id, id) {
+  const row = await InboxIdea.findOne({ where: { id, actor_id } });
+  return row ? { actor_id, row } : null;
+}
 
 class InboxIdeaController {
   async list(req, res, next) {
     try {
-      const userId = req.user.id;
-      const ideas = await InboxIdea.findAll({
-        where: { userId },
+      const actor_id = req.actorId;
+      const rows = await InboxIdea.findAll({
+        where: { actor_id },
         order: [['sortOrder', 'DESC'], ['id', 'DESC']],
       });
-      res.json(ideas || []);
+      res.json(rows);
     } catch (e) { next(e); }
   }
 
   async create(req, res, next) {
     try {
-      const userId = req.user.id;
+      const actor_id = req.actorId;
       const { text = '' } = req.body || {};
-      const row = await InboxIdea.create({
-        userId,
-        text: String(text || ''),
-        sortOrder: Date.now(),
-      });
+      const [[{ next_sort }]] = await sequelize.query(
+        'SELECT COALESCE(MAX("sort_order"), 0) + 1 AS next_sort FROM inbox_ideas WHERE actor_id = :actor',
+        { replacements: { actor: actor_id } }
+      );
+      const sortOrder = Number(next_sort);
+      const row = await InboxIdea.create({ actor_id, text, sortOrder });
       res.status(201).json(row);
     } catch (e) { next(e); }
   }
 
   async update(req, res, next) {
     try {
-      const userId = req.user.id;
+      const actor_id = req.actorId;
       const { id } = req.params;
-      const row = await InboxIdea.findOne({ where: { id, userId } });
-      if (!row) return res.status(404).json({ message: 'Идея не найдена' });
+      const ctx = await ensureInboxOwner(actor_id, id);
+      if (!ctx) return res.status(404).json({ message: 'Запись не найдена' });
 
-      const { text, sortOrder } = req.body || {};
-      if (text !== undefined) row.text = String(text);
-      if (sortOrder !== undefined) row.sortOrder = Number(sortOrder) || Date.now();
-      await row.save();
-      res.json(row);
+      const data = {};
+      if (req.body.text !== undefined) data.text = req.body.text;
+      if (req.body.sortOrder !== undefined) {
+        const n = Number(req.body.sortOrder);
+        if (Number.isFinite(n)) data.sortOrder = n;
+      }
+
+      const [count, rows] = await InboxIdea.update(data, { where: { id }, returning: true });
+      if (!count) return res.status(404).json({ message: 'Запись не найдена' });
+      res.json(rows[0]);
     } catch (e) { next(e); }
   }
 
   async remove(req, res, next) {
     try {
-      const userId = req.user.id;
+      const actor_id = req.actorId;
       const { id } = req.params;
-      const count = await InboxIdea.destroy({ where: { id, userId } });
-      if (!count) return res.status(404).json({ message: 'Идея не найдена' });
+      const ctx = await ensureInboxOwner(actor_id, id);
+      if (!ctx) return res.status(404).json({ message: 'Запись не найдена' });
+
+      await InboxIdea.destroy({ where: { id } });
       res.json({ ok: true });
     } catch (e) { next(e); }
   }
 
-  async moveToStory(req, res, next) {
+  async move(req, res, next) {
+    const t = await sequelize.transaction();
     try {
-      const userId = req.user.id;
+      const actor_id = req.actorId;
       const { id } = req.params;
       const { targetStoryId } = req.body || {};
-      if (!Number.isFinite(+targetStoryId)) {
-        return res.status(400).json({ message: 'Некорректный targetStoryId' });
-      }
 
-      const inbox = await InboxIdea.findOne({ where: { id, userId } });
-      if (!inbox) return res.status(404).json({ message: 'Идея не найдена' });
+      const ctx = await ensureInboxOwner(actor_id, id);
+      if (!ctx) { await t.rollback(); return res.status(404).json({ message: 'Запись не найдена' }); }
 
-      const story = await Story.findOne({ where: { id: targetStoryId, userId } });
-      if (!story) return res.status(404).json({ message: 'История не найдена' });
+      const targetId = Number(targetStoryId);
+      if (!Number.isFinite(targetId)) { await t.rollback(); return res.status(400).json({ message: 'Некорректный targetStoryId' }); }
 
-      const created = await Idea.create({
-        storyId: story.id,
-        text: inbox.text || '',
-        score: null,
-        introducedRound: 0,
-        sortOrder: Date.now(),
-      });
+      const story = await Story.findOne({ where: { id: targetId, actor_id }, transaction: t });
+      if (!story) { await t.rollback(); return res.status(404).json({ message: 'История не найдена' }); }
 
-      await inbox.destroy();
-      res.json({ ok: true, ideaId: created.id, storyId: story.id });
-    } catch (e) { next(e); }
+      const [[{ next_sort }]] = await sequelize.query(
+        'SELECT COALESCE(MAX("sort_order"), 0) + 1 AS next_sort FROM ideas WHERE "storyId" = :sid',
+        { replacements: { sid: story.id }, transaction: t }
+      );
+      const sortOrder = Number(next_sort);
+
+      await Idea.create({ storyId: story.id, text: ctx.row.text || '', sortOrder, score: null }, { transaction: t });
+      await InboxIdea.destroy({ where: { id }, transaction: t });
+
+      await t.commit();
+      return res.json({ ok: true });
+    } catch (e) {
+      await t.rollback();
+      return next(e);
+    }
   }
 
-  async createStoryAndMove(req, res, next) {
+  async createStory(req, res, next) {
+    const t = await sequelize.transaction();
     try {
-      const userId = req.user.id;
+      const actor_id = req.actorId;
       const { id } = req.params;
 
-      const inbox = await InboxIdea.findOne({ where: { id, userId } });
-      if (!inbox) return res.status(404).json({ message: 'Идея не найдена' });
+      const ctx = await ensureInboxOwner(actor_id, id);
+      if (!ctx) { await t.rollback(); return res.status(404).json({ message: 'Запись не найдена' }); }
 
-      const story = await Story.create({ userId, title: '', content: '', archive: false });
-      const idea = await Idea.create({
-        storyId: story.id,
-        text: inbox.text || '',
-        score: null,
-        introducedRound: 0,
-        sortOrder: Date.now(),
-      });
+      const story = await Story.create(
+        { actor_id, title: '', content: ctx.row.text || '', archive: false, slug: String(Date.now()) },
+        { transaction: t }
+      );
+      await InboxIdea.destroy({ where: { id }, transaction: t });
 
-      await inbox.destroy();
-      res.status(201).json({ ok: true, storyId: story.id, ideaId: idea.id });
-    } catch (e) { next(e); }
+      await t.commit();
+      return res.status(201).json(story);
+    } catch (e) {
+      await t.rollback();
+      return next(e);
+    }
   }
 }
 

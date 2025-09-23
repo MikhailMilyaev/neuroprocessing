@@ -1,14 +1,14 @@
-const { Story, Idea, Reeval, ReevalItem } = require('../models/models');
+const { Story, Idea, Reeval, ReevalItem } = require('../models/models'); // убрал IdentityLink
 const sequelize = require('../db');
 const { Op } = require('sequelize');
 const { slugify, draftSlug } = require('../utils/slug');
 
-async function ensureUniqueSlug(userId, rawSlug, excludeId = null) {
+async function ensureUniqueSlug(actorId, rawSlug, excludeId = null) {
   let base = rawSlug || draftSlug();
   let attempt = 0;
   while (true) {
     const candidate = attempt ? `${base}-${attempt}` : base;
-    const where = { userId, slug: candidate };
+    const where = { actor_id: actorId, slug: candidate };
     if (excludeId) where.id = { [Op.ne]: excludeId };
     const exists = await Story.findOne({ where });
     if (!exists) return candidate;
@@ -23,35 +23,48 @@ function pickSlugFromTitle(title) {
 class StoryController {
   async create(req, res, next) {
     try {
-      const userId = req.user.id;
+      const actor_id = req.actorId;
+      if (!actor_id) return;
+
       const { title = '', content = '' } = req.body || {};
       const raw = pickSlugFromTitle(title);
-      const unique = await ensureUniqueSlug(userId, raw);
-      const story = await Story.create({ userId, title: title || '', content, archive: false, slug: unique });
+      const unique = await ensureUniqueSlug(actor_id, raw);
+
+      const story = await Story.create({
+        actor_id,
+        title: title || '',
+        content,
+        archive: false,
+        slug: unique,
+      });
+
       return res.json(story);
     } catch (e) { next(e); }
   }
 
   async getBySlug(req, res, next) {
-  try {
-    const userId = req.user.id;
-    const { slug } = req.params;
-    const story = await Story.findOne({ where: { userId, slug } });
-    if (!story) return res.status(404).json({ message: 'История не найдена' });
-    return res.json(story);
-  } catch (e) { next(e); }
-}
+    try {
+      const actor_id = req.actorId;
+      if (!actor_id) return;
+
+      const { slug } = req.params;
+      const story = await Story.findOne({ where: { actor_id, slug } });
+      if (!story) return res.status(404).json({ message: 'История не найдена' });
+      return res.json(story);
+    } catch (e) { next(e); }
+  }
 
   async list(req, res, next) {
     try {
-      const userId = req.user.id;
+      const actor_id = req.actorId;
+      if (!actor_id) return;
 
       const archiveParam = req.query.archive;
       const limitParam   = Number.parseInt(req.query.limit, 10);
       const cursorParam  = req.query.cursor;
       const fieldsParam  = typeof req.query.fields === 'string' ? req.query.fields : null;
 
-      const where = { userId };
+      const where = { actor_id };
 
       if (archiveParam !== undefined) {
         const val = String(archiveParam).toLowerCase();
@@ -68,7 +81,7 @@ class StoryController {
       const limit = Math.min(Math.max(Number.isFinite(limitParam) ? limitParam : 50, 1), 200);
 
       const allowed = new Set([
-        'id', 'slug', 'title', 'content', 'archive', 'userId',
+        'id', 'slug', 'title', 'content', 'archive', 'actor_id',
         'updatedAt', 'createdAt', 'reevalDueAt',
         'stopContentY', 'baselineContent', 'reevalCount',
         'showArchiveSection', 'lastViewContentY',
@@ -77,9 +90,7 @@ class StoryController {
       let attributes;
       if (fieldsParam) {
         const reqFields = fieldsParam
-          .split(',')
-          .map(s => s.trim())
-          .filter(Boolean)
+          .split(',').map(s => s.trim()).filter(Boolean)
           .filter(f => allowed.has(f));
         if (reqFields.length) {
           if (!reqFields.includes('id')) reqFields.push('id');
@@ -106,9 +117,11 @@ class StoryController {
 
   async getOne(req, res, next) {
     try {
-      const userId = req.user.id;
+      const actor_id = req.actorId;
+      if (!actor_id) return;
+
       const { id } = req.params;
-      const story = await Story.findOne({ where: { id, userId } });
+      const story = await Story.findOne({ where: { id, actor_id } });
       if (!story) return res.status(404).json({ message: 'История не найдена' });
       return res.json(story);
     } catch (e) { next(e); }
@@ -116,52 +129,36 @@ class StoryController {
 
   async getFull(req, res, next) {
     try {
-      const userId = req.user.id;
-      const { id } = req.params;
+      const actor_id = req.actorId;
+      if (!actor_id) return;
 
-      const story = await Story.findOne({ where: { id, userId } });
+      const { id } = req.params;
+      const story = await Story.findOne({ where: { id, actor_id } });
       if (!story) return res.status(404).json({ message: 'История не найдена' });
 
       const ideas = await Idea.findAll({
         where: { storyId: id },
-        order: [
-          ['sortOrder', 'DESC'],
-          ['id', 'DESC'],
-        ],
+        order: [['sortOrder', 'DESC'], ['id', 'DESC']],
       });
 
-      return res.json({
-        story,
-        ideas,
-      });
+      return res.json({ story, ideas });
     } catch (e) { next(e); }
   }
 
   async update(req, res, next) {
     try {
-      const userId = req.user.id;
-      const { id } = req.params;
+      const actor_id = req.actorId;
+      if (!actor_id) return;
 
-      const prev = await Story.findOne({ where: { id, userId } });
+      const { id } = req.params;
+      const prev = await Story.findOne({ where: { id, actor_id } });
       if (!prev) return res.status(404).json({ message: 'История не найдена' });
 
       const {
-        title,
-        content,
-        archive,
-        baselineContent,
-
-        showArchiveSection,
-        showArchive,
-
-        remindersEnabled,
-        remindersFreqSec,
-        remindersPaused,
-        remindersIndex,
-
-        lastViewContentY,
-
-        reevalDueAt,
+        title, content, archive, baselineContent,
+        showArchiveSection, showArchive,
+        remindersEnabled, remindersFreqSec, remindersPaused, remindersIndex,
+        lastViewContentY, reevalDueAt,
       } = req.body;
 
       const updateData = {};
@@ -169,7 +166,7 @@ class StoryController {
       if (title !== undefined) {
         updateData.title = title;
         const base = pickSlugFromTitle(title);
-        updateData.slug = await ensureUniqueSlug(userId, base, prev.id);
+        updateData.slug = await ensureUniqueSlug(actor_id, base, prev.id);
       }
 
       if (content !== undefined) updateData.content = content;
@@ -208,9 +205,7 @@ class StoryController {
 
       if (lastViewContentY !== undefined) {
         const n = Number(lastViewContentY);
-        if (Number.isFinite(n)) {
-          updateData.lastViewContentY = Math.max(0, Math.round(n));
-        }
+        if (Number.isFinite(n)) updateData.lastViewContentY = Math.max(0, Math.round(n));
       }
 
       if (reevalDueAt !== undefined) {
@@ -222,21 +217,19 @@ class StoryController {
         }
       }
 
-      const [count, rows] = await Story.update(
-        updateData,
-        { where: { id, userId }, returning: true }
-      );
-
+      const [count, rows] = await Story.update(updateData, { where: { id, actor_id }, returning: true });
       if (!count) return res.status(404).json({ message: 'История не найдена' });
-      return res.json(rows[0]);  
+      return res.json(rows[0]);
     } catch (e) { next(e); }
   }
 
   async remove(req, res, next) {
     try {
-      const userId = req.user.id;
+      const actor_id = req.actorId;
+      if (!actor_id) return;
+
       const { id } = req.params;
-      const count = await Story.destroy({ where: { id, userId } });
+      const count = await Story.destroy({ where: { id, actor_id } });
       if (!count) return res.status(404).json({ message: 'История не найдена' });
       return res.json({ ok: true });
     } catch (e) { next(e); }
@@ -244,18 +237,18 @@ class StoryController {
 
   async setStop(req, res, next) {
     try {
-      const userId = req.user.id;
+      const actor_id = req.actorId;
+      if (!actor_id) return;
+
       const { id } = req.params;
       const { stopContentY } = req.body;
-
       const n = Number(stopContentY);
       if (!Number.isFinite(n) || n < 0) {
         return res.status(400).json({ message: 'stopContentY must be a non-negative number' });
       }
-
       const [count, rows] = await Story.update(
         { stopContentY: Math.round(n) },
-        { where: { id, userId }, returning: true }
+        { where: { id, actor_id }, returning: true }
       );
       if (!count) return res.status(404).json({ message: 'История не найдена' });
       return res.json(rows[0]);
@@ -264,11 +257,13 @@ class StoryController {
 
   async clearStop(req, res, next) {
     try {
-      const userId = req.user.id;
+      const actor_id = req.actorId;
+      if (!actor_id) return;
+
       const { id } = req.params;
       const [count, rows] = await Story.update(
         { stopContentY: null },
-        { where: { id, userId }, returning: true }
+        { where: { id, actor_id }, returning: true }
       );
       if (!count) return res.status(404).json({ message: 'История не найдена' });
       return res.json(rows[0]);
@@ -278,14 +273,12 @@ class StoryController {
   async reeval(req, res, next) {
     const t = await sequelize.transaction();
     try {
-      const userId = req.user.id;
-      const { id } = req.params;
+      const actor_id = req.actorId;
+      if (!actor_id) { await t.rollback(); return; }
 
-      const story = await Story.findOne({ where: { id, userId }, transaction: t });
-      if (!story) {
-        await t.rollback();
-        return res.status(404).json({ message: 'История не найдена' });
-      }
+      const { id } = req.params;
+      const story = await Story.findOne({ where: { id, actor_id }, transaction: t });
+      if (!story) { await t.rollback(); return res.status(404).json({ message: 'История не найдена' }); }
 
       const ideas = await Idea.findAll({
         where: { storyId: id },
@@ -295,61 +288,37 @@ class StoryController {
 
       const isArchived = (b) => b.score !== null && b.score === 0;
       const active = ideas.filter(b => !isArchived(b));
-      const allActiveScored =
-        active.length === 0 ||
-        active.every(b => Number.isFinite(b.score) && b.score >= 1 && b.score <= 10);
-
-      if (!allActiveScored) {
-        await t.rollback();
-        return res.status(400).json({ message: 'Оцените весь список идей' });
-      }
+      const allActiveScored = active.length === 0 || active.every(b => Number.isFinite(b.score) && b.score >= 1 && b.score <= 10);
+      if (!allActiveScored) { await t.rollback(); return res.status(400).json({ message: 'Оцените весь список идей' }); }
 
       const nextRound = (story.reevalCount || 0) + 1;
-
       const reeval = await Reeval.create({ storyId: story.id, round: nextRound }, { transaction: t });
 
-      const items = ideas.map(b => ({
-        reevalId: reeval.id,
-        ideaId: b.id,
-        score: b.score === null ? null : Number(b.score)
-      }));
-      if (items.length) {
-        await ReevalItem.bulkCreate(items, { transaction: t });
-      }
+      const items = ideas.map(b => ({ reevalId: reeval.id, ideaId: b.id, score: b.score === null ? null : Number(b.score) }));
+      if (items.length) await ReevalItem.bulkCreate(items, { transaction: t });
 
       if (active.length) {
         const ids = active.map(b => b.id);
         await Idea.update({ score: null }, { where: { id: ids }, transaction: t });
       }
 
-      await story.update(
-        { reevalCount: nextRound, baselineContent: story.content },
-        { transaction: t }
-      );
+      await story.update({ reevalCount: nextRound, baselineContent: story.content }, { transaction: t });
 
       await t.commit();
       return res.json({ round: nextRound });
-    } catch (e) {
-      await t.rollback();
-      next(e);
-    }
+    } catch (e) { await t.rollback(); next(e); }
   }
 
   async rereviewStart(req, res, next) {
     const t = await sequelize.transaction();
     try {
-      const userId = req.user.id;
-      const { id } = req.params;
+      const actor_id = req.actorId;
+      if (!actor_id) { await t.rollback(); return; }
 
-      const story = await Story.findOne({ where: { id, userId }, transaction: t });
-      if (!story) {
-        await t.rollback();
-        return res.status(404).json({ message: 'История не найдена' });
-      }
-      if (!story.archive) {
-        await t.rollback();
-        return res.status(400).json({ message: 'История не в архиве' });
-      }
+      const { id } = req.params;
+      const story = await Story.findOne({ where: { id, actor_id }, transaction: t });
+      if (!story) { await t.rollback(); return res.status(404).json({ message: 'История не найдена' }); }
+      if (!story.archive) { await t.rollback(); return res.status(400).json({ message: 'История не в архиве' }); }
 
       const ideas = await Idea.findAll({
         where: { storyId: id },
@@ -358,35 +327,21 @@ class StoryController {
       });
 
       const nextRound = (story.reevalCount || 0) + 1;
-
       const reeval = await Reeval.create({ storyId: story.id, round: nextRound }, { transaction: t });
+
       if (ideas.length) {
         await ReevalItem.bulkCreate(
-          ideas.map(b => ({
-            reevalId: reeval.id,
-            ideaId: b.id,
-            score: b.score == null ? null : Number(b.score),
-          })),
+          ideas.map(b => ({ reevalId: reeval.id, ideaId: b.id, score: b.score == null ? null : Number(b.score) })),
           { transaction: t }
         );
       }
 
-      await Idea.update(
-        { score: null },
-        { where: { storyId: id }, transaction: t }
-      );
-
-      await story.update(
-        { reevalCount: nextRound, baselineContent: story.content },
-        { transaction: t }
-      );
+      await Idea.update({ score: null }, { where: { storyId: id }, transaction: t });
+      await story.update({ reevalCount: nextRound, baselineContent: story.content }, { transaction: t });
 
       await t.commit();
       return res.json({ round: nextRound });
-    } catch (e) {
-      await t.rollback();
-      next(e);
-    }
+    } catch (e) { await t.rollback(); next(e); }
   }
 }
 

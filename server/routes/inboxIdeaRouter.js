@@ -1,15 +1,61 @@
 const { Router } = require('express');
-const router = new Router();
-const authMiddleware = require('../middleware/authMiddleware');
-const ctrl = require('../controllers/inboxIdeaController');
+const router = Router();
+
+const inbox = require('../controllers/inboxIdeaController');
+const auth = require('../middleware/authMiddleware');
+const { attachActorId } = require('../middleware/actor');
 const validate = require('../middleware/validate');
 const v = require('../middleware/validators');
 
-router.get('/', authMiddleware, ctrl.list);
-router.post('/', authMiddleware, [v.text], validate, ctrl.create);
-router.patch('/:id', authMiddleware, [v.idParam, v.text, v.sortOrder], validate, ctrl.update);
-router.delete('/:id', authMiddleware, [v.idParam], validate, ctrl.remove);
-router.post('/:id/move', authMiddleware, [v.idParam], validate, ctrl.moveToStory);
-router.post('/:id/create-story', authMiddleware, [v.idParam], validate, ctrl.createStoryAndMove);
+// Нормализуем: превращаем "функцию или массив функций" в массив функций
+const toFns = (x) => Array.isArray(x) ? x : (typeof x === 'function' ? [x] : []);
+
+router.get('/', auth, attachActorId, inbox.list);
+
+router.post(
+  '/',
+  auth,
+  attachActorId,
+  ...toFns(v.text),
+  validate,
+  inbox.create
+);
+
+router.patch(
+  '/:id',
+  auth,
+  attachActorId,
+  ...toFns(v.idParam),
+  validate,
+  inbox.update
+);
+
+router.delete(
+  '/:id',
+  auth,
+  attachActorId,
+  ...toFns(v.idParam),
+  validate,
+  inbox.remove
+);
+
+router.post(
+  '/:id/move',
+  auth,
+  attachActorId,
+  ...toFns(v.idParam),
+  ...toFns(v.storyIdBody),
+  validate,
+  inbox.move
+);
+
+router.post(
+  '/:id/create-story',
+  auth,
+  attachActorId,
+  ...toFns(v.idParam),
+  validate,
+  inbox.createStory
+);
 
 module.exports = router;
