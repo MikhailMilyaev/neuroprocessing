@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { Op } = require('sequelize');
 const { User, RefreshToken, IdentityLink } = require('../models/models');
-const { encryptLink, KEY_VERSION } = require('../utils/cryptoIdentity');
+const { encryptLink, KEY_VERSION, decryptLink } = require('../utils/cryptoIdentity');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../smtp');
 const { v4: uuidv4 } = require('uuid');
 
@@ -35,9 +35,9 @@ const REFRESH_COOKIE_OPTS = {
   maxAge: Number(process.env.REFRESH_TTL_DAYS || 30) * 24 * 3600 * 1000,
 };
 
-const signAccess = (u) =>
+const signAccess = (u, actorId = null) =>
   jwt.sign(
-    { id: u.id, name: u.name, email: u.email, role: u.role },
+    { id: u.id, name: u.name, email: u.email, role: u.role, actorId },
     process.env.SECRET_KEY,
     { algorithm: 'HS256', expiresIn: `${ACCESS_TTL_MIN}m` }
   );
@@ -176,7 +176,13 @@ class userController {
       );
     }
 
-    const access = signAccess(user);
+    let actorId = null;
+    const link = await IdentityLink.findOne({ where: { user_id: user.id }, attributes: ['cipher_blob'] });
+    if (link) {
+      try { actorId = decryptLink(link.cipher_blob)?.actor_id || null; } catch {}
+    }
+
+    const access = signAccess(user, actorId);
     const rawRefresh = genRefresh();
 
     await RefreshToken.create({
@@ -241,7 +247,12 @@ class userController {
       deviceId: row.deviceId || deviceId || null,
     });
 
-    const access = signAccess(user);
+    let actorId = null;
+    const link = await IdentityLink.findOne({ where: { user_id: user.id }, attributes: ['cipher_blob'] });
+    if (link) {
+      try { actorId = decryptLink(link.cipher_blob)?.actor_id || null; } catch {}
+    }
+    const access = signAccess(user, actorId);
 
     await enforceGlobalSessionLimit(user.id);
 
@@ -274,7 +285,10 @@ class userController {
   }
 
   async check(req, res) {
-    const token = signAccess({ id: req.user.id, name: req.user.name, email: req.user.email, role: req.user.role });
+    const token = signAccess(
+      { id: req.user.id, name: req.user.name, email: req.user.email, role: req.user.role },
+      req.user.actorId || null
+    );
     return res.json({ access: token });
   }
 

@@ -1,14 +1,15 @@
-import Lending from './pages/Lending/Lending';
+// import Lending from './pages/Lending/Lending';
 import Auth from './pages/Auth/Auth/Auth';
 import CheckEmailGate from './pages/Auth/CheckEmail/CheckEmailGate';
 import ActivatedGate from './pages/Auth/Activated/ActivatedGate';
 import Stories from './pages/Stories/Stories';
 import Story from './pages/Story/Story';
 import Ideas from './pages/Ideas/Ideas';
+import { Navigate } from 'react-router-dom';
 
 import Education from './pages/Education/Education';
 import Basics from './pages/Education/articles/Basics/Basics';
-import Practice from './pages/Education/Practice';
+// import Practice from './pages/Education/Practice';
 
 import NotFound from './pages/NotFound/NotFound';
 
@@ -32,11 +33,12 @@ export const authRoutes = [
 
   { path: EDUCATION_ROUTE, element: <Education /> },
   { path: EDUCATION_BASICS_PATH, element: <Basics /> },
-  { path: PRACTICE_BASE + '/:slug', element: <Practice /> }
+  // { path: PRACTICE_BASE + '/:slug', element: <Practice /> },
+  { path: PRACTICE_BASE + '/:slug', element: <Navigate to={EDUCATION_ROUTE} replace /> }
 ];
 
 export const publicRoutes = [
-  { path: LENDING_ROUTE, element: <Lending /> },
+  { path: LENDING_ROUTE, element: <Navigate to={LOGIN_ROUTE} replace /> },
   { path: LOGIN_ROUTE, element: <Auth /> },
   { path: REGISTRATION_ROUTE, element: <Auth /> },
 

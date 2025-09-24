@@ -51,7 +51,7 @@ export default function PracticePanel({ practices = [], maxHeight = 420 }) {
               className={classes.openBtn}
               onClick={() => openPractice(p)}
             >
-              Открыть
+              Совсем скоро
             </button>
           </li>
         ))}

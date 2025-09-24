@@ -6,6 +6,11 @@ async function attachActorId(req, res, next) {
     const uid = req.user?.id;
     if (!uid) return res.status(401).json({ message: 'Не авторизован' });
 
+    if (req.user.actorId) {
+      req.actorId = req.user.actorId;
+      return next();
+    }
+
     const link = await IdentityLink.findOne({ where: { user_id: uid } });
     if (!link) return res.status(400).json({ message: 'Нет связки user → actor' });
 
@@ -16,11 +21,9 @@ async function attachActorId(req, res, next) {
     } catch {}
     if (!actor_id) return res.status(400).json({ message: 'Некорректный cipher_blob' });
 
-    req.actorId = actor_id;        
-    return next();
-  } catch (e) {
-    return next(e);
-  }
+    req.actorId = actor_id;
+    next();
+  } catch (e) { next(e); }
 }
 
 module.exports = { attachActorId };

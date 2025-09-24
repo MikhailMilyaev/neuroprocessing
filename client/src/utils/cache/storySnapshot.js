@@ -29,7 +29,7 @@ export function writeSnapshot(id, snap) {
       baselineContent:    snap?.baselineContent    ?? prev.baselineContent    ?? '',
       reevalCount:        snap?.reevalCount        ?? prev.reevalCount        ?? 0,
       showArchiveSection: snap?.showArchiveSection ?? prev.showArchiveSection ?? true,
-      remindersEnabled:   snap?.remindersEnabled   ?? prev.remindersEnabled   ?? true,
+      remindersEnabled:   snap?.remindersEnabled   ?? prev.remindersEnabled   ?? false,
       remindersFreqSec:   snap?.remindersFreqSec   ?? prev.remindersFreqSec   ?? 30,
       remindersIndex:     snap?.remindersIndex     ?? prev.remindersIndex     ?? 0,
       remindersPaused:    snap?.remindersPaused    ?? prev.remindersPaused    ?? false,

@@ -13,6 +13,7 @@ export function readStoriesIndex() {
     if (!Array.isArray(arr)) return [];
     return arr.map(x => ({
       id: x.id,
+      slug: typeof x.slug === 'string' ? x.slug : '',
       title: typeof x.title === 'string' ? x.title : '',
       archive: !!x.archive,
       updatedAt: x.updatedAt ?? null,
@@ -27,6 +28,7 @@ export function writeStoriesIndex(list) {
   try {
     const payload = (Array.isArray(list) ? list : []).map(s => ({
       id: s.id,
+      slug: s.slug ?? '',
       title: s.title ?? '',
       archive: !!s.archive,
       updatedAt: s.updatedAt ?? null,
@@ -49,6 +51,7 @@ export function patchStoriesIndex(id, patch = {}) {
         return {
           ...it,
           ...patch,
+          slug: patch.slug ?? it.slug ?? '',
           updatedAt: patch.updatedAt ?? it.updatedAt ?? new Date().toISOString(),
           reevalDueAt: (patch.reevalDueAt ?? patch.reeval_due_at ?? it.reevalDueAt ?? it.reeval_due_at ?? null),
         };
@@ -59,6 +62,7 @@ export function patchStoriesIndex(id, patch = {}) {
     if (!found) {
       updated.unshift({
         id,
+        slug: patch.slug ?? '',
         title: patch.title ?? '',
         archive: !!patch.archive,
         updatedAt: patch.updatedAt ?? new Date().toISOString(),

@@ -36,6 +36,10 @@ class StoryController {
         content,
         archive: false,
         slug: unique,
+        remindersEnabled: false,
+        remindersFreqSec: 30,
+        remindersPaused: false,
+        remindersIndex: 0,
       });
 
       return res.json(story);

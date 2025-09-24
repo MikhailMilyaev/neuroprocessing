@@ -28,13 +28,16 @@ export default function Ideas() {
   const [stories, setStories] = useState({ active: [], archive: [] });
   const [loading, setLoading] = useState(true);
 
-  const [menuFor, setMenuFor] = useState(null);        // id идеи или 'bulk'
+  const [menuFor, setMenuFor] = useState(null);
   const [searchStory, setSearchStory] = useState('');
 
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
 
   const inputRefs = useRef(new Map());
+
+  const creatingRef = useRef(new Map());
+  const seqRef = useRef(0);
 
   useEffect(() => {
     let cancel = false;
@@ -78,7 +81,7 @@ export default function Ideas() {
   };
 
   const addQuick = () => {
-    const uiKey = `t${Date.now()}`;
+    const uiKey = `t${Date.now()}_${seqRef.current++}`;
     const sortOrder = Date.now();
     setItems(prev => [{ id: -sortOrder, uiKey, text: '', sortOrder }, ...prev]);
     focusByUiKey(uiKey);
@@ -86,15 +89,25 @@ export default function Ideas() {
 
   const handleChange = async (id, uiKey, text) => {
     const limited = String(text || '').slice(0, CHAR_LIMIT);
-
     setItems(prev => prev.map(i => i.uiKey === uiKey ? { ...i, text: limited } : i));
 
     if (id < 0) {
-      const created = await createInboxIdea({ text: limited });
-      setItems(prev =>
-        prev.map(i => i.uiKey === uiKey ? { ...created, text: limited, uiKey } : i)
-      );
-      focusByUiKey(uiKey);
+      if (creatingRef.current.get(uiKey)) return;
+      creatingRef.current.set(uiKey, true);
+      try {
+        const created = await createInboxIdea({ text: limited });
+        setItems(prev =>
+          prev.map(i => i.uiKey === uiKey ? { ...created, uiKey, text: i.text } : i)
+        );
+        const latest = (() => {
+          const it = inputRefs.current.get(uiKey);
+          return (it?.value ?? limited).slice(0, CHAR_LIMIT);
+        })();
+        await updateInboxIdea(created.id, { text: latest });
+        focusByUiKey(uiKey);
+      } finally {
+        creatingRef.current.delete(uiKey);
+      }
     } else {
       await updateInboxIdea(id, { text: limited });
     }
@@ -108,6 +121,7 @@ export default function Ideas() {
     if (id > 0) {
       try { await deleteInboxIdea(id); } catch {}
     }
+    creatingRef.current.delete(uiKey);
     setItems(prev => prev.filter(i => i.uiKey !== uiKey));
   };
 
