@@ -4,13 +4,13 @@ import { clearAllStoryCaches } from '../utils/cache/clearAllStoryCaches';
 import { getDeviceId } from './deviceId';
 
 export const registration = async (name, email, password) => {
-  const { data } = await $host.post('user/registration', { name, email, password, role: 'USER' });
+  const { data } = await $host.post('/user/registration', { name, email, password, role: 'USER' });
   return data;
 };
 
 export const login = async (email, password, userStore) => {
   const deviceId = getDeviceId();
-  const { data } = await $host.post('user/login', { email, password, deviceId });
+  const { data } = await $host.post('/user/login', { email, password, deviceId });
   localStorage.setItem(ACCESS_KEY, data.access);
   scheduleAutoRefresh();
   const decoded = jwtDecode(data.access);
@@ -23,7 +23,7 @@ export const login = async (email, password, userStore) => {
 };
 
 export const check = async (userStore) => {
-  const { data } = await $authHost.get('user/check');
+  const { data } = await $authHost.get('/user/check');
   localStorage.setItem(ACCESS_KEY, data.access);
   scheduleAutoRefresh();
   const decoded = jwtDecode(data.access);
@@ -38,7 +38,7 @@ export const check = async (userStore) => {
 export const refreshTokens = async () => {
   try {
     const deviceId = getDeviceId();
-    const { data } = await $host.post('user/token/refresh', { deviceId });
+    const { data } = await $host.post('/user/token/refresh', { deviceId });
     localStorage.setItem(ACCESS_KEY, data.access);
     scheduleAutoRefresh();
     return data;
@@ -49,25 +49,25 @@ export const refreshTokens = async () => {
 };
 
 export const logout = async () => {
-  try { await $host.post('user/logout'); } catch {}
+  try { await $host.post('/user/logout'); } catch {}
   localStorage.removeItem(ACCESS_KEY);
   clearAllStoryCaches();
   return { ok: true };
 };
 
 export const logoutAll = async () => {
-  try { await $authHost.post('user/logout-all'); } catch {}
+  try { await $authHost.post('/user/logout-all'); } catch {}
   localStorage.removeItem(ACCESS_KEY);
   clearAllStoryCaches();
   return { ok: true };
 };
 
-export const resendVerification    = (email) => $host.post('user/resend-verification', { email });
-export const getVerifyStatus       = (email) => $host.get('user/verify-status', { params: { email } });
-export const activationLandingGate = (lt)    => $host.get('user/activation-landing', { params: { lt } });
+export const resendVerification    = (email) => $host.post('/user/resend-verification', { email });
+export const getVerifyStatus       = (email) => $host.get('/user/verify-status', { params: { email } });
+export const activationLandingGate = (lt)    => $host.get('/user/activation-landing', { params: { lt } });
 
-export const recoveryRequest       = (email) => $host.post('user/password/reset', { email });
-export const resetSentGate         = (rst)   => $host.get('user/password/reset/sent-gate', { params: { rst } });
-export const resetPasswordGate     = (pr)    => $host.get('user/password/reset/gate', { params: { pr } });
-export const resetPasswordConfirm  = (p)     => $host.post('user/password/reset/confirm', p);
-export const resetSuccessGate      = (ps)    => $host.get('user/password/reset/success-gate', { params: { ps } });
+export const recoveryRequest       = (email) => $host.post('/user/password/reset', { email });
+export const resetSentGate         = (rst)   => $host.get('/user/password/reset/sent-gate', { params: { rst } });
+export const resetPasswordGate     = (pr)    => $host.get('/user/password/reset/gate', { params: { pr } });
+export const resetPasswordConfirm  = (p)     => $host.post('/user/password/reset/confirm', p);
+export const resetSuccessGate      = (ps)    => $host.get('/user/password/reset/success-gate', { params: { ps } });

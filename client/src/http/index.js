@@ -3,7 +3,8 @@ import { jwtDecode } from 'jwt-decode';
 import { getDeviceId } from './deviceId';
 
 export const ACCESS_KEY = 'access';
-const baseURL = import.meta.env.VITE_API_URL || '/api';
+const baseEnv = import.meta.env.VITE_API_URL || '/api';
+const baseURL = baseEnv.endsWith('/') ? baseEnv : baseEnv + '/';
 
 const common = { baseURL, withCredentials: true };
 
@@ -53,7 +54,7 @@ export function scheduleAutoRefresh() {
 
 async function runRefresh() {
   const deviceId = getDeviceId();
-  const { data } = await $host.post('user/token/refresh', { deviceId });
+  const { data } = await $host.post('/user/token/refresh', { deviceId });
   localStorage.setItem(ACCESS_KEY, data.access);
   scheduleAutoRefresh();
   return data.access;
