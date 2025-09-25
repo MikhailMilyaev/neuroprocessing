@@ -16,6 +16,7 @@ coverage/
 .cache/
 .tmp/
 
+db/data/
 .env
 .env.*
 client/.env

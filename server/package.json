@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "db:sync": "node scripts/sync.js",
     "dev": "nodemon app.js",
     "start": "node app.js",
     "migrate": "sequelize-cli db:migrate --config config/config.js --migrations-path migrations",
