@@ -1,3 +1,4 @@
+require('dns').setDefaultResultOrder('ipv6first');
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
@@ -30,13 +31,13 @@ app.use((req, res, next) => {
 });
 
 app.use(helmet({
-  contentSecurityPolicy: false,  
+  contentSecurityPolicy: false,
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 }));
 
 app.use(cors({
   origin(origin, cb) {
-    if (!origin) return cb(null, true);  
+    if (!origin) return cb(null, true);
     if (!clientOrigins.length) return cb(null, true);
     if (clientOrigins.includes(origin)) return cb(null, true);
     return cb(new Error('Origin not allowed'), false);
@@ -69,7 +70,7 @@ const server = http.createServer(app);
     await sequelize.authenticate();
 
     setInterval(cleanupRefreshTokens, 24 * 60 * 60 * 1000);
-    cleanupRefreshTokens();  
+    cleanupRefreshTokens();
 
     server.listen(PORT, async () => {
       const ok = await verifyTransporter();
