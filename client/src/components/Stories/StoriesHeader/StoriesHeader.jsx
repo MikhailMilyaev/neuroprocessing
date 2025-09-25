@@ -12,7 +12,7 @@ import SearchStory from "./SearchStory/SearchStory";
 import SettingsModal from "./SettingsModal/SettingsModal";
 
 import classes from "./StoriesHeader.module.css";
-import { Context } from "../../../index";
+import { Context } from "../../../context";
 
 export default function StoriesHeader({
   showArchive = false,

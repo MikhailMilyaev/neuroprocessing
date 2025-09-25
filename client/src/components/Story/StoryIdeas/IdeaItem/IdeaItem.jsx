@@ -35,6 +35,8 @@ export default function IdeaItem({
   const practiceSlotRef = useRef(null);
   const [fieldFocused, setFieldFocused] = useState(false);
 
+  const bannedKeys = new Set(['+', '-', 'e', 'E', ',', '.']);
+
   const hasPractices = Array.isArray(practices) && practices.length > 0;
   const canShowPracticesUI = hasPractices && !isArchived;
 
@@ -129,9 +131,7 @@ export default function IdeaItem({
 
     if (document.activeElement !== scoreInputRef.current) return;
 
-    let delay = 120;
-    if (str === '1') delay = 300;
-    if (str === '10') delay = 0;
+    let delay = 100;
 
     finalizeTimerRef.current = setTimeout(() => {
       if (document.activeElement !== scoreInputRef.current) return;
@@ -211,15 +211,28 @@ const handleTextKeyDown = (e) => {
           name={`beliefScore-${id}`}
           type="number"
           inputMode="numeric"
+          step="1"
+          pattern="\d*"
           min={0}
           max={10}
           placeholder=""
           value={score}
           onChange={(e) => {
-            onScoreChange(id, e.target.value);
-            scheduleFinalize(e.target.value, { direction: 1 });
+            const raw = e.target.value || '';
+            const clean = raw.replace(/[^\d]/g, '');
+            onScoreChange(id, clean);
+            if (clean === '0') {
+              clearFinalizeTimer();
+              onScoreFinalized?.(id, '0', { direction: 1 });
+            } else {
+              scheduleFinalize(clean, { direction: 1 });
+            }
           }}
           onKeyDown={(e) => {
+            if (bannedKeys.has(e.key) || e.key === ' ') {
+              e.preventDefault();
+              return;
+            }
             if (e.key === 'Enter') {
               e.preventDefault();
               clearFinalizeTimer();
@@ -236,6 +249,18 @@ const handleTextKeyDown = (e) => {
               clearFinalizeTimer();
             }
           }}
+          onPaste={(e) => {
+            const t = (e.clipboardData.getData('text') || '').replace(/[^\d]/g, '');
+            if (t !== e.clipboardData.getData('text')) {
+              e.preventDefault();
+              const input = e.currentTarget;
+              const start = input.selectionStart || 0;
+              const end = input.selectionEnd || 0;
+              const next = (input.value || '').slice(0, start) + t + (input.value || '').slice(end);
+              onScoreChange(id, next);
+            }
+          }}
+          onWheel={(e) => e.currentTarget.blur()}
           onFocus={handleFieldFocus}
           onBlur={(e) => {
             handleFieldBlur();

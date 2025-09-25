@@ -3,7 +3,7 @@ import { jwtDecode } from 'jwt-decode';
 import { getDeviceId } from './deviceId';
 
 export const ACCESS_KEY = 'access';
-const baseURL = process.env.REACT_APP_API_URL;
+const baseURL = import.meta.env.VITE_API_URL || '/api';
 
 const common = { baseURL, withCredentials: true };
 
@@ -42,21 +42,20 @@ export function scheduleAutoRefresh() {
   if (!access) return;
   try {
     const { exp } = jwtDecode(access);
-    const ms = exp * 1000 - Date.now() - 60_000;  
+    const ms = exp * 1000 - Date.now() - 60000;
     if (ms > 0) {
       refreshTimerId = setTimeout(() => {
         runRefresh().catch(() => softRedirectToLoginOnce());
       }, ms);
     }
-  } catch {
-  }
+  } catch {}
 }
 
 async function runRefresh() {
   const deviceId = getDeviceId();
-  const { data } = await $host.post('/api/user/token/refresh', { deviceId });
+  const { data } = await $host.post('user/token/refresh', { deviceId });
   localStorage.setItem(ACCESS_KEY, data.access);
-  scheduleAutoRefresh();  
+  scheduleAutoRefresh();
   return data.access;
 }
 

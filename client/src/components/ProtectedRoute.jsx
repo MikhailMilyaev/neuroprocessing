@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useContext } from "react";
-import { Context } from "../index";
+import { Context } from "../context";
 import { observer } from "mobx-react-lite";
 
 const ProtectedRoute = observer(({ children }) => {

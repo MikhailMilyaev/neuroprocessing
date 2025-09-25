@@ -96,7 +96,7 @@ export default function IdeaList({
     const nowArch = hasNow ? archivedFlag(v) : wasArch;
 
     if (firstMountRef.current || noAnim || !hadPrev) return nowArch;
-    if (!hasNow) return wasArch;
+    if (!hasNow) return false;
 
     if (nowArch !== wasArch) {
       return nowArch

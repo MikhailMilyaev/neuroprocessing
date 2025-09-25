@@ -61,6 +61,7 @@ const mapIdeasToBeliefs = (ideas = []) =>
     text: i.text || '',
     score: i.score == null ? '' : String(i.score),
     introducedRound: i.introducedRound ?? 0,
+    sortOrder: Number.isFinite(i?.sortOrder) ? i.sortOrder : 0,
     ...(typeof i.srcStart === 'number' && typeof i.srcEnd === 'number' ? { srcStart: i.srcStart, srcEnd: i.srcEnd } : {}),
   }));
 
@@ -241,6 +242,16 @@ export default function Story() {
 
         const beliefs = mapIdeasToBeliefs(ideasRaw);
 
+const prevOrder = (history[history.length - 1]?.beliefs || []).map(b => b.id);
+const serverOrder = ideasRaw.map(i => i.id);
+const sameOrder =
+  prevOrder.length === serverOrder.length &&
+  prevOrder.every((v, i) => v === serverOrder[i]);
+
+setHistory([{ title: story?.title || '', content: story?.content || '', beliefs }]);
+setPointer(0);
+
+
         setHistory([{ title: story?.title || '', content: story?.content || '', beliefs }]);
         setPointer(0);
 
@@ -302,10 +313,10 @@ export default function Story() {
         setShowOverlay(false);
         setIdeasLoading(false);
 
-        if (doFreeze || startedFromArchive || !localCanTrustCache) {
-          setFreezeAnimKey(k => k + 1);
-          hydratedFromCacheRef.current = false;
-        }
+        if ((doFreeze || startedFromArchive || !localCanTrustCache) && !sameOrder) {
+  setFreezeAnimKey(k => k + 1);
+}
+hydratedFromCacheRef.current = false;
       } catch {
         setShowOverlay(false);
         setIdeasLoading(false);
@@ -423,7 +434,7 @@ export default function Story() {
           text: b.text ?? '',
           score: b.score === '' ? null : Number(b.score),
           introducedRound: b.introducedRound ?? 0,
-          sortOrder: 0,
+          sortOrder: Number.isFinite(b.sortOrder) ? b.sortOrder : 0,
           ...(typeof b.srcStart === 'number' && typeof b.srcEnd === 'number'
             ? { srcStart: b.srcStart, srcEnd: b.srcEnd }
             : {}),
@@ -715,12 +726,20 @@ export default function Story() {
       return;
     }
 
-    const wasArchived = bEntry.score !== '' && bEntry.score != null && Number(bEntry.score) === 0;
+    const wasArchived =
+      bEntry.score !== '' && bEntry.score != null && Number(bEntry.score) === 0;
 
     if (raw === '') {
       const nb = current.beliefs.map(b => b.id === bid ? { ...b, score: '' } : b);
-      apply({ ...current, beliefs: nb });
-      if (wasArchived) editingFromArchiveRef.current.add(bid);
+
+      if (wasArchived) {
+        if (bid > 0) scheduleIdeaUpdate(bid, { score: null });
+        const reordered = reorderImmediately(nb, bid, false);
+        apply({ ...current, beliefs: reordered });
+      } else {
+        apply({ ...current, beliefs: nb });
+      }
+
       patchStoriesIndex(Number(id), { updatedAt: new Date().toISOString() });
       return;
     }
@@ -736,19 +755,15 @@ export default function Story() {
       b.id === bid ? { ...b, score: String(n) } : b
     );
 
-    if (wasArchived && !nowArchived) {
-      const instant = reorderImmediately(nextBeliefs, bid, false);
-      apply({ ...current, beliefs: instant });
-    } else {
-      apply({ ...current, beliefs: nextBeliefs });
-    }
-
     if (bid > 0) {
       scheduleIdeaUpdate(bid, { score: n });
     }
 
-    if (!wasArchived && nowArchived) {
-      scheduleMoveToGroupTop(bid, true);
+    if (wasArchived !== nowArchived) {
+      const reordered = reorderImmediately(nextBeliefs, bid, nowArchived);
+      apply({ ...current, beliefs: reordered });
+    } else {
+      apply({ ...current, beliefs: nextBeliefs });
     }
 
     editingFromArchiveRef.current.delete(bid);
@@ -853,7 +868,7 @@ export default function Story() {
     }
   };
 
-  const handleSortToggle = () => {
+  const handleSortToggle = async () => {
     const full = current.beliefs || [];
     if (full.length === 0) { showError('Список идей пуст'); return; }
     if (!areAllActiveScored(full)) { showError('Оцените весь список идей'); return; }
@@ -868,9 +883,15 @@ export default function Story() {
         .map((b, idx) => ({ ...b, _idx: idx }))
         .sort((a, b) => Number(b.score) - Number(a.score) || a._idx - b._idx)
         .map(({ _idx, ...b }) => b);
-      apply({ ...current, beliefs: [...activeSorted, ...archived] });
+      const nextBeliefs = [...activeSorted, ...archived];
+      apply({ ...current, beliefs: nextBeliefs });
       setSortedView(true);
       setMenuOpen(false);
+
+      try {
+        const order = nextBeliefs.map(b => b.id);
+        await reorderIdeas(id, order);
+      } catch {}
     } else {
       const order = unsortedOrder || [];
       const indexOf = new Map(order.map((id, i) => [id, i]));
@@ -881,6 +902,10 @@ export default function Story() {
       setSortedView(false);
       setUnsortedOrder(null);
       setMenuOpen(false);
+
+      try {
+        await reorderIdeas(id, restored.map(b => b.id));
+      } catch {}
     }
   };
 
@@ -912,7 +937,7 @@ export default function Story() {
           text: b.text ?? '',
           score: b.score === '' ? null : Number(b.score),
           introducedRound: b.introducedRound ?? 0,
-          sortOrder: 0,
+          sortOrder: Number.isFinite(b.sortOrder) ? b.sortOrder : 0,
           ...(typeof b.srcStart === 'number' && typeof b.srcEnd === 'number'
             ? { srcStart: b.srcStart, srcEnd: b.srcEnd }
             : {}),

@@ -1,7 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import { authRoutes, publicRoutes } from './routes';
 import { useContext, useEffect, useState } from 'react';
-import { Context } from './index';
+import { Context } from './context';
 import { check, refreshTokens } from './http/userApi';
 import { observer } from 'mobx-react-lite';
 import ProtectedRoute from './components/ProtectedRoute';
