@@ -10,6 +10,8 @@ const SMTP_PASS = process.env.SMTP_PASS || process.env.YANDEX_PASS;
 const MAIL_FROM_NAME = process.env.MAIL_FROM_NAME || 'Neuroprocessing';
 const MAIL_REPLY_TO = process.env.MAIL_REPLY_TO || SMTP_USER;
 
+const SMTP_SNI = process.env.SMTP_SNI || 'smtp.yandex.ru';
+
 const transporter = nodemailer.createTransport({
   host: SMTP_HOST,
   port: SMTP_PORT,
@@ -21,10 +23,14 @@ const transporter = nodemailer.createTransport({
   connectionTimeout: 20000,
   greetingTimeout: 10000,
   socketTimeout: 30000,
-  logger: true,
-  debug: true,
-  tls: { servername: SMTP_HOST, rejectUnauthorized: true }
+  logger: process.env.NODE_ENV !== 'production',
+  debug: process.env.NODE_ENV !== 'production',
+  tls: {
+    servername: SMTP_SNI,      
+    rejectUnauthorized: true,
+  },
 });
+
 
 function escapeHtml(s = '') {
   return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
