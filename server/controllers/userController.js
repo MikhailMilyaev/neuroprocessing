@@ -456,7 +456,13 @@ class userController {
     user.resetResendCount += 1;
     await user.save();
 
-    const resetLink = `${process.env.API_URL}/api/user/password-reset?token=${raw}`;
+    const proto = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.get('host');
+    const base = new URL(process.env.API_URL || `${proto}://${host}`);
+    base.pathname = '/api/user/password-reset';
+    base.searchParams.set('token', raw);
+    const resetLink = base.toString();
+
     await sendPasswordResetEmail({ to: user.email, name: user.name, resetLink });
 
     const rst = jwt.sign(
