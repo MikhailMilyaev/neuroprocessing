@@ -58,6 +58,7 @@ app.use(globalLimiter);
 
 app.get('/healthz', (req, res) => res.status(200).json({ ok: true }));
 
+app.set('trust proxy', true);
 app.use(cookieParser());
 app.use('/api', router);
 

@@ -21,8 +21,6 @@ const transporter = nodemailer.createTransport({
   connectionTimeout: 20000,
   greetingTimeout: 10000,
   socketTimeout: 30000,
-  family: 6,
-  name: 'neuroprocessing.ru',
   logger: true,
   debug: true,
   tls: { servername: SMTP_HOST, rejectUnauthorized: true }
