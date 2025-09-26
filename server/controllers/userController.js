@@ -376,10 +376,23 @@ class userController {
 
   async verifyStatus(req, res) {
     const { email } = req.query;
-    if (!email) return res.status(400).json({ ok: false });
+    if (!email) return res.status(200).json({ ok: false });
 
     const user = await User.findOne({ where: { email } });
-    if (!user || user.isVerified) return res.status(404).json({ ok: false });
+
+    if (!user) {
+      return res.status(200).json({
+        ok: true, exists: false, verified: false,
+        canResend: false, cooldownLeft: 0, support: false, supportLeftSec: 0
+      });
+    }
+
+    if (user.isVerified) {
+      return res.status(200).json({
+        ok: true, exists: true, verified: true,
+        canResend: false, cooldownLeft: 0, support: false, supportLeftSec: 0
+      });
+    }
 
     const now = new Date();
     if (!user.verificationResendResetAt || now > user.verificationResendResetAt) {
@@ -388,7 +401,10 @@ class userController {
       await user.save();
     }
     const { cooldownLeft, canResend, support, supportLeftSec } = computeVerifyState(user, now);
-    return res.json({ ok: true, canResend, cooldownLeft, support, supportLeftSec });
+    return res.json({
+      ok: true, exists: true, verified: false,
+      canResend, cooldownLeft, support, supportLeftSec
+    });
   }
 
   async activationLanding(req, res) {
