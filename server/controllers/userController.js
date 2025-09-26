@@ -97,64 +97,68 @@ async function enforceGlobalSessionLimit(userId) {
 
 class userController {
   async registration(req, res, next) {
-  try {
-    const rawName = req.body?.name ?? '';
-    const rawEmail = req.body?.email ?? '';
-    const password = req.body?.password ?? '';
-
-    const name = String(rawName).trim();
-    const email = String(rawEmail).trim().toLowerCase();
-
-    if (!name || !email || !password) {
-      return next(ApiError.badRequest('Заполните все поля.'));
-    }
-
-    const exist = await User.findOne({ where: { email } });
-    if (exist) {
-      return res.status(200).json({ message: 'Если аккаунт существует, письмо отправлено.' });
-    }
-
-    const hashPassword = await bcrypt.hash(password, 12);
-    const rawToken = crypto.randomBytes(32).toString('hex');
-    const tokenHash = hashToken(rawToken);
-    const now = new Date();
-    const expires = new Date(now.getTime() + VERIFY_TOKEN_TTL_HOURS * 3600 * 1000);
-
-    const user = await User.create({
-      name,
-      email,
-      role: 'USER',
-      password: hashPassword,
-      isVerified: false,
-      verificationToken: tokenHash,
-      verificationTokenExpires: expires,
-      verificationLastSentAt: now,
-      verificationResendCount: 1,
-      verificationResendResetAt: new Date(now.getTime() + VERIFY_DAILY_WINDOW_HOURS * 3600 * 1000),
-    });
-
-    const actorId = uuidv4();
-    const cipher_blob = encryptLink({ actor_id: actorId });
-    await IdentityLink.create({
-      user_id: user.id,
-      cipher_blob,
-      key_version: KEY_VERSION,
-    });
-
-    const base = process.env.API_URL || `${(req.headers['x-forwarded-proto'] || req.protocol)}://${req.get('host')}`;
-    const verifyLink = `${base}/api/user/verify?token=${rawToken}`;
-
     try {
-      await sendVerificationEmail({ to: user.email, name: user.name, verifyLink });
-    } catch (e) {
-      return res.status(201).json({ message: 'Если аккаунт существует, письмо отправлено.' });
-    }
+      const rawName = req.body?.name ?? '';
+      const rawEmail = req.body?.email ?? '';
+      const password = req.body?.password ?? '';
 
-    return res.status(201).json({ message: 'Если аккаунт существует, письмо отправлено.' });
-  } catch (err) {
-    return next(err);
+      const name = String(rawName).trim();
+      const email = String(rawEmail).trim().toLowerCase();
+
+      if (!name || !email || !password) {
+        return next(ApiError.badRequest('Заполните все поля.'));
+      }
+
+      const exist = await User.findOne({ where: { email } });
+      if (exist) {
+        return res.status(200).json({ message: 'Если аккаунт существует, письмо отправлено.' });
+      }
+
+      const hashPassword = await bcrypt.hash(password, 12);
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      const tokenHash = hashToken(rawToken);
+      const now = new Date();
+      const expires = new Date(now.getTime() + VERIFY_TOKEN_TTL_HOURS * 3600 * 1000);
+
+      const user = await User.create({
+        name,
+        email,
+        role: 'USER',
+        password: hashPassword,
+        isVerified: false,
+        verificationToken: tokenHash,
+        verificationTokenExpires: expires,
+        verificationLastSentAt: now,
+        verificationResendCount: 1,
+        verificationResendResetAt: new Date(now.getTime() + VERIFY_DAILY_WINDOW_HOURS * 3600 * 1000),
+      });
+
+      const actorId = uuidv4();
+      const cipher_blob = encryptLink({ actor_id: actorId });
+      await IdentityLink.create({
+        user_id: user.id,
+        cipher_blob,
+        key_version: KEY_VERSION,
+      });
+
+      const proto = req.headers['x-forwarded-proto'] || req.protocol;
+      const host = req.get('host');
+      const base = new URL(process.env.API_URL || `${proto}://${host}`);
+      base.pathname = '/api/user/verify';
+      base.searchParams.set('token', rawToken);
+      const verifyLink = base.toString();
+
+      try {
+        await sendVerificationEmail({ to: user.email, name: user.name, verifyLink });
+      } catch (e) {
+        return res.status(201).json({ message: 'Если аккаунт существует, письмо отправлено.' });
+      }
+
+      return res.status(201).json({ message: 'Если аккаунт существует, письмо отправлено.' });
+    } catch (err) {
+      return next(err);
+    }
   }
-}
 
   async login(req, res, next) {
     const { email, password, deviceId } = req.body;
@@ -358,7 +362,13 @@ class userController {
     user.verificationResendCount += 1;
     await user.save();
 
-    const verifyLink = `${process.env.API_URL}/api/user/verify?token=${rawToken}`;
+    const proto = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.get('host');
+    const base = new URL(process.env.API_URL || `${proto}://${host}`);
+    base.pathname = '/api/user/verify';
+    base.searchParams.set('token', rawToken);
+    const verifyLink = base.toString();
+
     await sendVerificationEmail({ to: user.email, name: user.name, verifyLink });
 
     return res.json({ message: 'Если аккаунт существует, письмо отправлено.' });
