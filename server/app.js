@@ -52,13 +52,13 @@ const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 1000,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  trustProxy: true,
 });
 app.use(globalLimiter);
 
 app.get('/healthz', (req, res) => res.status(200).json({ ok: true }));
 
-app.set('trust proxy', true);
 app.use(cookieParser());
 app.use('/api', router);
 
