@@ -4,12 +4,10 @@ import { NOTFOUND_ROUTE } from '../../../utils/consts';
 
 const CheckEmailGate = () => {
   const location = useLocation();
-  const emailFromState = location.state?.email;
-  const emailFromSession = typeof window !== 'undefined'
-    ? sessionStorage.getItem('pendingEmail')
-    : '';
-
-  const email = emailFromState || emailFromSession;
+  const emailFromState = location.state?.email || '';
+  const emailFromQuery = new URLSearchParams(location.search).get('email') || '';
+  const emailFromSession = typeof window !== 'undefined' ? sessionStorage.getItem('pendingEmail') || '' : '';
+  const email = emailFromState || emailFromQuery || emailFromSession;
 
   if (!email) return <Navigate to={NOTFOUND_ROUTE} replace />;
 

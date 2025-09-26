@@ -10,8 +10,7 @@ function getWebmailUrl(email = '') {
   if (domain.endsWith('yandex.ru') || domain.endsWith('ya.ru')) return 'https://mail.yandex.ru';
   if (domain.endsWith('gmail.com')) return 'https://mail.google.com';
   if (domain.endsWith('mail.ru')) return 'https://e.mail.ru';
-  if (domain.endsWith('outlook.com') || domain.endsWith('hotmail.com') || domain.endsWith('live.com'))
-    return 'https://outlook.live.com/mail';
+  if (domain.endsWith('outlook.com') || domain.endsWith('hotmail.com') || domain.endsWith('live.com')) return 'https://outlook.live.com/mail';
   if (domain.endsWith('icloud.com')) return 'https://www.icloud.com/mail';
   if (domain.endsWith('yahoo.com')) return 'https://mail.yahoo.com';
   if (domain) return `https://mail.${domain}`;
@@ -23,8 +22,10 @@ const RESEND_KEY = 'verifyResendAllowedAt';
 const CheckEmail = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const sp = new URLSearchParams(location.search);
   const emailFromState = location.state?.email || '';
-  const [email] = useState(emailFromState || sessionStorage.getItem('pendingEmail') || '');
+  const emailFromQuery = sp.get('email') || '';
+  const [email] = useState(emailFromState || emailFromQuery || sessionStorage.getItem('pendingEmail') || '');
 
   const [ready, setReady] = useState(false);
   const [cooldown, setCooldown] = useState(0);
@@ -34,10 +35,11 @@ const CheckEmail = () => {
   const [toastMsg, setToastMsg] = useState('');
   const [toastType, setToastType] = useState('success');
   const [toastKey, setToastKey] = useState(0);
+
   const showToast = (msg, type = 'success') => {
     setToastMsg(msg);
     setToastType(type);
-    setToastKey((k) => k + 1);  
+    setToastKey((k) => k + 1);
   };
 
   const webmailUrl = useMemo(() => getWebmailUrl(email), [email]);
@@ -63,10 +65,8 @@ const CheckEmail = () => {
           navigate('/404', { replace: true });
           return;
         }
-
         if (!mounted) return;
         setSupportMode(Boolean(data.support));
-
         const left = Number(data.cooldownLeft) || 0;
         if (left > 0) {
           const until = Date.now() + left * 1000;
@@ -77,7 +77,6 @@ const CheckEmail = () => {
           const now = Date.now();
           setCooldown(stored > now ? Math.ceil((stored - now) / 1000) : 0);
         }
-
         setReady(true);
       } catch {
         navigate('/404', { replace: true });
@@ -96,11 +95,9 @@ const CheckEmail = () => {
 
   const handleResend = async () => {
     if (!email || loading || supportMode) return;
-
     setLoading(true);
     try {
       await resendVerification(email);
-
       sessionStorage.removeItem(RESEND_KEY);
       setCooldown(0);
       setSupportMode(true);
@@ -109,10 +106,7 @@ const CheckEmail = () => {
       sessionStorage.removeItem(RESEND_KEY);
       setCooldown(0);
       setSupportMode(true);
-
-      const msg =
-        e?.response?.data?.message ||
-        'Ошибка отправки письма. Свяжитесь с поддержкой.';
+      const msg = e?.response?.data?.message || 'Ошибка отправки письма. Свяжитесь с поддержкой.';
       showToast(msg, 'error');
     } finally {
       setLoading(false);
@@ -126,23 +120,15 @@ const CheckEmail = () => {
       <div className={classes.card}>
         <div className={classes.icon} aria-hidden>📧</div>
         <h1 className={classes.title}>Подтвердите почту</h1>
-
         <p className={classes.text}>
           Мы отправили ссылку на&nbsp;<strong className={classes.email}>{email}</strong>.
         </p>
-
         <div className={classes.actions}>
           <a className={classes.primaryBtn} href={webmailUrl} target="_blank" rel="noopener noreferrer">
             Открыть почту
           </a>
-
           {supportMode ? (
-            <a
-              className={classes.primaryBtn}
-              href="https://t.me/pinky589"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <a className={classes.primaryBtn} href="https://t.me/pinky589" target="_blank" rel="noopener noreferrer">
               Связаться с поддержкой
             </a>
           ) : cooldown > 0 ? (
@@ -155,17 +141,9 @@ const CheckEmail = () => {
             </SubmitButton>
           )}
         </div>
-
         <p className={classes.hint}>Если письма нет, проверьте папку «Спам».</p>
       </div>
-
-      <Toast
-        message={toastMsg}
-        type={toastType}
-        duration={3000}
-        version={toastKey}
-        placement="top"
-      />
+      <Toast message={toastMsg} type={toastType} duration={3000} version={toastKey} placement="top" />
     </div>
   );
 };

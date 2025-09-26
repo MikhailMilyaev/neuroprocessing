@@ -67,14 +67,14 @@ const Auth = observer(() => {
         setTimeout(() => navigate(STORIES_ROUTE), 1000)
       } else {
         try {
-          await registration(name, email, password)
-          sessionStorage.setItem('pendingEmail', email)
-          navigate(CHECKEMAIL_ROUTE, { state: { email } })
+          await registration(name, email, password);
+          sessionStorage.setItem('pendingEmail', email);
+          navigate('/check-email?email=' + encodeURIComponent(email), { replace: true });
         } catch (e) {
           const code = e?.response?.data?.code
           if (code === 'UNVERIFIED_EXISTS') {
             sessionStorage.setItem('pendingEmail', email)
-            navigate(CHECKEMAIL_ROUTE, { state: { email } })
+            navigate('/check-email?email=' + encodeURIComponent(email), { replace: true });
             return
           }
           throw e
