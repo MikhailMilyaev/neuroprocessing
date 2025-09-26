@@ -161,7 +161,9 @@ class userController {
   }
 
   async login(req, res, next) {
-    const { email, password, deviceId } = req.body;
+    const password = req.body?.password ?? '';
+    const deviceId = req.body?.deviceId ?? null;
+    const email = String(req.body?.email || '').trim().toLowerCase();
     if (!email || !password) return next(ApiError.badRequest('Заполните все поля.'));
 
     const user = await User.findOne({ where: { email } });
@@ -324,7 +326,7 @@ class userController {
   }
 
   async resendVerification(req, res, next) {
-    const { email } = req.body;
+    const email = String(req.body?.email || '').trim().toLowerCase();
     if (!email) return next(ApiError.badRequest('Укажите email.'));
 
     const user = await User.findOne({ where: { email } });
@@ -375,7 +377,7 @@ class userController {
   }
 
   async verifyStatus(req, res) {
-    const { email } = req.query;
+    const email = String(req.query?.email || '').trim().toLowerCase();
     if (!email) return res.status(200).json({ ok: false });
 
     const user = await User.findOne({ where: { email } });
@@ -424,7 +426,7 @@ class userController {
   }
 
   async requestPasswordReset(req, res) {
-    const { email } = req.body;
+    const email = String(req.body?.email || '').trim().toLowerCase();
     if (!email) return res.status(400).json({ message: 'Укажите email.' });
 
     const user = await User.findOne({ where: { email } });

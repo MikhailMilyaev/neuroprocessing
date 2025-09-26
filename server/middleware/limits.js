@@ -4,14 +4,16 @@ exports.authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 50,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  trustProxy: true, 
 });
 
 exports.emailFlowLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 30,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  trustProxy: true, 
 });
 
 exports.refreshLimiter = rateLimit({
@@ -19,4 +21,5 @@ exports.refreshLimiter = rateLimit({
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
+  trustProxy: true, 
 });
