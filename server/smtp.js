@@ -1,16 +1,16 @@
-const nodemailer = require('nodemailer');
+const nodemailer = require('nodemailer')
 
-const SMTP_HOST = process.env.SMTP_HOST || 'smtp.yandex.ru';
-const SMTP_PORT = Number(process.env.SMTP_PORT || 465);
-const SMTP_SECURE = String(process.env.SMTP_SECURE ?? (SMTP_PORT === 465)).toLowerCase() === 'true';
+const SMTP_HOST = process.env.SMTP_HOST || 'smtp.yandex.ru'
+const SMTP_PORT = Number(process.env.SMTP_PORT || 465)
+const SMTP_SECURE = String(process.env.SMTP_SECURE ?? (SMTP_PORT === 465)).toLowerCase() === 'true'
 
-const SMTP_USER = process.env.SMTP_USER || process.env.YANDEX_USER || 'neuroprocessing@yandex.ru';
-const SMTP_PASS = process.env.SMTP_PASS || process.env.YANDEX_PASS;
+const SMTP_USER = process.env.SMTP_USER || process.env.YANDEX_USER || 'neuroprocessing@yandex.ru'
+const SMTP_PASS = process.env.SMTP_PASS || process.env.YANDEX_PASS
 
-const MAIL_FROM_NAME = process.env.MAIL_FROM_NAME || 'Neuroprocessing';
-const MAIL_REPLY_TO = process.env.MAIL_REPLY_TO || SMTP_USER;
+const MAIL_FROM_NAME = process.env.MAIL_FROM_NAME || 'Neuroprocessing'
+const MAIL_REPLY_TO = process.env.MAIL_REPLY_TO || SMTP_USER
 
-const SMTP_SNI = process.env.SMTP_SNI || 'smtp.yandex.ru';
+const SMTP_SNI = process.env.SMTP_SNI || 'smtp.yandex.ru'
 
 const transporter = nodemailer.createTransport({
   host: SMTP_HOST,
@@ -18,30 +18,26 @@ const transporter = nodemailer.createTransport({
   secure: SMTP_SECURE,
   auth: { user: SMTP_USER, pass: SMTP_PASS },
   pool: true,
-  maxConnections: 5,
-  maxMessages: 100,
+  maxConnections: 3,
+  maxMessages: 50,
   connectionTimeout: 20000,
   greetingTimeout: 10000,
   socketTimeout: 30000,
   logger: process.env.NODE_ENV !== 'production',
   debug: process.env.NODE_ENV !== 'production',
-  tls: {
-    servername: SMTP_SNI,      
-    rejectUnauthorized: true,
-  },
-});
-
+  tls: { servername: SMTP_SNI, rejectUnauthorized: true },
+})
 
 function escapeHtml(s = '') {
-  return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 }
 
 function buildVerifyEmail({ name, link }) {
-  const subject = 'Подтверждение почты';
+  const subject = 'Подтверждение почты'
   const text =
     `Здравствуйте${name ? ', ' + name : ''}!\n` +
     `Чтобы завершить регистрацию, откройте ссылку:\n${link}\n\n` +
-    `Если это были не вы — просто проигнорируйте письмо.`;
+    `Если это были не вы — просто проигнорируйте письмо.`
   const html = `
   <div style="
     font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
@@ -72,42 +68,43 @@ function buildVerifyEmail({ name, link }) {
         Подтвердить адрес
       </a>
     </p>
-  </div>`;
-  return { subject, text, html };
+  </div>`
+  return { subject, text, html }
 }
 
 async function verifyTransporter() {
   try {
-    await transporter.verify();
-    return true;
+    await transporter.verify()
+    return true
   } catch {
-    return false;
+    return false
   }
 }
 
 async function sendMail({ to, subject, text, html }) {
-  return await transporter.sendMail({
-    from: `${MAIL_FROM_NAME} <${SMTP_USER}>`,
-    replyTo: MAIL_REPLY_TO,
+  const from = `"${MAIL_FROM_NAME}" <${SMTP_USER}>`
+  return transporter.sendMail({
+    from,
     to,
     subject,
     text,
     html,
+    replyTo: MAIL_REPLY_TO,
     headers: { 'List-Unsubscribe': `<mailto:${MAIL_REPLY_TO}>` },
-  });
+  })
 }
 
 async function sendVerificationEmail({ to, name, verifyLink }) {
-  const { subject, text, html } = buildVerifyEmail({ name, link: verifyLink });
-  return sendMail({ to, subject, text, html });
+  const { subject, text, html } = buildVerifyEmail({ name, link: verifyLink })
+  return sendMail({ to, subject, text, html })
 }
 
 function buildResetEmail({ name, link }) {
-  const subject = 'Восстановление пароля';
+  const subject = 'Восстановление пароля'
   const text =
     `Здравствуйте${name ? ', ' + name : ''}!\n` +
     `Чтобы задать новый пароль, откройте ссылку:\n${link}\n\n` +
-    `Если это были не вы — просто проигнорируйте письмо.`;
+    `Если это были не вы — просто проигнорируйте письмо.`
   const html = `
   <div style="
     font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
@@ -138,13 +135,13 @@ function buildResetEmail({ name, link }) {
         Сбросить пароль
       </a>
     </p>
-  </div>`;
-  return { subject, text, html };
+  </div>`
+  return { subject, text, html }
 }
 
 async function sendPasswordResetEmail({ to, name, resetLink }) {
-  const { subject, text, html } = buildResetEmail({ name, link: resetLink });
-  return sendMail({ to, subject, text, html });
+  const { subject, text, html } = buildResetEmail({ name, link: resetLink })
+  return sendMail({ to, subject, text, html })
 }
 
 module.exports = {
@@ -153,4 +150,4 @@ module.exports = {
   sendMail,
   sendVerificationEmail,
   sendPasswordResetEmail,
-};
+}

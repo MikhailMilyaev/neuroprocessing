@@ -1,9 +1,17 @@
 const ApiError = require('../error/ApiError');
 
 module.exports = function (err, req, res, next) {
-  if (err instanceof ApiError) {
-    return res.status(err.status).json({ message: err.message, requestId: req.id });
+  const status = err instanceof ApiError ? err.status : 500;
+  const is4xx = status >= 400 && status < 500;
+
+  const body = {};
+  body.message = is4xx
+    ? (err instanceof ApiError ? err.message : 'Ошибка запроса')
+    : 'Внутренняя ошибка сервера';
+
+  if (!(err instanceof ApiError)) {
+    console.error(`[${req.id || '-'}]`, err);
   }
-  console.error(`[${req.id || '-'}]`, err);
-  return res.status(500).json({ message: 'Непредвиденная ошибка', requestId: req.id });
+
+  res.status(status).json(body);
 };

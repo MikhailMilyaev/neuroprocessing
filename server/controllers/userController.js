@@ -97,68 +97,95 @@ async function enforceGlobalSessionLimit(userId) {
 
 class userController {
   async registration(req, res, next) {
-    try {
-      const rawName = req.body?.name ?? '';
-      const rawEmail = req.body?.email ?? '';
-      const password = req.body?.password ?? '';
+  try {
+    const rawName = req.body?.name ?? ''
+    const rawEmail = req.body?.email ?? ''
+    const password = req.body?.password ?? ''
 
-      const name = String(rawName).trim();
-      const email = String(rawEmail).trim().toLowerCase();
+    const name = String(rawName).trim()
+    const email = String(rawEmail).trim().toLowerCase()
+    if (!name || !email || !password) {
+      return next(ApiError.badRequest('Заполните все поля.'))
+    }
 
-      if (!name || !email || !password) {
-        return next(ApiError.badRequest('Заполните все поля.'));
+    const now = new Date()
+    let user = await User.findOne({ where: { email } })
+
+    if (user) {
+      if (user.isVerified) {
+        return res.status(409).json({ code: 'ALREADY_EXISTS', message: 'Не удалось зарегистрироваться.' })
       }
 
-      const exist = await User.findOne({ where: { email } });
-      if (exist) {
-        return res.status(200).json({ message: 'Если аккаунт существует, письмо отправлено.' });
+      const rawToken = crypto.randomBytes(32).toString('hex')
+      const tokenHash = hashToken(rawToken)
+      user.verificationToken = tokenHash
+      user.verificationTokenExpires = new Date(now.getTime() + VERIFY_TOKEN_TTL_HOURS * 3600 * 1000)
+      user.verificationLastSentAt = now
+      if (!user.verificationResendResetAt || now > user.verificationResendResetAt) {
+        user.verificationResendCount = 0
+        user.verificationResendResetAt = new Date(now.getTime() + VERIFY_DAILY_WINDOW_HOURS * 3600 * 1000)
       }
+      user.verificationResendCount += 1
+      await user.save()
 
-      const hashPassword = await bcrypt.hash(password, 12);
-      const rawToken = crypto.randomBytes(32).toString('hex');
-      const tokenHash = hashToken(rawToken);
-      const now = new Date();
-      const expires = new Date(now.getTime() + VERIFY_TOKEN_TTL_HOURS * 3600 * 1000);
-
-      const user = await User.create({
-        name,
-        email,
-        role: 'USER',
-        password: hashPassword,
-        isVerified: false,
-        verificationToken: tokenHash,
-        verificationTokenExpires: expires,
-        verificationLastSentAt: now,
-        verificationResendCount: 1,
-        verificationResendResetAt: new Date(now.getTime() + VERIFY_DAILY_WINDOW_HOURS * 3600 * 1000),
-      });
-
-      const actorId = uuidv4();
-      const cipher_blob = encryptLink({ actor_id: actorId });
-      await IdentityLink.create({
-        user_id: user.id,
-        cipher_blob,
-        key_version: KEY_VERSION,
-      });
-
-      const proto = req.headers['x-forwarded-proto'] || req.protocol;
-      const host = req.get('host');
-      const base = new URL(process.env.API_URL || `${proto}://${host}`);
-      base.pathname = '/api/user/verify';
-      base.searchParams.set('token', rawToken);
-      const verifyLink = base.toString();
+      const proto = req.headers['x-forwarded-proto'] || req.protocol
+      const host = req.get('host')
+      const base = new URL(process.env.API_URL || `${proto}://${host}`)
+      base.pathname = '/api/user/verify'
+      base.searchParams.set('token', rawToken)
+      const verifyLink = base.toString()
 
       try {
-        await sendVerificationEmail({ to: user.email, name: user.name, verifyLink });
+        const info = await sendVerificationEmail({ to: user.email, name: user.name, verifyLink })
+        console.log('[mail] sent', info.messageId, info.response)
       } catch (e) {
-        return res.status(201).json({ message: 'Если аккаунт существует, письмо отправлено.' });
+        console.log('[mail] fail', e?.message || String(e))
       }
 
-      return res.status(201).json({ message: 'Если аккаунт существует, письмо отправлено.' });
-    } catch (err) {
-      return next(err);
+      return res.status(409).json({ code: 'UNVERIFIED_EXISTS', message: 'Подтвердите почту, письмо отправлено.' })
     }
+
+    const hashPassword = await bcrypt.hash(password, 12)
+    const rawToken = crypto.randomBytes(32).toString('hex')
+    const tokenHash = hashToken(rawToken)
+    const expires = new Date(now.getTime() + VERIFY_TOKEN_TTL_HOURS * 3600 * 1000)
+
+    user = await User.create({
+      name,
+      email,
+      role: 'USER',
+      password: hashPassword,
+      isVerified: false,
+      verificationToken: tokenHash,
+      verificationTokenExpires: expires,
+      verificationLastSentAt: now,
+      verificationResendCount: 1,
+      verificationResendResetAt: new Date(now.getTime() + VERIFY_DAILY_WINDOW_HOURS * 3600 * 1000),
+    })
+
+    const actorId = uuidv4()
+    const cipher_blob = encryptLink({ actor_id: actorId })
+    await IdentityLink.create({ user_id: user.id, cipher_blob, key_version: KEY_VERSION })
+
+    const proto = req.headers['x-forwarded-proto'] || req.protocol
+    const host = req.get('host')
+    const base = new URL(process.env.API_URL || `${proto}://${host}`)
+    base.pathname = '/api/user/verify'
+    base.searchParams.set('token', rawToken)
+    const verifyLink = base.toString()
+
+    try {
+      const info = await sendVerificationEmail({ to: user.email, name: user.name, verifyLink })
+      console.log('[mail] sent', info.messageId, info.response)
+    } catch (e) {
+      console.log('[mail] fail', e?.message || String(e))
+    }
+
+    return res.status(201).json({ message: 'Письмо отправлено.', needsVerification: true })
+  } catch (err) {
+    return next(err)
   }
+}
 
   async login(req, res, next) {
     const password = req.body?.password ?? '';
@@ -308,7 +335,14 @@ class userController {
         verificationTokenExpires: { [Op.gt]: new Date() },
       },
     });
-    if (!user) return next(ApiError.badRequest('Ссылка недействительна или устарела.'));
+
+    const proto = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.get('host');
+    const clientBase = process.env.CLIENT_URL || `${proto}://${host}`;
+
+    if (!user) {
+      return res.redirect(302, `${clientBase}/check-email?invalid=1`);
+    }
 
     user.isVerified = true;
     user.verificationToken = null;
@@ -320,7 +354,6 @@ class userController {
       process.env.SECRET_KEY,
       { algorithm: 'HS256', expiresIn: `${VERIFY_LANDING_TTL_MIN}m` }
     );
-    const clientBase = process.env.CLIENT_URL || `${(req.headers['x-forwarded-proto'] || req.protocol)}://${req.get('host')}`;
     const redirectUrl = `${clientBase}/account-activated?lt=${landingJwt}`;
     return res.redirect(302, redirectUrl);
   }
@@ -371,7 +404,8 @@ class userController {
     base.searchParams.set('token', rawToken);
     const verifyLink = base.toString();
 
-    await sendVerificationEmail({ to: user.email, name: user.name, verifyLink });
+    const info = await sendVerificationEmail({ to: user.email, name: user.name, verifyLink });
+    console.log('[mail] sent', info.messageId, info.response);
 
     return res.json({ message: 'Если аккаунт существует, письмо отправлено.' });
   }
@@ -463,7 +497,8 @@ class userController {
     base.searchParams.set('token', raw);
     const resetLink = base.toString();
 
-    await sendPasswordResetEmail({ to: user.email, name: user.name, resetLink });
+    const info = await sendPasswordResetEmail({ to: user.email, name: user.name, resetLink });
+    console.log('[mail] sent', info.messageId, info.response);
 
     const rst = jwt.sign(
       { email: user.email, purpose: 'reset-sent' },
