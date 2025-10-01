@@ -1,4 +1,4 @@
-// import Lending from './pages/Lending/Lending';
+import Lending from './pages/Lending/Lending';
 import Auth from './pages/Auth/Auth/Auth';
 import CheckEmailGate from './pages/Auth/CheckEmail/CheckEmailGate';
 import ActivatedGate from './pages/Auth/Activated/ActivatedGate';
@@ -38,7 +38,7 @@ export const authRoutes = [
 ];
 
 export const publicRoutes = [
-  { path: LENDING_ROUTE, element: <Navigate to={LOGIN_ROUTE} replace /> },
+  { path: LENDING_ROUTE, element: <Lending/> },
   { path: LOGIN_ROUTE, element: <Auth /> },
   { path: REGISTRATION_ROUTE, element: <Auth /> },
 

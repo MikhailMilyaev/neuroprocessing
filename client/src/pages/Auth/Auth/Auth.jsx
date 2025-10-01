@@ -67,14 +67,26 @@ const Auth = observer(() => {
         setTimeout(() => navigate(STORIES_ROUTE), 1000)
       } else {
         try {
-          await registration(name, email, password);
-          sessionStorage.setItem('pendingEmail', email);
-          navigate('/check-email?email=' + encodeURIComponent(email), { replace: true });
+          const data = await registration(name, email, password)
+          if (data?.needsVerification) {
+            sessionStorage.setItem('pendingEmail', email)
+            navigate('/check-email?email=' + encodeURIComponent(email), { replace: true })
+            return
+          }
+          setMessageType('error')
+          setErrorMessage('Не удалось зарегистрироваться')
+          setErrorKey(prev => prev + 1)
         } catch (e) {
           const code = e?.response?.data?.code
           if (code === 'UNVERIFIED_EXISTS') {
             sessionStorage.setItem('pendingEmail', email)
-            navigate('/check-email?email=' + encodeURIComponent(email), { replace: true });
+            navigate('/check-email?email=' + encodeURIComponent(email), { replace: true })
+            return
+          }
+          if (code === 'ALREADY_EXISTS') {
+            setMessageType('error')
+            setErrorMessage('Не удалось зарегистрироваться')
+            setErrorKey(prev => prev + 1)
             return
           }
           throw e
