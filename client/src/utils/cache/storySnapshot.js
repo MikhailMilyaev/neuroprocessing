@@ -69,3 +69,15 @@ export function isSeenThisSession(id) {
 export function markStoryDirty(id)   { try { localStorage.setItem(DIRTY_KEY(id), '1'); } catch {} }
 export function clearStoryDirty(id)  { try { localStorage.removeItem(DIRTY_KEY(id)); } catch {} }
 export function isStoryDirty(id)     { try { return localStorage.getItem(DIRTY_KEY(id)) === '1'; } catch { return false; } }
+
+
+export function purgeStoryLocal(id) {
+  try { localStorage.removeItem(SNAP_KEY(id)); } catch {}
+  try { localStorage.removeItem(DIRTY_KEY(id)); } catch {}
+  try { sessionStorage.removeItem(SEEN_KEY(id)); } catch {}
+
+  try { localStorage.removeItem(ns(`story_viewY_local_${id}`)); } catch {}
+  try { sessionStorage.removeItem(ns(`story_viewY_${id}`)); } catch {}
+  try { sessionStorage.removeItem(ns(`story_history_${id}`)); } catch {}
+  try { sessionStorage.removeItem(ns(`story_pointer_${id}`)); } catch {}
+}

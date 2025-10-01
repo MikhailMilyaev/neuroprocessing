@@ -10,9 +10,9 @@ import Toast from '../../components/Toast/Toast';
 import classes from './Stories.module.css';
 import { STORY_ROUTE } from '../../utils/consts';
 import { fetchStories, createStory, removeStory } from '../../http/storyApi';
-import { readStoriesIndex, writeStoriesIndex } from '../../utils/cache/storiesCache';
+import { readStoriesIndex, writeStoriesIndex, removeFromStoriesIndex } from '../../utils/cache/storiesCache';
 import { useSmartDelay } from '../../hooks/useSmartDelay';
-import { markSeenThisSession, writeSnapshot } from '../../utils/cache/storySnapshot';
+import { markSeenThisSession, writeSnapshot, purgeStoryLocal } from '../../utils/cache/storySnapshot';
 
 const ARCHIVE_KEY = () => ns('showArchive');
 const ACTIVE_HIGHLIGHT_KEY = () => ns('stories_active_highlight');
@@ -162,25 +162,33 @@ const Stories = () => {
       .then((server) => {
         if (cancelled) return;
 
-        const serverArr = Array.isArray(server) ? server : (server?.rows || []);
-        const cached = readStoriesIndex();
+          const serverArr = Array.isArray(server) ? server : (server?.rows || []);
+          const serverIds = new Set(serverArr.map(s => Number(s.id)));
+          const cached = readStoriesIndex();
 
-        const byId = new Map(cached.map(i => [Number(i.id), i]));
-        for (const s of serverArr) {
-          const c = byId.get(Number(s.id));
-          if (!c) {
-            byId.set(Number(s.id), s);
-          } else {
-            const tS = Date.parse(s.updatedAt ?? s.updated_at ?? 0) || 0;
-            const tC = Date.parse(c.updatedAt ?? 0) || 0;
-            byId.set(Number(s.id), (tC >= tS && c.title && c.title.trim()) ? { ...s, title: c.title } : s);
+          const cleaned = (cached || []).filter(it =>
+            it.archive === true || serverIds.has(Number(it.id))
+          );
+
+          const byId = new Map(cleaned.map(i => [Number(i.id), i]));
+          for (const s of serverArr) {
+            const prev = byId.get(Number(s.id));
+            if (!prev) {
+              byId.set(Number(s.id), s);
+            } else {
+              const tS = Date.parse(s.updatedAt ?? s.updated_at ?? 0) || 0;
+              const tP = Date.parse(prev.updatedAt ?? prev.updated_at ?? 0) || 0;
+              byId.set(Number(s.id), (tP >= tS && prev.title && prev.title.trim())
+                ? { ...s, title: prev.title }
+                : s
+              );
+            }
           }
-        }
 
-        const union = Array.from(byId.values());
-        const sorted = sortByUpdated(union);
-        setStoriesList(sorted);
-        writeStoriesIndex(sorted.map(mapForIndex));
+          const union = Array.from(byId.values());
+          const sorted = sortByUpdated(union);
+          setStoriesList(sorted);
+          writeStoriesIndex(sorted.map(mapForIndex));
       })
       .catch((e) => {
         console.error('[fetchStories active]', e);
@@ -204,26 +212,34 @@ const Stories = () => {
       .then((server) => {
         if (cancelled) return;
 
-        const serverArr = Array.isArray(server) ? server : (server?.rows || []);
-        const current = storiesList;
+          const serverArr = Array.isArray(server) ? server : (server?.rows || []);
+          const serverIds = new Set(serverArr.map(s => Number(s.id)));
+          const current = storiesList;
 
-        const byId = new Map(current.map(i => [Number(i.id), i]));
-        for (const s of serverArr) {
-          const c = byId.get(Number(s.id));
-          if (!c) {
-            byId.set(Number(s.id), s);
-          } else {
-            const tS = Date.parse(s.updatedAt ?? s.updated_at ?? 0) || 0;
-            const tC = Date.parse(c.updatedAt ?? 0) || 0;
-            byId.set(Number(s.id), (tC >= tS && c.title && c.title.trim()) ? { ...s, title: c.title } : s);
+          const cleaned = (current || []).filter(it =>
+            it.archive === false || serverIds.has(Number(it.id))
+          );
+
+          const byId = new Map(cleaned.map(i => [Number(i.id), i]));
+          for (const s of serverArr) {
+            const prev = byId.get(Number(s.id));
+            if (!prev) {
+              byId.set(Number(s.id), s);
+            } else {
+              const tS = Date.parse(s.updatedAt ?? s.updated_at ?? 0) || 0;
+              const tP = Date.parse(prev.updatedAt ?? prev.updated_at ?? 0) || 0;
+              byId.set(Number(s.id), (tP >= tS && prev.title && prev.title.trim())
+                ? { ...s, title: prev.title }
+                : s
+              );
+            }
           }
-        }
 
-        const union = Array.from(byId.values());
-        const sorted = sortByUpdated(union);
-        setStoriesList(sorted);
-        writeStoriesIndex(sorted.map(mapForIndex));
-        setArchiveLoaded(true);
+          const union = Array.from(byId.values());
+          const sorted = sortByUpdated(union);
+          setStoriesList(sorted);
+          writeStoriesIndex(sorted.map(mapForIndex));
+          setArchiveLoaded(true);
       })
       .catch((e) => console.error('[fetchStories archive]', e));
 
@@ -356,14 +372,26 @@ const Stories = () => {
   };
 
   const handleDeleteStory = async (id) => {
+    const prev = storiesList;
+    const next = sortByUpdated((prev || []).filter(s => Number(s.id) !== Number(id)));
+    setStoriesList(next);
+    writeStoriesIndex(next.map(mapForIndex));
+
+    try {
+      try { purgeStoryLocal(String(id)); } catch {}   
+      try { removeFromStoriesIndex(Number(id)); } catch {}  
+    } catch {}
+
     try {
       await removeStory(id);
-      setStoriesList(prev => {
-        const next = sortByUpdated((prev || []).filter(s => s.id !== id));
-        writeStoriesIndex(next.map(mapForIndex));
-        return next;
-      });
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      const status = e?.response?.status || e?.status || 0;
+      if (status === 404) return;
+
+      console.error('[removeStory fail]', e);
+      setStoriesList(prev);
+      writeStoriesIndex(prev.map(mapForIndex));
+    }
   };
 
   const handleToggleArchive = (val) => {

@@ -73,3 +73,12 @@ export function patchStoriesIndex(id, patch = {}) {
     localStorage.setItem(KEY(), JSON.stringify(updated));
   } catch {}
 }
+
+export function removeFromStoriesIndex(id) {
+  try {
+    const raw = localStorage.getItem(KEY());
+    const arr = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+    const next = arr.filter(it => Number(it.id) !== Number(id));
+    localStorage.setItem(KEY(), JSON.stringify(next));
+  } catch {}
+}
