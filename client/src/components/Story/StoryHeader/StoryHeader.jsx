@@ -70,6 +70,9 @@ const StoryHeader = ({
         <button
           type="button"
           className={`${classes.iconBtn} ${classes.lampBtn}`}
+          onMouseDown={(e) => {
+            e.preventDefault();
+          }}
           onClick={onAddBelief}
           title="Добавить идею"
           aria-label="Добавить идею"

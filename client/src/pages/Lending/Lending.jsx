@@ -1,4 +1,5 @@
 import styles from "./Lending.module.css";
+import { Link } from 'react-router-dom'
 
 function Icon({ name, className }) {
   const common = { className, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" };
@@ -38,7 +39,7 @@ export default function Landing() {
             <a href="#how" className={styles.navLink}>Алгоритм</a>
             <a href="#faq" className={styles.navLink}>FAQ</a>
           </nav>
-          <a className={styles.loginBtn} href="/login">Войти</a>
+          <Link to='/login' className={styles.loginBtn}>Войти</Link>
         </div>
       </header>
 
@@ -53,7 +54,7 @@ export default function Landing() {
           </p>
 
           <div className={styles.heroCtas}>
-            <a href="/signup" className={styles.primaryCta}>Начать бесплатно</a>
+            <Link to='/login' className={styles.primaryCta}>Начать бесплатно</Link>
           </div>
 
           <div className={styles.heroBadges}>
@@ -368,7 +369,7 @@ export default function Landing() {
       <section className={styles.cta}>
         <h2>Готовы начать?</h2>
         <p>Создайте аккаунт. Полная теория и источники — в кабинете.</p>
-        <a href="/signup" className={styles.primaryCta}>Начать бесплатно</a>
+        <Link to='/login' className={styles.primaryCta}>Начать бесплатно</Link>
       </section>
 
       {/* FAQ */}

@@ -7,6 +7,14 @@ async function ensureStoryOwner(actor_id, storyId) {
   return story ? story : null;
 }
 
+function normalizeIdeaText(input) {
+  const raw = input != null ? String(input) : '';
+  const trimmed = raw.replace(/\r\n/g, '\n').trim();
+  if (trimmed.length === 0) return '\u200B';
+
+  return raw;
+}
+
 class IdeaController {
   async listForStory(req, res, next) {
     try {
@@ -24,7 +32,7 @@ class IdeaController {
     } catch (e) { next(e); }
   }
 
-  async create(req, res, next) {
+    async create(req, res, next) {
     try {
       const storyId = req.params?.storyId ?? req.body?.storyId;
       if (!storyId) return res.status(400).json({ message: 'Не указан storyId' });
@@ -40,8 +48,8 @@ class IdeaController {
       });
       const nextOrder = last ? (Number(last.sortOrder) + 1) : 1;
 
-      const text  = req.body.text != null ? String(req.body.text) : '';
-      const score = req.body.score == null ? null : Number(req.body.score);
+      const text  = normalizeIdeaText(req.body?.text);
+      const score = req.body?.score == null ? null : Number(req.body.score);
       const introducedRound = Number.isFinite(req.body?.introducedRound) ? Number(req.body.introducedRound) : 0;
 
       const idea = await Idea.create({ storyId, text, score, introducedRound, sortOrder: nextOrder });
@@ -53,63 +61,61 @@ class IdeaController {
     return this.create(req, res, next);
   }
 
-async update(req, res, next) {
-  try {
-    const actor_id = req.actorId;
-    const { id } = req.params;
+    async update(req, res, next) {
+    try {
+      const actor_id = req.actorId;
+      const { id } = req.params;
 
-    const idea = await Idea.findByPk(id);
-    if (!idea) return res.status(404).json({ message: 'Идея не найдена' });
+      const idea = await Idea.findByPk(id);
+      if (!idea) return res.status(404).json({ message: 'Идея не найдена' });
 
-    const story = await ensureStoryOwner(actor_id, idea.storyId);
-    if (!story) return res.status(404).json({ message: 'История не найдена' });
+      const story = await ensureStoryOwner(actor_id, idea.storyId);
+      if (!story) return res.status(404).json({ message: 'История не найдена' });
 
-    const incoming = req.body || {};
-    const data = {};
+      const incoming = req.body || {};
+      const data = {};
 
-    if (incoming.text !== undefined) {
-      data.text = String(incoming.text);
-    }
-
-    const hasIncomingScore = Object.prototype.hasOwnProperty.call(incoming, 'score');
-
-    let normalizedScore;
-    if (hasIncomingScore) {
-      if (incoming.score === '' || incoming.score == null) {
-        normalizedScore = null;
-      } else {
-        const n = Number(incoming.score);
-        normalizedScore = Number.isFinite(n) ? n : null;
+      if (incoming.text !== undefined) {
+        data.text = normalizeIdeaText(incoming.text);
       }
-      data.score = normalizedScore;
+
+      const hasIncomingScore = Object.prototype.hasOwnProperty.call(incoming, 'score');
+
+      let normalizedScore;
+      if (hasIncomingScore) {
+        if (incoming.score === '' || incoming.score == null) {
+          normalizedScore = null;
+        } else {
+          const n = Number(incoming.score);
+          normalizedScore = Number.isFinite(n) ? n : null;
+        }
+        data.score = normalizedScore;
+      }
+
+      const wasZero = idea.score === 0;
+      const incomingIsZero = hasIncomingScore && normalizedScore === 0;
+      const incomingIsNull = hasIncomingScore && normalizedScore === null;
+
+      const becomesArchived = hasIncomingScore && !wasZero && incomingIsZero;
+      const becomesActive   = hasIncomingScore && wasZero && (incomingIsNull || !incomingIsZero);
+
+      if (becomesArchived || becomesActive) {
+        const last = await Idea.findOne({
+          where: { storyId: idea.storyId },
+          order: [['sortOrder', 'DESC'], ['id', 'DESC']],
+          attributes: ['sortOrder'],
+        });
+        const nextOrder = last ? (Number(last.sortOrder) + 1) : 1;
+        data.sortOrder = nextOrder;
+      }
+
+      await Idea.update(data, { where: { id } });
+      const updated = await Idea.findByPk(id);
+      res.json(updated);
+    } catch (e) {
+      next(e);
     }
-
-    const wasZero = idea.score === 0;                
-    const incomingIsZero = hasIncomingScore && normalizedScore === 0;
-    const incomingIsNull = hasIncomingScore && normalizedScore === null;
-
-    const becomesArchived = hasIncomingScore && !wasZero && incomingIsZero;
-    const becomesActive   = hasIncomingScore && wasZero && (incomingIsNull || !incomingIsZero);
-
-    if (becomesArchived || becomesActive) {
-      const last = await Idea.findOne({
-        where: { storyId: idea.storyId },
-        order: [['sortOrder', 'DESC'], ['id', 'DESC']],
-        attributes: ['sortOrder'],
-      });
-      const nextOrder = last ? (Number(last.sortOrder) + 1) : 1;
-      data.sortOrder = nextOrder;  
-    }
-
-    await Idea.update(data, { where: { id } });
-    const updated = await Idea.findByPk(id);
-    res.json(updated);
-  } catch (e) {
-    next(e);
   }
-}
-
-
 
   async remove(req, res, next) {
     try {

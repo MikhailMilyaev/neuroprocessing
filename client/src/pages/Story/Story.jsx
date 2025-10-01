@@ -585,19 +585,31 @@ hydratedFromCacheRef.current = false;
         introducedRound: reevalRound,
       });
 
-      const updatedBeliefs = (current.beliefs || []).map(b =>
-        b.id === tempId
-          ? {
-              ...b,
-              id: created.id,
-              uiKey: b.uiKey,
-              text: created.text || '',
-              score: created.score == null ? '' : String(created.score),
-              introducedRound: created.introducedRound ?? reevalRound,
-            }
-          : b
-      );
-      apply({ ...current, beliefs: updatedBeliefs });
+      setHistory(prevHist => {
+        const last = prevHist[prevHist.length - 1] || { title: '', content: '', beliefs: [] };
+        const list = last.beliefs || [];
+
+        const nextBeliefs = list.map(b => {
+          if (b.id !== tempId) return b;
+
+          const localLatest = latestIdeaTextRef.current.get(tempId);
+          const localFromState = b.text ?? '';
+          const preferredLocal = (typeof localLatest === 'string' ? localLatest : localFromState) ?? '';
+          const hasUsefulLocal = preferredLocal && preferredLocal !== '\u200B' && preferredLocal.trim().length > 0;
+
+          return {
+            ...b,
+            id: created.id,               
+            text: hasUsefulLocal ? preferredLocal : (created.text || ''),
+            introducedRound: b.introducedRound ?? (created.introducedRound ?? reevalRound),
+            uiKey: b.uiKey,               
+          };
+        });
+
+        const clone = prevHist.slice();
+        clone[clone.length - 1] = { ...last, beliefs: nextBeliefs };
+        return clone;
+      });
 
       const latest = String((latestIdeaTextRef.current.get(tempId) ?? created.text ?? '')).slice(0, IDEA_CHAR_LIMIT);
       if (latest !== (created.text || '')) {
