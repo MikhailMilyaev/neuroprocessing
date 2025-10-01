@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchStoryBySlug, fetchStory, updateStory, reevaluateStory, beginRereview } from '../../http/storyApi';
-import { listIdeas, createIdea, updateIdea, deleteIdea } from '../../http/ideaApi';
+import { listIdeas, createIdea, updateIdea, deleteIdea, reorderIdeas } from '../../http/ideaApi';
 import { ns } from '../../utils/ns';
 import BackBtn from '../../components/BackBtn/BackBtn';
 import StoryHeader from '../../components/Story/StoryHeader/StoryHeader';
@@ -177,8 +177,7 @@ export default function Story() {
         setId(story.id);
 
         const snap = readSnapshot(story.id);
-        const canTrustLocal = !!(story.id && snap);
-        if (snap && !canTrustLocal) {
+        if (snap) {
           const beliefs = mapIdeasToBeliefs(snap.ideas || []);
           setHistory([{ title: snap.title || '', content: snap.content || '', beliefs }]);
           setPointer(0);
@@ -242,15 +241,11 @@ export default function Story() {
 
         const beliefs = mapIdeasToBeliefs(ideasRaw);
 
-const prevOrder = (history[history.length - 1]?.beliefs || []).map(b => b.id);
+const prevOrder = (initialSnapLocal?.ideas || []).map(i => i.id);
 const serverOrder = ideasRaw.map(i => i.id);
 const sameOrder =
   prevOrder.length === serverOrder.length &&
   prevOrder.every((v, i) => v === serverOrder[i]);
-
-setHistory([{ title: story?.title || '', content: story?.content || '', beliefs }]);
-setPointer(0);
-
 
         setHistory([{ title: story?.title || '', content: story?.content || '', beliefs }]);
         setPointer(0);
@@ -568,6 +563,19 @@ hydratedFromCacheRef.current = false;
 
     patchStoriesIndex(Number(id), { updatedAt: new Date().toISOString() });
 
+       if (safeText && safeText.trim()) {
+     try {
+       await ensureIdeaCreated(tempId, {
+         text: safeText.trim().slice(0, IDEA_CHAR_LIMIT),
+         score: null,
+         introducedRound: reevalRound,
+       });
+       await ensureUnarchiveOnWork();  
+     } catch (e) {
+       console.warn('[create idea immediately] failed', e);
+     }
+   }
+
     return tempId;
   };
 
@@ -582,7 +590,7 @@ hydratedFromCacheRef.current = false;
         text: initial.text ?? '',
         score: initial.score ?? null,
         sortOrder: Date.now(),
-        introducedRound: reevalRound,
+        introducedRound: (initial?.introducedRound ?? reevalRound),
       });
 
       setHistory(prevHist => {
@@ -767,9 +775,21 @@ hydratedFromCacheRef.current = false;
       b.id === bid ? { ...b, score: String(n) } : b
     );
 
-    if (bid > 0) {
-      scheduleIdeaUpdate(bid, { score: n });
-    }
+       let serverId = bid;
+   if (serverId < 0) {
+     try {
+       serverId = await ensureIdeaCreated(serverId, {
+         text: (bEntry.text || '').slice(0, IDEA_CHAR_LIMIT),
+         score: null,
+         introducedRound: bEntry.introducedRound ?? reevalRound,
+       });
+     } catch (e) {
+       console.warn('[ensure create before score] failed', e);
+     }
+   }
+   if (serverId > 0) {
+     scheduleIdeaUpdate(serverId, { score: n });
+   }
 
     if (wasArchived !== nowArchived) {
       const reordered = reorderImmediately(nextBeliefs, bid, nowArchived);
@@ -938,7 +958,7 @@ hydratedFromCacheRef.current = false;
         reevalCount: reevalRound ?? 0,
         showArchiveSection: archiveOn ?? true,
         lastViewContentY: null,
-        remindersEnabled: remindersOn ?? true,
+        remindersEnabled: remindersOn ?? false,
         remindersFreqSec: reminderFreqSec ?? 30,
         remindersIndex: reminderIdx ?? 0,
         remindersPaused: reminderPaused ?? false,
