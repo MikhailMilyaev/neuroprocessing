@@ -16,9 +16,13 @@ p{ margin:0; }
 
 .page{ display:flex; min-height:100%; flex-direction:column; }
 
-/* Header */
-.header{ position:sticky; top:0; z-index:50; background:rgba(255,255,255,.9);
-  backdrop-filter: blur(8px); border-bottom:1px solid var(--border); }
+/* Header (липкий по умолчанию) */
+.header{ 
+  position:sticky; top:0; z-index:50; 
+  background:rgba(255,255,255,.9);
+  backdrop-filter: blur(8px); 
+  border-bottom:1px solid var(--border); 
+}
 .headerInner{ max-width:1100px; margin:0 auto; padding:.6rem 1rem;
   display:grid; grid-template-columns:1fr auto auto; gap:.75rem; align-items:center; }
 .brand{ font-weight:800; text-transform:uppercase; letter-spacing:.01em; }
@@ -139,9 +143,14 @@ p{ margin:0; }
   .copy{ justify-self:center; }
 }
 @media (max-width:720px){
+  /* Мобильный хедер: не липкий */
+  .header{ position: static; background:#fff; backdrop-filter:none; }
+
   /* Мобильный хедер: только бренд и «Войти» */
   .headerInner{ grid-template-columns:1fr auto; }
   .nav{ display:none; }
+
+  .hero{ padding:48px 1rem 40px; }
 
   .cardsGrid{ grid-template-columns:1fr; }
   .progressHeader{ justify-content:center; }
