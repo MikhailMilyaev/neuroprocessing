@@ -28,6 +28,28 @@ class InboxIdeaController {
       );
       const sortOrder = Number(next_sort);
       const row = await InboxIdea.create({ actor_id, text, sortOrder });
+
+      // 🔔 realtime: новая запись в инбоксе
+      try {
+        const hub  = req.app?.locals?.hub;
+        const opId = req.headers['x-op-id'] || null;
+        if (hub) {
+          hub.publish(`inbox:${actor_id}`, {
+            type: 'inbox.created',
+            opId,
+            payload: {
+              id: row.id,
+              text: row.text || '',
+              sortOrder: row.sortOrder ?? 0,
+              createdAt: row.createdAt,
+              updatedAt: row.updatedAt,
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('[ws publish inbox.create] fail:', e?.message || e);
+      }
+
       res.status(201).json(row);
     } catch (e) { next(e); }
   }
@@ -48,7 +70,29 @@ class InboxIdeaController {
 
       const [count, rows] = await InboxIdea.update(data, { where: { id }, returning: true });
       if (!count) return res.status(404).json({ message: 'Запись не найдена' });
-      res.json(rows[0]);
+      const updated = rows[0];
+
+      // 🔔 realtime: патч записи инбокса
+      try {
+        const hub  = req.app?.locals?.hub;
+        const opId = req.headers['x-op-id'] || null;
+        if (hub) {
+          hub.publish(`inbox:${actor_id}`, {
+            type: 'inbox.updated',
+            opId,
+            id: Number(id),
+            patch: {
+              ...(req.body.text !== undefined ? { text: updated.text } : {}),
+              ...(req.body.sortOrder !== undefined ? { sortOrder: updated.sortOrder } : {}),
+              updatedAt: updated.updatedAt,
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('[ws publish inbox.update] fail:', e?.message || e);
+      }
+
+      res.json(updated);
     } catch (e) { next(e); }
   }
 
@@ -60,6 +104,22 @@ class InboxIdeaController {
       if (!ctx) return res.status(404).json({ message: 'Запись не найдена' });
 
       await InboxIdea.destroy({ where: { id } });
+
+      // 🔔 realtime: удаление из инбокса
+      try {
+        const hub  = req.app?.locals?.hub;
+        const opId = req.headers['x-op-id'] || null;
+        if (hub) {
+          hub.publish(`inbox:${actor_id}`, {
+            type: 'inbox.deleted',
+            opId,
+            id: Number(id)
+          });
+        }
+      } catch (e) {
+        console.warn('[ws publish inbox.remove] fail:', e?.message || e);
+      }
+
       res.json({ ok: true });
     } catch (e) { next(e); }
   }
@@ -86,10 +146,43 @@ class InboxIdeaController {
       );
       const sortOrder = Number(next_sort);
 
-      await Idea.create({ storyId: story.id, text: ctx.row.text || '', sortOrder, score: null }, { transaction: t });
+      const createdIdea = await Idea.create(
+        { storyId: story.id, text: ctx.row.text || '', sortOrder, score: null },
+        { transaction: t }
+      );
       await InboxIdea.destroy({ where: { id }, transaction: t });
 
       await t.commit();
+
+      // 🔔 realtime: инбокс - удалили пункт
+      // 🔔 realtime: история - новая идея
+      try {
+        const hub  = req.app?.locals?.hub;
+        const opId = req.headers['x-op-id'] || null;
+        if (hub) {
+          hub.publish(`inbox:${actor_id}`, {
+            type: 'inbox.deleted',
+            opId,
+            id: Number(id)
+          });
+          hub.publish(`story:${story.id}`, {
+            type: 'idea.created',
+            storyId: Number(story.id),
+            ideaId: Number(createdIdea.id),
+            opId,
+            payload: {
+              id: createdIdea.id,
+              text: createdIdea.text || '',
+              score: createdIdea.score,
+              introducedRound: createdIdea.introducedRound ?? 0,
+              sortOrder: createdIdea.sortOrder ?? 0,
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('[ws publish inbox.move] fail:', e?.message || e);
+      }
+
       return res.json({ ok: true });
     } catch (e) {
       await t.rollback();
@@ -113,6 +206,63 @@ class InboxIdeaController {
       await InboxIdea.destroy({ where: { id }, transaction: t });
 
       await t.commit();
+
+      // 🔔 realtime:
+      // 1) инбокс — удалили запись
+      // 2) индекс историй — добавили/обновили карточку
+      // 3) комната истории — стартовое состояние
+      try {
+        const hub  = req.app?.locals?.hub;
+        const opId = req.headers['x-op-id'] || null;
+        if (hub) {
+          hub.publish(`inbox:${actor_id}`, {
+            type: 'inbox.deleted',
+            opId,
+            id: Number(id)
+          });
+
+          hub.publish(`actor:${actor_id}`, {
+            type: 'stories.index.patch',
+            storyId: Number(story.id),
+            opId,
+            patch: {
+              id: Number(story.id),
+              slug: story.slug,
+              title: story.title,
+              archive: story.archive,
+              reevalDueAt: story.reevalDueAt ?? null,
+              updatedAt: story.updatedAt,
+            }
+          });
+
+          hub.publish(`story:${story.id}`, {
+            type: 'story.updated',
+            storyId: Number(story.id),
+            version: new Date().toISOString(),
+            opId,
+            patch: {
+              title: story.title,
+              content: story.content,
+              archive: story.archive,
+              slug: story.slug,
+              remindersEnabled: story.remindersEnabled,
+              remindersFreqSec: story.remindersFreqSec,
+              remindersPaused: story.remindersPaused,
+              remindersIndex: story.remindersIndex,
+              showArchiveSection: story.showArchiveSection ?? true,
+              baselineContent: story.baselineContent ?? '',
+              reevalCount: story.reevalCount ?? 0,
+              stopContentY: story.stopContentY ?? null,
+              lastViewContentY: story.lastViewContentY ?? null,
+              reevalDueAt: story.reevalDueAt ?? null,
+              updatedAt: story.updatedAt,
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('[ws publish inbox.createStory] fail:', e?.message || e);
+      }
+
       return res.status(201).json(story);
     } catch (e) {
       await t.rollback();

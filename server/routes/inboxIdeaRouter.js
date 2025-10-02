@@ -7,7 +7,6 @@ const { attachActorId } = require('../middleware/actor');
 const validate = require('../middleware/validate');
 const v = require('../middleware/validators');
 
-// Нормализуем: превращаем "функцию или массив функций" в массив функций
 const toFns = (x) => Array.isArray(x) ? x : (typeof x === 'function' ? [x] : []);
 
 router.get('/', auth, attachActorId, inbox.list);

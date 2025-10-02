@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { fetchStoryBySlug, fetchStory, updateStory, reevaluateStory, beginRereview } from '../../http/storyApi';
 import { listIdeas, createIdea, updateIdea, deleteIdea, reorderIdeas } from '../../http/ideaApi';
 import { ns } from '../../utils/ns';
+import { subscribe, getActorChannel, startRealtime } from '../../utils/realtime';
+import { genOpId, markSentOp, isOwnOp } from '../../utils/opId';
 import BackBtn from '../../components/BackBtn/BackBtn';
 import StoryHeader from '../../components/Story/StoryHeader/StoryHeader';
 import StoryMenu from '../../components/Story/StoryHeader/StoryMenu/StoryMenu';
@@ -15,7 +17,7 @@ import CompleteModal from '../../components/Story/CompleteModal/CompleteModal';
 import Toast from '../../components/Toast/Toast';
 import { PRACTICES } from '../../utils/practices';
 import { readSnapshot, writeSnapshot, isSeenThisSession, markSeenThisSession, markStoryDirty, clearStoryDirty } from '../../utils/cache/storySnapshot';
-import { patchStoriesIndex } from '../../utils/cache/storiesCache';
+import { patchStoriesIndex, removeFromStoriesIndex } from '../../utils/cache/storiesCache';
 import { readStoriesIndex } from '../../utils/cache/storiesCache';
 import { useSmartDelay } from '../../hooks/useSmartDelay';
 
@@ -33,6 +35,9 @@ const IDEA_CHAR_LIMIT = 80;
 
 const ANIM_MS = 250;
 const MOVE_AFTER_MS = Math.max(0, ANIM_MS - 10);
+
+const SORT_KEY = (id) => ns(`story_sorted_${id}`);
+const SORT_BASE_KEY = (id) => ns(`story_sorted_base_${id}`);
 
 const parseFinite = v => {
   const n = Number(v);
@@ -129,6 +134,16 @@ export default function Story() {
   const showError = msg => { setToastMsg(msg); setToastType('error'); setToastKey(k => k + 1); };
 
   const [sortedView, setSortedView] = useState(false);
+
+  useEffect(() => {
+  if (!id) return;
+  try {
+    const v = localStorage.getItem(SORT_KEY(id));
+    if (v === '1') setSortedView(true);
+    if (v === '0') setSortedView(false);
+  } catch {}
+}, [id]);
+
   const [unsortedOrder, setUnsortedOrder] = useState(null);
 
   const [stopY, setStopY] = useState(canTrustCache ? (initialSnap.stopContentY ?? null) : null);
@@ -155,6 +170,37 @@ export default function Story() {
       return Number.isFinite(num) && num >= 1 && num <= 10;
     });
   };
+
+  const sendStoryUpdate = async (patch) => {
+    const opId = genOpId();
+    markSentOp(opId);
+    return updateStory(id, patch, { opId });
+  };
+
+  const sendCreateIdea = async (storyId, payload) => {
+    const opId = genOpId();
+    markSentOp(opId);
+    return createIdea(storyId, payload, { opId });
+  };
+
+  const sendIdeaUpdate = async (iid, payload) => {
+    const opId = genOpId();
+    markSentOp(opId);
+    return updateIdea(iid, payload, { opId });
+  };
+
+  const sendReorderIdeas = async (storyId, order) => {
+    const opId = genOpId();
+    markSentOp(opId);
+    return reorderIdeas(storyId, order, { opId });
+  };
+
+  const sendReevaluate = async (storyId) => {
+    const opId = genOpId();
+    markSentOp(opId);
+    return reevaluateStory(storyId, { opId });
+  };
+
 
   const openUnarchivedToast = () => {
     setToastType('info');
@@ -200,6 +246,55 @@ export default function Story() {
     return () => { cancelled = true; };
   }, [slug, navigate]);
 
+useEffect(() => {
+  if (!id) return;
+
+  const onStorage = (e) => {
+    if (e.key !== SORT_KEY(id)) return;
+
+    const wantSorted = e.newValue === '1';
+    setSortedView(wantSorted);
+
+    const full = (history[pointer]?.beliefs || []);
+    if (!full.length) return;
+
+    const isArchivedFlag = (b) => b?.score !== '' && b?.score != null && Number(b?.score) === 0;
+
+    if (wantSorted) {
+      const active = full.filter(b => !isArchivedFlag(b));
+      const archived = full.filter(isArchivedFlag);
+      const activeSorted = active
+        .map((b, idx) => ({ ...b, _idx: idx }))
+        .sort((a, b) => Number(b.score) - Number(a.score) || a._idx - b._idx)
+        .map(({ _idx, ...b }) => b);
+      const nextBeliefs = [...activeSorted, ...archived];
+      apply({ ...current, beliefs: nextBeliefs });
+
+      try {
+        const raw = localStorage.getItem(SORT_BASE_KEY(id));
+        if (!raw) {
+          localStorage.setItem(SORT_BASE_KEY(id), JSON.stringify(full.map(b => b.id)));
+        }
+      } catch {}
+    } else {
+      let base = [];
+      try {
+        base = JSON.parse(localStorage.getItem(SORT_BASE_KEY(id)) || '[]');
+      } catch {}
+      if (!Array.isArray(base) || base.length === 0) return;
+
+      const pos = new Map(base.map((bid, i) => [bid, i]));
+      const restored = full.slice().sort((a, b) =>
+        (pos.get(a.id) ?? Infinity) - (pos.get(b.id) ?? Infinity)
+      );
+      apply({ ...current, beliefs: restored });
+    }
+  };
+
+  window.addEventListener('storage', onStorage);
+  return () => window.removeEventListener('storage', onStorage);
+}, [id, history, pointer, current]);
+
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
@@ -239,15 +334,31 @@ export default function Story() {
         const ideasRaw = await listIdeas(id).catch(() => []);
         if (cancelled) return;
 
-        const beliefs = mapIdeasToBeliefs(ideasRaw);
+        let beliefs = mapIdeasToBeliefs(ideasRaw);
 
-const prevOrder = (initialSnapLocal?.ideas || []).map(i => i.id);
-const serverOrder = ideasRaw.map(i => i.id);
-const sameOrder =
-  prevOrder.length === serverOrder.length &&
-  prevOrder.every((v, i) => v === serverOrder[i]);
+        try {
+          const wantSorted = localStorage.getItem(SORT_KEY(id)) === '1';
+          if (wantSorted) {
+            const isArchivedFlag = (b) => b?.score !== '' && b?.score != null && Number(b?.score) === 0;
+            const active   = beliefs.filter(b => !isArchivedFlag(b));
+            const archived = beliefs.filter(isArchivedFlag);
+            const activeSorted = active
+              .map((b, idx) => ({ ...b, _idx: idx }))
+              .sort((a, b) => Number(b.score) - Number(a.score) || a._idx - b._idx)
+              .map(({ _idx, ...b }) => b);
+            beliefs = [...activeSorted, ...archived];
+            setSortedView(true);
+          }
+        } catch {}
+
+        const prevOrder = (initialSnapLocal?.ideas || []).map(i => i.id);
+        const serverOrder = ideasRaw.map(i => i.id);
+        const sameOrder =
+          prevOrder.length === serverOrder.length &&
+          prevOrder.every((v, i) => v === serverOrder[i]);
 
         setHistory([{ title: story?.title || '', content: story?.content || '', beliefs }]);
+
         setPointer(0);
 
         setIsArchivedStory(!!story?.archive);
@@ -322,6 +433,257 @@ hydratedFromCacheRef.current = false;
   }, [id]);
 
   useEffect(() => {
+    if (!id) return;
+
+    startRealtime();
+
+    const storyCh = `story:${id}`;
+    const offStory = subscribe(storyCh, (msg) => {
+      if (msg?.opId && isOwnOp(msg.opId)) return;
+      if (Number(msg?.storyId) !== Number(id)) return;
+
+      if (msg?.type === 'story.deleted') {
+        removeFromStoriesIndex(Number(id));
+        setToastType('success');
+        setToastMsg('История удалена');
+        setToastKey(k => k + 1);
+        navigate('/stories', { replace: true });
+        return;
+      }
+
+      if (msg?.type !== 'story.updated') return;
+
+      const p = msg.patch || {};
+
+      setHistory((prev) => {
+        const last = prev[prev.length - 1] || { title: '', content: '', beliefs: [] };
+        const next = {
+          ...last,
+          ...(p.title   !== undefined ? { title: p.title }     : {}),
+          ...(p.content !== undefined ? { content: p.content } : {}),
+        };
+        const base = prev.slice(0, prev.length - 1);
+        return [...base, next];
+      });
+
+      if (p.archive !== undefined) setIsArchivedStory(!!p.archive);
+      if (p.baselineContent !== undefined) setBaseline(p.baselineContent ?? '');
+
+      try {
+        const prevSnap = readSnapshot(id) || {};
+        writeSnapshot(id, {
+          ...prevSnap,
+          updatedAt: p.updatedAt || new Date().toISOString(),
+          ...(p.title   !== undefined ? { title: p.title } : {}),
+          ...(p.content !== undefined ? { content: p.content } : {}),
+          ...(p.archive !== undefined ? { archive: !!p.archive } : {}),
+          ...(p.reevalDueAt !== undefined ? { reevalDueAt: p.reevalDueAt ?? null } : {}),
+        });
+      } catch {}
+
+      try {
+        patchStoriesIndex(Number(id), {
+          id: Number(id),
+          ...(p.title   !== undefined ? { title: p.title } : {}),
+          ...(p.archive !== undefined ? { archive: !!p.archive } : {}),
+          ...(p.slug    !== undefined ? { slug: p.slug } : {}),
+          ...(p.reevalDueAt !== undefined ? { reevalDueAt: p.reevalDueAt ?? null } : {}),
+          updatedAt: p.updatedAt || new Date().toISOString(),
+        });
+      } catch {}
+
+      if (p.slug && typeof p.slug === 'string') {
+        const newUrl = `/story/${p.slug}`;
+        if (window.location.pathname !== newUrl) {
+          navigate(newUrl, { replace: true });
+        }
+      }
+    });
+
+    const actorCh = getActorChannel();
+    const offActor = actorCh
+      ? subscribe(actorCh, (msg) => {
+          if (msg?.opId && isOwnOp(msg.opId)) return;
+          if (msg?.type !== 'stories.index.patch' || Number(msg?.storyId) !== Number(id)) return;
+
+          const p = msg.patch || {};
+          try {
+            if (p.deleted === true) {
+            removeFromStoriesIndex(Number(id));
+            setToastType('info');
+            setToastMsg('История была удалена в другой вкладке');
+            setToastKey(k => k + 1);
+            navigate('/stories', { replace: true });
+            return;
+          }
+          patchStoriesIndex(Number(id), {
+           id: Number(id),
+            ...(p.title   !== undefined ? { title: p.title } : {}),
+            ...(p.archive !== undefined ? { archive: !!p.archive } : {}),
+            ...(p.slug    !== undefined ? { slug: p.slug } : {}),
+            ...(p.reevalDueAt !== undefined ? { reevalDueAt: p.reevalDueAt ?? null } : {}),
+            updatedAt: p.updatedAt || new Date().toISOString(),
+          });
+          } catch {}
+        })
+      : () => {};
+
+    const ideasCh = `story:${id}`;
+    const offIdeas = subscribe(ideasCh, (msg) => {
+      if (msg?.opId && isOwnOp(msg.opId)) return;
+      if (!msg || Number(msg?.storyId) !== Number(id)) return;
+
+      const patchBeliefs = (updater) => {
+        setHistory((prev) => {
+          const last = prev[prev.length - 1] || { title: '', content: '', beliefs: [] };
+          const nextBeliefs = updater(last.beliefs || []);
+          const base = prev.slice(0, prev.length - 1);
+          return [...base, { ...last, beliefs: nextBeliefs }];
+        });
+      };
+
+      switch (msg.type) {
+        case 'idea.created': {
+          const i = msg.payload;
+          if (!i?.id) return;
+          patchBeliefs((list) => {
+            if (list.some(b => b.id === i.id)) return list;
+            const b = mapIdeasToBeliefs([i])[0];
+            const isArchived = (v) => v.score !== '' && v.score != null && Number(v.score) === 0;
+            const active = list.filter(x => !isArchived(x));
+            const archived = list.filter(isArchived);
+            return [b, ...active, ...archived];
+          });
+          break;
+        }
+
+        case 'idea.updated': {
+          const p = msg.patch || {};
+          const iid = msg.ideaId;
+          if (!iid) return;
+
+          patchBeliefs((list) => {
+            const idx = list.findIndex(b => b.id === iid);
+            if (idx === -1) {
+              return list.map(b => {
+                if (b.id !== iid) return b;
+                return {
+                  ...b,
+                  ...(p.text   !== undefined ? { text: p.text } : {}),
+                  ...(p.score  !== undefined ? { score: p.score == null ? '' : String(p.score) } : {}),
+                  ...(p.sortOrder !== undefined ? { sortOrder: p.sortOrder } : {}),
+                  ...(typeof p.srcStart === 'number' && typeof p.srcEnd === 'number'
+                      ? { srcStart: p.srcStart, srcEnd: p.srcEnd }
+                      : {}),
+                };
+              });
+            }
+
+            const prevItem = list[idx];
+            const wasArchived = prevItem.score !== '' && prevItem.score != null && Number(prevItem.score) === 0;
+
+            const nextItem = {
+              ...prevItem,
+              ...(p.text   !== undefined ? { text: p.text } : {}),
+              ...(p.score  !== undefined ? { score: p.score == null ? '' : String(p.score) } : {}),
+              ...(p.sortOrder !== undefined ? { sortOrder: p.sortOrder } : {}),
+              ...(typeof p.srcStart === 'number' && typeof p.srcEnd === 'number'
+                  ? { srcStart: p.srcStart, srcEnd: p.srcEnd }
+                  : {}),
+            };
+
+            const nowArchived = nextItem.score !== '' && nextItem.score != null && Number(nextItem.score) === 0;
+
+            let next = list.slice();
+            next[idx] = nextItem;
+
+            if (wasArchived !== nowArchived) {
+              const rest = next.filter(b => b.id !== iid);
+              const isArch = (x) => x.score !== '' && x.score != null && Number(x.score) === 0;
+              const active   = rest.filter(x => !isArch(x));
+              const archived = rest.filter(isArch);
+              next = nowArchived
+                ? [...active, nextItem, ...archived]  
+                : [nextItem, ...active, ...archived];  
+            }
+
+            return next;
+          });
+          break;
+        }
+
+        case 'idea.deleted': {
+          const iid = msg.ideaId;
+          if (!iid) return;
+          patchBeliefs((list) => list.filter(b => b.id !== iid));
+          break;
+        }
+
+        case 'idea.reordered': {
+          const order = Array.isArray(msg.order) ? msg.order : [];
+          if (!order.length) return;
+          const pos = new Map(order.map((id, i) => [id, i]));
+          patchBeliefs((list) =>
+            list.slice().sort((a, b) => (pos.get(a.id) ?? Infinity) - (pos.get(b.id) ?? Infinity))
+          );
+          break;
+        }
+
+            case 'reeval.completed': {
+        setReevalRound((msg.round || 0));
+        setHistory((prev) => {
+          const last = prev[prev.length - 1] || { title: '', content: '', beliefs: [] };
+          const nextBeliefs = (last.beliefs || []).map(b => {
+            const isArchived = b.score !== '' && b.score != null && Number(b.score) === 0;
+            return isArchived ? b : { ...b, score: '' };
+          });
+          const base = prev.slice(0, prev.length - 1);
+          return [...base, { ...last, beliefs: nextBeliefs }];
+        });
+
+        try {
+          const prevSnap = readSnapshot(id) || {};
+          writeSnapshot(id, {
+            ...prevSnap,
+            reevalCount: (msg.round || prevSnap.reevalCount || 0),
+            baselineContent: prevSnap.baselineContent ?? '',
+            updatedAt: new Date().toISOString(),
+          });
+        } catch {}
+        break;
+      }
+
+      case 'rereview.started': {
+        setReevalRound((msg.round || 0));
+        setIsArchivedStory(false);  
+        setArchiveOn(true);     
+
+        try {
+          const prevSnap = readSnapshot(id) || {};
+          writeSnapshot(id, {
+            ...prevSnap,
+            archive: false,
+            reevalDueAt: null,
+            reevalCount: (msg.round || prevSnap.reevalCount || 0),
+            updatedAt: new Date().toISOString(),
+          });
+        } catch {}
+        break;
+      }
+
+        default:
+          break;
+      }
+    });
+
+    return () => {
+      offStory();
+      offActor();
+      offIdeas();
+    };
+  }, [id, navigate]);
+
+  useEffect(() => {
     try {
       sessionStorage.setItem(HK(id), JSON.stringify(history));
       sessionStorage.setItem(PK(id), String(pointer));
@@ -334,11 +696,12 @@ hydratedFromCacheRef.current = false;
     const moveTimers  = moveTimersRef.current;
 
     return () => {
+      (async () => {
       const saveTimer   = saveTimerRef.current;
       const lastPayload = lastStoryPayloadRef.current;
 
       if (lastPayload) {
-        try { updateStory(id, lastPayload); } catch {}
+        try { await sendStoryUpdate(lastPayload); } catch {}
       }
       if (saveTimer) clearTimeout(saveTimer);
       lastStoryPayloadRef.current = null;
@@ -347,13 +710,14 @@ hydratedFromCacheRef.current = false;
 
       for (const [, t] of timersMap.entries()) clearTimeout(t);
       for (const [iid, payload] of pendingMap.entries()) {
-        try { updateIdea(iid, payload); } catch {}
+        try { await sendIdeaUpdate(iid, payload); } catch {}
       }
       timersMap.clear();
       pendingMap.clear();
 
       for (const t of moveTimers.values()) clearTimeout(t);
       moveTimers.clear();
+      })();
     };
   }, [id]);
 
@@ -364,7 +728,7 @@ hydratedFromCacheRef.current = false;
     }
     const lastPayload = lastStoryPayloadRef.current;
     if (lastPayload) {
-      try { await updateStory(id, lastPayload); } catch {}
+      try { await sendStoryUpdate(lastPayload) } catch {}
       lastStoryPayloadRef.current = null;
     }
     for (const t of ideaTimersRef.current.values()) clearTimeout(t);
@@ -374,12 +738,38 @@ hydratedFromCacheRef.current = false;
     if (pending.size) {
       const jobs = [];
       for (const [iid, payload] of pending.entries()) {
-        jobs.push(updateIdea(iid, payload));
+        jobs.push(sendIdeaUpdate(iid, payload))
       }
       await Promise.allSettled(jobs);
       pending.clear();
     }
   };
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        flushPendingWrites();
+      }
+    };
+
+    const onBeforeUnload = () => {
+      flushPendingWrites();
+    };
+
+    const onOffline = () => {
+      flushPendingWrites();
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('beforeunload', onBeforeUnload);
+    window.addEventListener('offline', onOffline);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, [id]);  
 
   const scheduleSave = (payload) => {
     lastStoryPayloadRef.current = { ...(lastStoryPayloadRef.current || {}), ...payload };
@@ -388,7 +778,7 @@ hydratedFromCacheRef.current = false;
       const p = lastStoryPayloadRef.current;
       if (p && id) {
         try {
-          const saved = await updateStory(id, p);
+          const saved = await sendStoryUpdate(p);
           if (saved?.slug && typeof saved.slug === 'string') {
             const newUrl = `/story/${saved.slug}`;
             if (window.location.pathname !== newUrl) {
@@ -450,7 +840,7 @@ hydratedFromCacheRef.current = false;
     if (!isArchivedStory) return;
     setIsArchivedStory(false);
     try {
-      await updateStory(id, { archive: false, reevalDueAt: null });
+      await sendStoryUpdate({ archive: false, reevalDueAt: null });
     } catch (e) {
       console.warn('[unarchive on work] failed, will reflect locally', e);
     }
@@ -522,7 +912,7 @@ hydratedFromCacheRef.current = false;
     const t = setTimeout(() => {
       const p = ideaPendingRef.current.get(iid);
       if (p) {
-        updateIdea(iid, p).catch(console.error);
+        sendIdeaUpdate(iid, p).catch(console.error);
         ideaPendingRef.current.delete(iid);
       }
       ideaTimersRef.current.delete(key);
@@ -586,7 +976,7 @@ hydratedFromCacheRef.current = false;
     if (existing) return existing;
 
     const job = (async () => {
-      const created = await createIdea(id, {
+      const created = await sendCreateIdea(id, {
         text: initial.text ?? '',
         score: initial.score ?? null,
         sortOrder: Date.now(),
@@ -607,10 +997,10 @@ hydratedFromCacheRef.current = false;
 
           return {
             ...b,
-            id: created.id,               
+            id: created.id,
             text: hasUsefulLocal ? preferredLocal : (created.text || ''),
             introducedRound: b.introducedRound ?? (created.introducedRound ?? reevalRound),
-            uiKey: b.uiKey,               
+            uiKey: b.uiKey,
           };
         });
 
@@ -621,7 +1011,7 @@ hydratedFromCacheRef.current = false;
 
       const latest = String((latestIdeaTextRef.current.get(tempId) ?? created.text ?? '')).slice(0, IDEA_CHAR_LIMIT);
       if (latest !== (created.text || '')) {
-        try { await updateIdea(created.id, { text: latest }); } catch {}
+        try { await sendIdeaUpdate(created.id, { text: latest }); } catch {}
       }
 
       if (deleteAfterCreateRef.current.has(tempId)) {
@@ -852,7 +1242,7 @@ hydratedFromCacheRef.current = false;
     const dueISO = due.toISOString();
 
     try {
-      await updateStory(id, { archive: true, reevalDueAt: dueISO });
+      await sendStoryUpdate({ archive: true, reevalDueAt: dueISO });
       setIsArchivedStory(true);
     } catch (e) {
       console.warn('[archive story] failed', e);
@@ -893,7 +1283,7 @@ hydratedFromCacheRef.current = false;
     const prev = archiveOn;
     setArchiveOn(checked);
     try {
-      await updateStory(id, { showArchiveSection: !!checked });
+      await sendStoryUpdate({ showArchiveSection: !!checked });
     } catch {
       setArchiveOn(prev);
       showError('Не удалось сохранить «Архив идей».');
@@ -911,6 +1301,7 @@ hydratedFromCacheRef.current = false;
 
     if (!sortedView) {
       setUnsortedOrder(full.map(b => b.id));
+      try { localStorage.setItem(SORT_BASE_KEY(id), JSON.stringify(full.map(b => b.id))); } catch {}
       const activeSorted = active
         .map((b, idx) => ({ ...b, _idx: idx }))
         .sort((a, b) => Number(b.score) - Number(a.score) || a._idx - b._idx)
@@ -918,25 +1309,35 @@ hydratedFromCacheRef.current = false;
       const nextBeliefs = [...activeSorted, ...archived];
       apply({ ...current, beliefs: nextBeliefs });
       setSortedView(true);
+      localStorage.setItem(SORT_KEY(id), '1');
       setMenuOpen(false);
 
       try {
         const order = nextBeliefs.map(b => b.id);
-        await reorderIdeas(id, order);
+        await sendReorderIdeas(id, order);
       } catch {}
     } else {
-      const order = unsortedOrder || [];
+      let order = unsortedOrder || [];
+      if (!order?.length) {
+        try {
+          const raw = localStorage.getItem(SORT_BASE_KEY(id));
+          const parsed = JSON.parse(raw || '[]');
+          if (Array.isArray(parsed) && parsed.length) order = parsed;
+        } catch {}
+      }
+
       const indexOf = new Map(order.map((id, i) => [id, i]));
       const restored = full.slice().sort((a, b) =>
         (indexOf.get(a.id) ?? Infinity) - (indexOf.get(b.id) ?? Infinity)
       );
       apply({ ...current, beliefs: restored });
       setSortedView(false);
+      localStorage.setItem(SORT_KEY(id), '0');
       setUnsortedOrder(null);
       setMenuOpen(false);
 
       try {
-        await reorderIdeas(id, restored.map(b => b.id));
+        await sendReorderIdeas(id, restored.map(b => b.id));
       } catch {}
     }
   };
@@ -986,7 +1387,7 @@ hydratedFromCacheRef.current = false;
     await flushPendingWrites();
 
     try {
-      const { round } = await reevaluateStory(id);
+      const { round } = await sendReevaluate(id);
       const nextBeliefs = list.map(b =>
         (b.score !== '' && b.score != null && Number(b.score) === 0) ? b : { ...b, score: '' }
       );
@@ -1005,7 +1406,7 @@ hydratedFromCacheRef.current = false;
     const prev = remindersOn;
     setRemindersOn(checked);
     try {
-      await updateStory(id, { remindersEnabled: !!checked });
+      await sendStoryUpdate({ remindersEnabled: !!checked });
     } catch {
       setRemindersOn(prev);
       showError('Не удалось сохранить «Напоминания».');
@@ -1016,7 +1417,7 @@ hydratedFromCacheRef.current = false;
     const prev = reminderFreqSec;
     setReminderFreqSec(value);
     try {
-      await updateStory(id, { remindersFreqSec: value });
+      await sendStoryUpdate({ remindersFreqSec: value });
     } catch {
       setReminderFreqSec(prev);
       showError('Не удалось сохранить частоту напоминаний.');
@@ -1027,7 +1428,7 @@ hydratedFromCacheRef.current = false;
     const prev = reminderPaused;
     setReminderPaused(paused);
     try {
-      await updateStory(id, { remindersPaused: !!paused });
+      await sendStoryUpdate({ remindersPaused: !!paused });
     } catch {
       setReminderPaused(prev);
       showError('Не удалось сохранить паузу напоминаний.');

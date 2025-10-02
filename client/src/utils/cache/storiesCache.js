@@ -40,6 +40,11 @@ export function writeStoriesIndex(list) {
 
 export function patchStoriesIndex(id, patch = {}) {
   try {
+    if (patch && patch.deleted === true) {
+      removeFromStoriesIndex(id);
+      return;
+    }
+
     const raw = localStorage.getItem(KEY());
     const parsed = safeParse(raw);
     const arr = Array.isArray(parsed) ? parsed : [];
@@ -77,8 +82,9 @@ export function patchStoriesIndex(id, patch = {}) {
 export function removeFromStoriesIndex(id) {
   try {
     const raw = localStorage.getItem(KEY());
-    const arr = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
-    const next = arr.filter(it => Number(it.id) !== Number(id));
+    const arr = safeParse(raw);
+    const list = Array.isArray(arr) ? arr : [];
+    const next = list.filter(it => Number(it.id) !== Number(id));
     localStorage.setItem(KEY(), JSON.stringify(next));
   } catch {}
 }

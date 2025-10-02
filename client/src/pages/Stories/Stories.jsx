@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ns } from '../../utils/ns';
-
+import { subscribe, getActorChannel, startRealtime } from '../../utils/realtime';
 import StoriesHeader from '../../components/Stories/StoriesHeader/StoriesHeader';
 import StoriesList from '../../components/Stories/StoriesList/StoriesList';
 import FullScreenLoader from '../../components/FullScreenLoader/FullScreenLoader';
@@ -373,20 +373,18 @@ const Stories = () => {
 
   const handleDeleteStory = async (id) => {
     const prev = storiesList;
-    const next = sortByUpdated((prev || []).filter(s => Number(s.id) !== Number(id)));
+    const next = sortByUpdated((prev || []).filter((s) => Number(s.id) !== Number(id)));
     setStoriesList(next);
     writeStoriesIndex(next.map(mapForIndex));
 
-    try {
-      try { purgeStoryLocal(String(id)); } catch {}   
-      try { removeFromStoriesIndex(Number(id)); } catch {}  
-    } catch {}
+    try { purgeStoryLocal(String(id)); } catch {}
+    try { removeFromStoriesIndex(Number(id)); } catch {}
 
     try {
-      await removeStory(id);
+      await removeStory(id);  
     } catch (e) {
       const status = e?.response?.status || e?.status || 0;
-      if (status === 404) return;
+      if (status === 404) return;  
 
       console.error('[removeStory fail]', e);
       setStoriesList(prev);
@@ -405,6 +403,71 @@ const Stories = () => {
   const hasSearchInSelectedTab = showArchive
     ? (archiveLoaded && archiveCount > 0)
     : (activeCount > 0);
+
+  useEffect(() => {
+    startRealtime();
+
+    const actorCh = getActorChannel();
+    if (!actorCh) return;
+
+    const off = subscribe(actorCh, (msg) => {
+      if (msg?.type === 'stories.index.patch' && msg?.storyId) {
+        const storyIdNum = Number(msg.storyId);
+        const patch = msg.patch || {};
+
+        if (patch.deleted === true) {
+          setStoriesList((prev) => {
+            const next = sortByUpdated((prev || []).filter(s => Number(s.id) !== storyIdNum));
+            writeStoriesIndex(next.map(mapForIndex));
+            return next;
+          });
+          try { removeFromStoriesIndex?.(storyIdNum); } catch {}
+          try { purgeStoryLocal?.(String(storyIdNum)); } catch {}
+
+          setToastType('info');
+          setToastMsg('История была удалена в другой вкладке');
+          setToastKey((k) => k + 1);
+
+          return;
+        }
+
+        setStoriesList((prev) => {
+          const byId = new Map((prev || []).map(i => [Number(i.id), i]));
+          const prevItem = byId.get(storyIdNum) || { id: storyIdNum };
+
+          const nextItem = {
+            ...prevItem,
+            ...(patch.title        !== undefined ? { title: patch.title } : {}),
+            ...(patch.archive      !== undefined ? { archive: !!patch.archive } : {}),
+            ...(patch.slug         !== undefined ? { slug: patch.slug } : {}),
+            ...(patch.reevalDueAt  !== undefined ? { reevalDueAt: patch.reevalDueAt ?? null } : {}),
+            updatedAt: patch.updatedAt || new Date().toISOString(),
+          };
+
+          byId.set(storyIdNum, nextItem);
+          const arr = Array.from(byId.values());
+          const sorted = sortByUpdated(arr);
+          writeStoriesIndex(sorted.map(mapForIndex));
+          return sorted;
+        });
+        return;
+      }
+
+      if ((msg?.type === 'story.deleted' || msg?.type === 'story.removed') && msg?.storyId) {
+        const storyIdNum = Number(msg.storyId);
+        setStoriesList((prev) => {
+          const next = sortByUpdated((prev || []).filter(s => Number(s.id) !== storyIdNum));
+          writeStoriesIndex(next.map(mapForIndex));
+          return next;
+        });
+        try { removeFromStoriesIndex?.(storyIdNum); } catch {}
+        try { purgeStoryLocal?.(String(storyIdNum)); } catch {}
+        return;
+      }
+    });
+
+    return () => { off(); };
+  }, []);
 
   return (
     <div ref={rootRef} className={classes.storiesContainer}>

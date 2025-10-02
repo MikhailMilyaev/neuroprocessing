@@ -24,7 +24,7 @@ class StoryController {
   async create(req, res, next) {
     try {
       const actor_id = req.actorId;
-      if (!actor_id) return;
+      if (!actor_id) return res.status(401).json({ message: 'Unauthorized' });
 
       const { title = '', content = '' } = req.body || {};
       const raw = pickSlugFromTitle(title);
@@ -36,11 +36,58 @@ class StoryController {
         content,
         archive: false,
         slug: unique,
+        showArchiveSection: true,
         remindersEnabled: false,
         remindersFreqSec: 30,
         remindersPaused: false,
         remindersIndex: 0,
       });
+
+      try {
+        const hub  = req.app?.locals?.hub;
+        const opId = req.opId || null;
+        if (hub) {
+          hub.publish(`actor:${actor_id}`, {
+            type: 'stories.index.patch',
+            storyId: Number(story.id),
+            opId,
+            patch: {
+              id: Number(story.id),
+              slug: story.slug,
+              title: story.title,
+              archive: story.archive,
+              reevalDueAt: story.reevalDueAt ?? null,
+              updatedAt: story.updatedAt,
+            }
+          });
+          // сама история — начальное состояние (патчем)
+          hub.publish(`story:${story.id}`, {
+            type: 'story.updated',
+            storyId: Number(story.id),
+            version: new Date().toISOString(),
+            opId,
+            patch: {
+              title: story.title,
+              content: story.content,
+              archive: story.archive,
+              slug: story.slug,
+              remindersEnabled: story.remindersEnabled,
+              remindersFreqSec: story.remindersFreqSec,
+              remindersPaused: story.remindersPaused,
+              remindersIndex: story.remindersIndex,
+              showArchiveSection: story.showArchiveSection ?? true,
+              baselineContent: story.baselineContent ?? '',
+              reevalCount: story.reevalCount ?? 0,
+              stopContentY: story.stopContentY ?? null,
+              lastViewContentY: story.lastViewContentY ?? null,
+              reevalDueAt: story.reevalDueAt ?? null,
+              updatedAt: story.updatedAt,
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('[ws publish story.create] fail:', e?.message || e);
+      }
 
       return res.json(story);
     } catch (e) { next(e); }
@@ -49,7 +96,7 @@ class StoryController {
   async getBySlug(req, res, next) {
     try {
       const actor_id = req.actorId;
-      if (!actor_id) return;
+      if (!actor_id) return res.status(401).json({ message: 'Unauthorized' });
 
       const { slug } = req.params;
       const story = await Story.findOne({ where: { actor_id, slug } });
@@ -61,7 +108,7 @@ class StoryController {
   async list(req, res, next) {
     try {
       const actor_id = req.actorId;
-      if (!actor_id) return;
+      if (!actor_id) return res.status(401).json({ message: 'Unauthorized' });
 
       const archiveParam = req.query.archive;
       const limitParam   = Number.parseInt(req.query.limit, 10);
@@ -122,7 +169,7 @@ class StoryController {
   async getOne(req, res, next) {
     try {
       const actor_id = req.actorId;
-      if (!actor_id) return;
+      if (!actor_id) return res.status(401).json({ message: 'Unauthorized' });
 
       const { id } = req.params;
       const story = await Story.findOne({ where: { id, actor_id } });
@@ -134,7 +181,7 @@ class StoryController {
   async getFull(req, res, next) {
     try {
       const actor_id = req.actorId;
-      if (!actor_id) return;
+      if (!actor_id) return res.status(401).json({ message: 'Unauthorized' });
 
       const { id } = req.params;
       const story = await Story.findOne({ where: { id, actor_id } });
@@ -152,7 +199,7 @@ class StoryController {
   async update(req, res, next) {
     try {
       const actor_id = req.actorId;
-      if (!actor_id) return;
+      if (!actor_id) return res.status(401).json({ message: 'Unauthorized' });
 
       const { id } = req.params;
       const prev = await Story.findOne({ where: { id, actor_id } });
@@ -223,18 +270,88 @@ class StoryController {
 
       const [count, rows] = await Story.update(updateData, { where: { id, actor_id }, returning: true });
       if (!count) return res.status(404).json({ message: 'История не найдена' });
-      return res.json(rows[0]);
+
+      const updated = rows[0];
+
+      try {
+        const hub  = req.app?.locals?.hub;
+        const opId = req.opId || null;
+
+        if (hub) {
+          hub.publish(`story:${id}`, {
+            type: 'story.updated',
+            storyId: Number(id),
+            version: new Date().toISOString(),
+            opId,
+            patch: {
+              ...(title !== undefined ? { title: updated.title } : {}),
+              ...(content !== undefined ? { content: updated.content } : {}),
+              ...(archive !== undefined ? { archive: updated.archive } : {}),
+              ...(baselineContent !== undefined ? { baselineContent: updated.baselineContent } : {}),
+              ...(showArchiveSection !== undefined || showArchive !== undefined
+                  ? { showArchiveSection: updated.showArchiveSection } : {}),
+              ...(remindersEnabled !== undefined ? { remindersEnabled: updated.remindersEnabled } : {}),
+              ...(remindersPaused  !== undefined ? { remindersPaused:  updated.remindersPaused } : {}),
+              ...(remindersFreqSec !== undefined ? { remindersFreqSec: updated.remindersFreqSec } : {}),
+              ...(remindersIndex   !== undefined ? { remindersIndex:   updated.remindersIndex } : {}),
+              ...(lastViewContentY !== undefined ? { lastViewContentY: updated.lastViewContentY } : {}),
+              ...(reevalDueAt      !== undefined ? { reevalDueAt:      updated.reevalDueAt } : {}),
+              ...(updateData.slug ? { slug: updated.slug } : {}),
+              updatedAt: updated.updatedAt,
+            }
+          });
+
+          hub.publish(`actor:${actor_id}`, {
+            type: 'stories.index.patch',
+            storyId: Number(id),
+            opId,
+            patch: {
+              title: updated.title,
+              archive: updated.archive,
+              reevalDueAt: updated.reevalDueAt ?? null,
+              updatedAt: updated.updatedAt,
+              slug: updated.slug,
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('[ws publish story.update] fail:', e?.message || e);
+      }
+
+      return res.json(updated);
     } catch (e) { next(e); }
   }
 
   async remove(req, res, next) {
     try {
       const actor_id = req.actorId;
-      if (!actor_id) return;
+      if (!actor_id) return res.status(401).json({ message: 'Unauthorized' });
 
       const { id } = req.params;
       const count = await Story.destroy({ where: { id, actor_id } });
       if (!count) return res.status(404).json({ message: 'История не найдена' });
+
+      // 🔔 realtime: удаление из индекса + уведомим комнату истории
+      try {
+        const hub  = req.app?.locals?.hub;
+        const opId = req.opId || null;
+        if (hub) {
+          hub.publish(`actor:${actor_id}`, {
+            type: 'stories.index.patch',
+            storyId: Number(id),
+            opId,
+            patch: { deleted: true, updatedAt: new Date().toISOString() }
+          });
+          hub.publish(`story:${id}`, {
+            type: 'story.deleted',
+            storyId: Number(id),
+            opId
+          });
+        }
+      } catch (e) {
+        console.warn('[ws publish story.remove] fail:', e?.message || e);
+      }
+
       return res.json({ ok: true });
     } catch (e) { next(e); }
   }
@@ -242,7 +359,7 @@ class StoryController {
   async setStop(req, res, next) {
     try {
       const actor_id = req.actorId;
-      if (!actor_id) return;
+      if (!actor_id) return res.status(401).json({ message: 'Unauthorized' });
 
       const { id } = req.params;
       const { stopContentY } = req.body;
@@ -255,14 +372,40 @@ class StoryController {
         { where: { id, actor_id }, returning: true }
       );
       if (!count) return res.status(404).json({ message: 'История не найдена' });
-      return res.json(rows[0]);
+
+      const updated = rows[0];
+
+      // 🔔 realtime
+      try {
+        const hub  = req.app?.locals?.hub;
+        const opId = req.opId || null;
+        if (hub) {
+          hub.publish(`story:${id}`, {
+            type: 'story.updated',
+            storyId: Number(id),
+            version: new Date().toISOString(),
+            opId,
+            patch: { stopContentY: updated.stopContentY, updatedAt: updated.updatedAt }
+          });
+          hub.publish(`actor:${actor_id}`, {
+            type: 'stories.index.patch',
+            storyId: Number(id),
+            opId,
+            patch: { updatedAt: updated.updatedAt }
+          });
+        }
+      } catch (e) {
+        console.warn('[ws publish story.setStop] fail:', e?.message || e);
+      }
+
+      return res.json(updated);
     } catch (e) { next(e); }
   }
 
   async clearStop(req, res, next) {
     try {
       const actor_id = req.actorId;
-      if (!actor_id) return;
+      if (!actor_id) return res.status(401).json({ message: 'Unauthorized' });
 
       const { id } = req.params;
       const [count, rows] = await Story.update(
@@ -270,7 +413,32 @@ class StoryController {
         { where: { id, actor_id }, returning: true }
       );
       if (!count) return res.status(404).json({ message: 'История не найдена' });
-      return res.json(rows[0]);
+
+      const updated = rows[0];
+
+      try {
+        const hub  = req.app?.locals?.hub;
+        const opId = req.opId || null;
+        if (hub) {
+          hub.publish(`story:${id}`, {
+            type: 'story.updated',
+            storyId: Number(id),
+            version: new Date().toISOString(),
+            opId,
+            patch: { stopContentY: null, updatedAt: updated.updatedAt }
+          });
+          hub.publish(`actor:${actor_id}`, {
+            type: 'stories.index.patch',
+            storyId: Number(id),
+            opId,
+            patch: { updatedAt: updated.updatedAt }
+          });
+        }
+      } catch (e) {
+        console.warn('[ws publish story.clearStop] fail:', e?.message || e);
+      }
+
+      return res.json(updated);
     } catch (e) { next(e); }
   }
 
@@ -278,7 +446,7 @@ class StoryController {
     const t = await sequelize.transaction();
     try {
       const actor_id = req.actorId;
-      if (!actor_id) { await t.rollback(); return; }
+      if (!actor_id) { await t.rollback(); return res.status(401).json({ message: 'Unauthorized' }); }
 
       const { id } = req.params;
       const story = await Story.findOne({ where: { id, actor_id }, transaction: t });
@@ -309,6 +477,47 @@ class StoryController {
       await story.update({ reevalCount: nextRound, baselineContent: story.content }, { transaction: t });
 
       await t.commit();
+
+      // 🔔 realtime: сообщим о завершении раунда + обновим метаданные истории
+      try {
+        const hub  = req.app?.locals?.hub;
+        const opId = req.opId || null;
+
+        if (hub) {
+          // событие о рефреше раунда
+          hub.publish(`story:${id}`, {
+            type: 'reeval.completed',
+            storyId: Number(id),
+            round: nextRound,
+            opId
+          });
+
+          // патч самой истории
+          const fresh = await Story.findByPk(id); // чтобы взять обновлённые updatedAt/reevalCount/baselineContent
+          hub.publish(`story:${id}`, {
+            type: 'story.updated',
+            storyId: Number(id),
+            version: new Date().toISOString(),
+            opId,
+            patch: {
+              reevalCount: fresh?.reevalCount ?? nextRound,
+              baselineContent: fresh?.baselineContent ?? story.content,
+              updatedAt: fresh?.updatedAt ?? new Date().toISOString()
+            }
+          });
+
+          // индекс историй обновится по updatedAt
+          hub.publish(`actor:${actor_id}`, {
+            type: 'stories.index.patch',
+            storyId: Number(id),
+            opId,
+            patch: { updatedAt: fresh?.updatedAt ?? new Date().toISOString() }
+          });
+        }
+      } catch (e) {
+        console.warn('[ws publish story.reeval] fail:', e?.message || e);
+      }
+
       return res.json({ round: nextRound });
     } catch (e) { await t.rollback(); next(e); }
   }
@@ -317,7 +526,7 @@ class StoryController {
     const t = await sequelize.transaction();
     try {
       const actor_id = req.actorId;
-      if (!actor_id) { await t.rollback(); return; }
+      if (!actor_id) { await t.rollback(); return res.status(401).json({ message: 'Unauthorized' }); }
 
       const { id } = req.params;
       const story = await Story.findOne({ where: { id, actor_id }, transaction: t });
@@ -344,6 +553,44 @@ class StoryController {
       await story.update({ reevalCount: nextRound, baselineContent: story.content }, { transaction: t });
 
       await t.commit();
+
+      // 🔔 realtime
+      try {
+        const hub  = req.app?.locals?.hub;
+        const opId = req.opId || null;
+
+        if (hub) {
+          hub.publish(`story:${id}`, {
+            type: 'rereview.started',
+            storyId: Number(id),
+            round: nextRound,
+            opId
+          });
+
+          const fresh = await Story.findByPk(id);
+          hub.publish(`story:${id}`, {
+            type: 'story.updated',
+            storyId: Number(id),
+            version: new Date().toISOString(),
+            opId,
+            patch: {
+              reevalCount: fresh?.reevalCount ?? nextRound,
+              baselineContent: fresh?.baselineContent ?? story.content,
+              updatedAt: fresh?.updatedAt ?? new Date().toISOString()
+            }
+          });
+
+          hub.publish(`actor:${actor_id}`, {
+            type: 'stories.index.patch',
+            storyId: Number(id),
+            opId,
+            patch: { updatedAt: fresh?.updatedAt ?? new Date().toISOString() }
+          });
+        }
+      } catch (e) {
+        console.warn('[ws publish story.rereviewStart] fail:', e?.message || e);
+      }
+
       return res.json({ round: nextRound });
     } catch (e) { await t.rollback(); next(e); }
   }

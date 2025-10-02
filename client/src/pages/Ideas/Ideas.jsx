@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import classes from './Ideas.module.css';
 import BackBtn from '../../components/BackBtn/BackBtn';
+import { subscribe, getActorChannel, startRealtime } from '../../utils/realtime';
 
 import {
   listInboxIdeas,
@@ -18,6 +19,9 @@ import { STORY_ROUTE } from '../../utils/consts';
 import EmptyIdeasState from '../../components/Ideas/EmptyIdeasState/EmptyIdeasState';
 import IdeasHeader from '../../components/Ideas/IdeasHeader/IdeasHeader';
 import IdeaList from '../../components/Ideas/IdeaList/IdeaList';
+
+// 👇 добавлено для opId-схемы
+import { genOpId, markSentOp, isOwnOp } from '../../utils/opId';
 
 const CHAR_LIMIT = 80;
 
@@ -38,6 +42,13 @@ export default function Ideas() {
 
   const creatingRef = useRef(new Map());
   const seqRef = useRef(0);
+
+  // helper для прокидывания opId
+  const withOp = async (fn, ...args) => {
+    const opId = genOpId();
+    markSentOp(opId);
+    return fn(...args, { opId });
+  };
 
   useEffect(() => {
     let cancel = false;
@@ -62,6 +73,39 @@ export default function Ideas() {
       }
     })();
     return () => { cancel = true; };
+  }, []);
+
+  useEffect(() => {
+    startRealtime();
+    const actorCh = getActorChannel();
+    if (!actorCh) return;
+    const off = subscribe(actorCh, (msg) => {
+      if (!msg?.type) return;
+      if (msg?.opId && isOwnOp(msg.opId)) return;
+
+      setItems((prev) => {
+        switch (msg.type) {
+          case 'inbox.created': {
+            const it = msg.payload;
+            if (!it?.id) return prev;
+            if (prev.some(x => x.id === it.id)) return prev;
+            return [{ ...it, uiKey: it.id }, ...prev];
+          }
+          case 'inbox.updated': {
+            const id = msg.id;
+            const p  = msg.patch || {};
+            return prev.map(x => x.id === id ? { ...x, ...p } : x);
+          }
+          case 'inbox.deleted': {
+            const id = msg.id;
+            return prev.filter(x => x.id !== id);
+          }
+          default:
+            return prev;
+        }
+      });
+    });
+    return () => off();
   }, []);
 
   const focusByUiKey = (uiKey, tries = 10) => {
@@ -95,21 +139,23 @@ export default function Ideas() {
       if (creatingRef.current.get(uiKey)) return;
       creatingRef.current.set(uiKey, true);
       try {
-        const created = await createInboxIdea({ text: limited });
+        // создаём с opId
+        const created = await withOp(createInboxIdea, { text: limited });
         setItems(prev =>
           prev.map(i => i.uiKey === uiKey ? { ...created, uiKey, text: i.text } : i)
         );
+        // сразу синхронизируем последнее значение
         const latest = (() => {
           const it = inputRefs.current.get(uiKey);
           return (it?.value ?? limited).slice(0, CHAR_LIMIT);
         })();
-        await updateInboxIdea(created.id, { text: latest });
+        await withOp(updateInboxIdea, created.id, { text: latest });
         focusByUiKey(uiKey);
       } finally {
         creatingRef.current.delete(uiKey);
       }
     } else {
-      await updateInboxIdea(id, { text: limited });
+      await withOp(updateInboxIdea, id, { text: limited });
     }
   };
 
@@ -119,9 +165,10 @@ export default function Ideas() {
     if ((it.text || '').trim()) return;
 
     if (id > 0) {
-      try { await deleteInboxIdea(id); } catch {}
+      try { await withOp(deleteInboxIdea, id); } catch {}
     }
     creatingRef.current.delete(uiKey);
+    // Локально удаляем сразу — UI отзывчивый. Сокет-сообщение с нашим opId мы игнорируем.
     setItems(prev => prev.filter(i => i.uiKey !== uiKey));
   };
 
@@ -132,7 +179,8 @@ export default function Ideas() {
     const id = menuFor;
     if (!id || id === 'bulk') return;
     closeMenu();
-    await moveInboxIdea(id, storyId);
+    await withOp(moveInboxIdea, id, storyId);
+    // моментально скрываем локально
     setItems(prev => prev.filter(i => i.id !== id));
   };
 
@@ -140,8 +188,8 @@ export default function Ideas() {
     const id = menuFor;
     if (!id || id === 'bulk') return;
     closeMenu();
-    const { storyId } = await createStoryFromInboxIdea(id);
-    navigate(`${STORY_ROUTE}/${storyId}`);
+    const { storyId, slug } = await withOp(createStoryFromInboxIdea, id);
+    navigate(`${STORY_ROUTE}/${slug || storyId}`);
   };
 
   const toggleSelectMode = () => {
@@ -167,7 +215,7 @@ export default function Ideas() {
     const ids = [...selectedIds];
     if (ids.length === 0) return;
     setMenuFor(null);
-    await Promise.all(ids.map(id => moveInboxIdea(id, storyId)));
+    await Promise.all(ids.map(id => withOp(moveInboxIdea, id, storyId)));
     setItems(prev => prev.filter(i => !selectedIds.has(i.id)));
     setSelectedIds(new Set());
     setSelectMode(false);
@@ -178,14 +226,15 @@ export default function Ideas() {
     if (ids.length === 0) return;
     setMenuFor(null);
 
-    const { storyId } = await createStoryFromInboxIdea(ids[0]);
+    // фикс: достаём slug, чтобы корректно перейти
+    const { storyId, slug } = await withOp(createStoryFromInboxIdea, ids[0]);
     if (ids.length > 1) {
-      await Promise.all(ids.slice(1).map(id => moveInboxIdea(id, storyId)));
+      await Promise.all(ids.slice(1).map(id => withOp(moveInboxIdea, id, storyId)));
     }
     setItems(prev => prev.filter(i => !selectedIds.has(i.id)));
     setSelectedIds(new Set());
     setSelectMode(false);
-    navigate(`${STORY_ROUTE}/${storyId}`);
+    navigate(`${STORY_ROUTE}/${slug || storyId}`);
   };
 
   const filteredActive = useMemo(() => {

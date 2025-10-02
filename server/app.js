@@ -14,6 +14,8 @@ const errorHandler = require('./middleware/ErrorHandlingMiddleware');
 const { verifyTransporter } = require('./smtp');
 const { cleanupRefreshTokens } = require('./jobs/cleanup');
 
+const { createHub } = require('./lib/wsHub');
+
 const PORT = process.env.PORT || 5000;
 const clientOrigins = String(process.env.CORS_ORIGINS || process.env.CLIENT_URL || '')
   .split(',')
@@ -64,6 +66,8 @@ app.use('/api', router);
 app.use(errorHandler);
 
 const server = http.createServer(app);
+const hub = createHub(server);
+app.locals.hub = hub;
 
 (async () => {
   try {
@@ -72,7 +76,7 @@ const server = http.createServer(app);
     setInterval(cleanupRefreshTokens, 24 * 60 * 60 * 1000);
     cleanupRefreshTokens();
 
-    server.listen(PORT, async () => {
+    server.listen(PORT, '0.0.0.0', async () => {
       const ok = await verifyTransporter();
       console.log(`[mailer] ${ok ? 'ok' : 'fail'}`);
       console.log(`listening on :${PORT}`);

@@ -12,3 +12,8 @@ exports.sortOrder = body('sortOrder').optional().isInt();
 exports.verifyEmailQuery = query('email').isEmail().normalizeEmail();
 exports.deviceId = body('deviceId').optional().isString().isLength({ max: 200 });
 exports.refresh = body('refresh').isString().isLength({ min: 1, max: 1000 });
+exports.storyIdBody = body('storyId').isInt({ min: 1 }).toInt();
+exports.orderArray = body('order')
+  .isArray({ min: 1 })
+  .custom(arr => Array.isArray(arr) && arr.every(x => Number.isInteger(Number(x)) && Number(x) >= 1))
+  .withMessage('order must be an array of positive integers');
