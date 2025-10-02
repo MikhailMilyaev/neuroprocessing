@@ -7,7 +7,7 @@ function createHub(httpServer, opts = {}) {
 
   const wss = new WebSocket.Server({ server: httpServer, path: '/ws' });
 
-  const rooms = new Map();  
+  const rooms = new Map();
 
   const join = (room, ws) => {
     if (!rooms.has(room)) rooms.set(room, new Set());
@@ -94,7 +94,7 @@ function createHub(httpServer, opts = {}) {
 
       if (msg.type === 'subscribe.actor' && ws.actorId) {
         join(`actor:${ws.actorId}`, ws);
-        join(`inbox:${ws.actorId}`, ws);  
+        join(`inbox:${ws.actorId}`, ws);
       }
 
       if (msg.type === 'subscribe.story') {
@@ -125,7 +125,7 @@ function createHub(httpServer, opts = {}) {
         const low = p.toLowerCase();
         if (low.startsWith('bearer ')) return p.slice(7).trim();
         if (p.startsWith('access.'))   return p.slice(7).trim();
-        if (p.split('.').length === 3) return p;  
+        if (p.split('.').length === 3) return p; 
       }
     }
 

@@ -6,8 +6,8 @@ const RECONNECT_BASE_MS = 500;
 const RECONNECT_MAX_MS  = 8000;
 
 let sock = null;
-let desiredSubs = new Set();  
-let handlers = new Map();     
+let desiredSubs = new Set();    
+let handlers = new Map();      
 let reconnectTimer = null;
 let started = false;
 let reconnectAttempts = 0;
@@ -16,16 +16,19 @@ function getAccess() {
   try { return localStorage.getItem(ACCESS_KEY) || ''; } catch { return ''; }
 }
 
-function protoFromAccess() {
-  const t = getAccess();
-  if (!t) return undefined;  
-  return `access.${t}`;
+function buildWsUrl() {
+  const token = getAccess();
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const host  = location.host;
+  const base  = `${proto}://${host}${WS_PATH}`;
+  return token ? `${base}?access=${encodeURIComponent(token)}` : base;
 }
 
 function openSocket() {
-  const proto = protoFromAccess();
+  const url = buildWsUrl();
+
   try {
-    sock = proto ? new WebSocket(WS_PATH, proto) : new WebSocket(WS_PATH);
+    sock = new WebSocket(url);
   } catch (e) {
     scheduleReconnect();
     return;
@@ -75,7 +78,10 @@ function send(obj) {
 function scheduleReconnect() {
   if (reconnectTimer) return;
   reconnectAttempts += 1;
-  const delay = Math.min(RECONNECT_BASE_MS * (2 ** (reconnectAttempts - 1)), RECONNECT_MAX_MS);
+  const delay = Math.min(
+    RECONNECT_BASE_MS * (2 ** (reconnectAttempts - 1)),
+    RECONNECT_MAX_MS
+  );
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
     openSocket();
