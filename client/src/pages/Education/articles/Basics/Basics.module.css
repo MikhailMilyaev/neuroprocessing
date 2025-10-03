@@ -21,13 +21,21 @@ body{
   color: var(--ink);
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans";
   line-height: 1.7;
-  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
+
+/* плавный скролл */
+html { scroll-behavior: smooth; }
 
 a{ color: var(--accent-600); text-decoration: none; }
 a:hover{ text-decoration: underline; }
 
-h1,h2,h3{ margin: 0 0 .6rem; line-height: 1.25; color: var(--ink); }
+h1,h2,h3{
+  margin: 0 0 .6rem;
+  line-height: 1.25;
+  color: var(--ink);
+}
 p{ margin: 0 0 .9rem; color: var(--ink-dim); }
 
 .page{
@@ -41,61 +49,149 @@ p{ margin: 0 0 .9rem; color: var(--ink-dim); }
 
 /* ===== TOC (sticky) ===== */
 .toc{
-  position: sticky; top: 16px; height: fit-content;
+  position: sticky;
+  top: 16px;
+  height: fit-content;
 }
 .tocInner{
-  background: #fff; border: 1px solid var(--border); border-radius: 12px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
   box-shadow: var(--shadow);
   padding: 14px;
 }
 .tocTitle{
-  font-weight: 800; letter-spacing: .01em; margin-bottom: 8px; color: var(--ink);
+  font-weight: 800;
+  letter-spacing: .01em;
+  margin-bottom: 8px;
+  color: var(--ink);
 }
 .tocLink{
-  display: block; padding: 6px 8px; border-radius: 8px; color: var(--ink-mute);
+  display: block;
+  padding: 6px 8px;
+  border-radius: 8px;
+  color: var(--ink-mute);
 }
 .tocLink:hover{ background: var(--bg-soft); color: var(--ink-dim); }
-.tocSub{ padding-left: 8px; border-left: 2px solid var(--border); margin: 4px 0 8px; }
+.tocSub{
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
+  margin: 4px 0 8px;
+}
+.tocLinkActive{
+  background: var(--bg-soft);
+  color: var(--ink);
+  font-weight: 600;
+}
+.tocSubDeep{
+  padding-left: 16px;
+  border-left: 2px dashed var(--border);
+  margin: 2px 0 6px;
+}
 
 /* ===== Article ===== */
 .article{
-  background: #fff; border: 1px solid var(--border); border-radius: 12px;
-  box-shadow: var(--shadow); padding: 24px 22px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 24px 22px;
 }
 .header{ margin-bottom: 12px; }
 .title{
   font-size: clamp(28px, 4vw, 42px);
-  font-weight: 900; letter-spacing: -.02em;
+  font-weight: 900;
+  letter-spacing: -.02em;
 }
 .lead{
   font-size: clamp(16px, 2vw, 18px);
-  color: var(--ink-mute); margin-top: 4px;
+  color: var(--ink-mute);
+  margin-top: 4px;
 }
 
-.section{ margin-top: 22px; padding-top: 8px; border-top: 1px solid var(--border); }
+.section{
+  margin-top: 22px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
 .subsection{ margin-top: 14px; }
-.subsection h3{ font-size: 1.15rem; }
+.subsectionTitle{ font-size: 1.15rem; }
 
 .note{
-  border-left: 3px solid var(--accent); background: var(--accent-soft);
-  padding: 10px 12px; border-radius: 8px; color: var(--ink-dim); margin: 10px 0;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: var(--ink-dim);
+  margin: 10px 0;
 }
 .example{
-  border: 1px dashed var(--border); background: var(--bg-soft);
-  padding: 10px 12px; border-radius: 8px; color: var(--ink-dim);
+  border: 1px dashed var(--border);
+  background: var(--bg-soft);
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: var(--ink-dim);
 }
-.bullets{ margin: .4rem 0 .9rem 1.2rem; color: var(--ink-dim); }
+.bullets{
+  margin: .4rem 0 .9rem 1.2rem;
+  color: var(--ink-dim);
+}
 .bullets li{ margin-bottom: .3rem; }
 
 .refs{
-  margin: 12px 0 0 1.2rem; color: var(--ink-dim);
+  margin: 12px 0 0 1.2rem;
+  color: var(--ink-dim);
 }
 .refs li{ margin-bottom: .5rem; }
 .refs em{ font-style: italic; }
 
 .footerNote{
-  margin-top: 22px; padding: 12px; background: var(--bg-soft);
-  color: var(--ink-mute); border-radius: 8px; border: 1px solid var(--border);
+  margin-top: 22px;
+  padding: 12px;
+  background: var(--bg-soft);
+  color: var(--ink-mute);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+/* ===== Источники под разделами ===== */
+.refsBlock{
+  margin: 14px 0 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-soft);
+}
+.refsTitle{
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--ink);
+}
+.refsList ol{
+  margin: 0 0 0 1.25rem;
+  padding: 0;
+}
+.refsList a{ word-break: break-word; }
+
+/* ссылки-цитаты [n] */
+.citation{
+  text-decoration: none;
+  border-bottom: 1px dotted currentColor;
+}
+.citation:hover{ text-decoration: underline; }
+
+/* подсветка конкретного <li> источника */
+.refHighlight{
+  background: var(--accent-soft);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  transition: background .2s ease, outline .2s ease;
+}
+
+/* подсветка всей карточки источников */
+.refCardHighlight{
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  transition: box-shadow .2s ease;
 }
 
 /* ===== Responsive ===== */
