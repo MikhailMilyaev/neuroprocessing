@@ -1,35 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+@import "../styles/global.css";
 
-* {
-  margin: 0;
-  padding: 0;
-  font-family: "Roboto", sans-serif;
-  box-sizing: border-box;
-}
+* { margin: 0; padding: 0; font-family: "Roboto", sans-serif; box-sizing: border-box; }
 
-html, body, #root {
-  min-height: 100%;
-  background-color: #f5f5f5;
-}
+html, body, #root { min-height: 100svh; background-color: #f5f5f5; }
 
-html {
-  scrollbar-width: thin;
-  scrollbar-color: #bbb transparent;
-}
+html { scrollbar-width: thin; scrollbar-color: #bbb transparent; }
+html::-webkit-scrollbar { width: 8px; }
+html::-webkit-scrollbar-track { background: transparent; }
+html::-webkit-scrollbar-thumb { background-color: #999; border-radius: 4px; }
+html::-webkit-scrollbar-thumb:hover { background-color: #666; }
 
-html::-webkit-scrollbar {
-  width: 8px;
-}
-
-html::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-html::-webkit-scrollbar-thumb {
-  background-color: #999;
-  border-radius: 4px;
-}
-
-html::-webkit-scrollbar-thumb:hover {
-  background-color: #666;
+@media (--md) {
+  html::after{
+    content:"--md"; position:fixed; right:6px; top:6px; background:#e11; color:#fff; padding:2px 6px; z-index:99999;
+  }
 }

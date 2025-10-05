@@ -1,14 +1,17 @@
 .dialog {
+  border: none;
+  padding: 0;
+  background: transparent;
+  z-index: 1000;
+}
+.dialog::backdrop { background: transparent; }
+
+.desktop {
   position: fixed;
   min-width: 160px;
   border: none;
   border-radius: 15px;
   box-shadow: 0 12px 30px rgba(0,0,0,0.16);
-  z-index: 1000;
-}
-
-.dialog::backdrop {
-  background: transparent;
 }
 
 .menu {
@@ -23,23 +26,47 @@
   width: 100%;
   padding: 14px 12px;
   border: none;
-  color: white;
-  font-size: 16px;
   cursor: pointer;
   text-align: left;
+
   background-color: black;
+  color: white;
 }
+.item > * { background-color: transparent; }
 
-.item > * {
-  background-color: transparent; 
-}
-
-.item:hover {
-  opacity: 0.8;
-}
+.item:hover { opacity: 0.8; }
 
 .icon {
   font-size: 20px;
   flex-shrink: 0;
   color: red;
 }
+
+.label { color: white; }
+
+.mobile { position: fixed; inset: 0; }
+.mobile::backdrop { background: rgba(0,0,0,.18); }
+
+.sheet {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  background: #fff;
+  border-top: 1px solid rgba(0,0,0,0.08);
+  border-radius: 16px 16px 0 0;
+  padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -10px 30px rgba(0,0,0,.08);
+}
+
+.itemDanger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 16px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+.iconDanger { color: #ef4444; }
+.labelDanger { color: #ef4444; font-size: 17px; font-weight: 600; text-align: left; }
+.label{ font-size: 16px;  }

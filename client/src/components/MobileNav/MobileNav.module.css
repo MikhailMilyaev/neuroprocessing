@@ -1,0 +1,23 @@
+.nav {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 61;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  width: 100%;
+  background: var(--bg);
+  border-top: 1px solid rgba(0,0,0,.08);
+  padding: 10px 8px 12px;
+  transform: translate3d(0, var(--ios-bot-fix, 0px), 0);
+}
+
+.item {
+  display: grid; justify-items: center; align-items: center;
+  gap: 2px; padding: 8px 4px;
+  color: var(--brand); text-decoration: none;
+  font-size: 12px; line-height: 1.1; border-radius: 10px; min-height: 40px;
+}
+.item:hover, .item:active, .item:focus { text-decoration: none; }
+.item:active { background: rgba(0,0,0,.04); }
+.icon { width: 20px; height: 20px; color: var(--brand); }
+.active { color: var(--brand); font-weight: 600; }

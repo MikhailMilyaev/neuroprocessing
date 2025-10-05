@@ -1,9 +1,9 @@
 import { createPortal } from "react-dom";
 import { useEffect, useRef } from "react";
-import classes from './StoryModal.module.css';
+import classes from "./StoryModal.module.css";
 import { MdDeleteOutline } from "react-icons/md";
 
-const StoryModal = ({ open, position, onClose, onDelete }) => {
+const StoryModal = ({ open, variant = "desktop", position, onClose, onDelete }) => {
   const dialogRef = useRef(null);
 
   useEffect(() => {
@@ -17,11 +17,11 @@ const StoryModal = ({ open, position, onClose, onDelete }) => {
     const el = dialogRef.current;
     if (!el) return;
 
-    const handleClickOutside = (event) => {
-      if (event.target === el) onClose();
+    const handleClickOutside = (e) => {
+      if (e.target === el) onClose?.();
     };
     const handleEscape = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose?.();
     };
 
     if (open) {
@@ -35,48 +35,49 @@ const StoryModal = ({ open, position, onClose, onDelete }) => {
   }, [open, onClose]);
 
   useEffect(() => {
+    if (variant !== "desktop") return;
     const el = dialogRef.current;
     if (!el || !open) return;
 
-    el.style.left = `${position.x}px`;
-    el.style.top  = `${position.y}px`;
+    let x = position?.x ?? 0;
+    let y = position?.y ?? 0;
+
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
 
     const pad = 8;
     const rect = el.getBoundingClientRect();
 
-    let x = position.x;
-    let y = position.y;
-
-    if (x + rect.width > window.innerWidth - pad)
-      x = window.innerWidth - rect.width - pad;
-    if (y + rect.height > window.innerHeight - pad)
-      y = window.innerHeight - rect.height - pad;
-
+    if (x + rect.width > window.innerWidth - pad) x = window.innerWidth - rect.width - pad;
+    if (y + rect.height > window.innerHeight - pad) y = window.innerHeight - rect.height - pad;
     if (x < pad) x = pad;
     if (y < pad) y = pad;
 
     el.style.left = `${x}px`;
-    el.style.top  = `${y}px`;
-  }, [open, position]);
+    el.style.top = `${y}px`;
+  }, [open, position, variant]);
 
   return createPortal(
     <dialog
       ref={dialogRef}
-      className={classes.dialog}
-      style={{ top: position.y, left: position.x }}
+      className={`${classes.dialog} ${variant === "mobile" ? classes.mobile : classes.desktop}`}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <div className={classes.menu} role="menu">
-        <button
-          className={classes.item}
-          onClick={onDelete}
-          role="menuitem"
-          aria-label="Удалить"
-        >
-          <MdDeleteOutline className={classes.icon} />
-          <span>Удалить</span>
-        </button>
-      </div>
+      {variant === "mobile" ? (
+        <div className={classes.sheet} role="menu">
+          <button className={`${classes.item} ${classes.itemDanger}`} onClick={onDelete} role="menuitem">
+            <MdDeleteOutline className={`${classes.icon} ${classes.iconDanger}`} />
+            <span className={classes.labelDanger}>Удалить</span>
+          </button>
+        </div>
+      ) : (
+        <div className={classes.menu} role="menu">
+          <button className={classes.item} onClick={onDelete} role="menuitem">
+            <MdDeleteOutline className={classes.icon} />
+            <span className={classes.label}>Удалить</span>
+          </button>
+        </div>
+      )}
     </dialog>,
     document.getElementById("storyModal")
   );

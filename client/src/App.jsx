@@ -1,4 +1,3 @@
-// src/App.jsx
 import { Routes, Route } from 'react-router-dom';
 import { authRoutes, publicRoutes } from './routes';
 import { useContext, useEffect, useState } from 'react';
@@ -10,6 +9,7 @@ import PublicOnlyRoute from './components/PublicOnlyRoute';
 import FullScreenLoader from './components/FullScreenLoader/FullScreenLoader';
 import { ACCESS_KEY } from './http';
 
+import AppShell from './layout/AppShell';
 import { useMetrika } from './hooks/useMetrika';
 
 const YM_ID = 104377537;
@@ -50,13 +50,18 @@ const App = observer(() => {
           element={<PublicOnlyRoute>{element}</PublicOnlyRoute>}
         />
       ))}
-      {authRoutes.map(({ path, element }) => (
-        <Route
-          key={path}
-          path={path}
-          element={<ProtectedRoute>{element}</ProtectedRoute>}
-        />
-      ))}
+
+      <Route
+        element={
+          <ProtectedRoute>
+            <AppShell />
+          </ProtectedRoute>
+        }
+      >
+        {authRoutes.map(({ path, element }) => (
+          <Route key={path} path={path} element={element} />
+        ))}
+      </Route>
     </Routes>
   );
 });

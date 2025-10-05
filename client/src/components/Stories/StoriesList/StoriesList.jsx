@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import StoryCard from "./StoryCard/StoryCard";
 import StoryModal from "./StoryModal/StoryModal";
 import Spinner from "../../Spinner/Spinner";
 import useDelayedVisible from "../../../hooks/useDelayedVisible";
 import EmptyState from "../EmptyState/EmptyState";
+import classes from "./StoriesList.module.css";
 
 const getTs = (s) => {
   const v = s?.updatedAt ?? s?.updated_at ?? s?.createdAt ?? s?.created_at ?? 0;
@@ -12,21 +13,21 @@ const getTs = (s) => {
 };
 const sortByUpdated = (arr) => (arr || []).slice().sort((a, b) => getTs(b) - getTs(a));
 
-const StoriesList = ({
+export default function StoriesList({
   searchInput,
   storiesList,
   isLoading,
   onDeleteStory,
-  showArchive = false,    
-  onAddStory,             
-  onToggleArchive,      
-}) => {
+  showArchive = false,
+  onAddStory,
+  onToggleArchive,
+}) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
   const [selectedId, setSelectedId] = useState(null);
   const showSpinner = useDelayedVisible(isLoading && (storiesList?.length ?? 0) === 0, 200);
 
-  const q = searchInput.trim().toLocaleLowerCase("ru-RU");
+  const q = (searchInput || "").trim().toLocaleLowerCase("ru-RU");
 
   const activeStories = useMemo(() => {
     const base = (storiesList || []).filter((s) => !s.archive);
@@ -40,12 +41,14 @@ const StoriesList = ({
     return sortByUpdated(filtered);
   }, [storiesList, q]);
 
+  const isMobile = () => window.matchMedia("(max-width:700px)").matches;
+
   const handleContextMenu = (event, id) => {
-    if (!event.target.closest("button")) return;
+    if (isMobile()) { event.preventDefault(); return; }   // на мобиле — свайп, без модалки
     event.preventDefault();
     setSelectedId(id);
-    setModalPosition({ x: event.clientX, y: event.clientY });
     setIsModalOpen(true);
+    setModalPosition({ x: event.clientX, y: event.clientY });
   };
 
   const handleDeleteClick = async () => {
@@ -55,10 +58,8 @@ const StoriesList = ({
     setSelectedId(null);
   };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedId(null);
-  };
+  const listToRender = showArchive ? archiveStories : activeStories;
+  const isEmpty = listToRender.length === 0;
 
   return (
     <>
@@ -68,64 +69,34 @@ const StoriesList = ({
         </div>
       ) : (
         <>
-          {!showArchive && (
-            <>
-            <div style={{ marginTop: "25px"}}></div>
-              {activeStories.length === 0 ? (
-                <EmptyState
-                  variant="active"
-                  title="Историй пока нет"
-                  subtitle={
-                    archiveStories.length > 0
-                      ? "Создайте новую или откройте архив, чтобы вернуть историю."
-                      : "Нажмите «Добавить», чтобы создать историю."
-                  }
-                  ctaLabel={onAddStory ? "Добавить историю" : undefined}
-                  onCtaClick={onAddStory}
-                  secondaryCtaLabel={
-                    archiveStories.length > 0 && onToggleArchive ? "Открыть архив" : undefined
-                  }
-                  onSecondaryClick={() => onToggleArchive?.(true)}
+          {isEmpty ? (
+            <EmptyState
+              variant={showArchive ? "archive" : "active"}
+              title={showArchive ? "В архиве пусто" : "Историй пока нет"}
+              subtitle={
+                showArchive
+                  ? "Архивируйте историю, если все идеи имеют нулевой психоэмоциональный заряд."
+                  : archiveStories.length > 0
+                    ? "Создайте новую или откройте архив, чтобы вернуть историю."
+                    : "Нажмите «Добавить», чтобы создать историю."
+              }
+              ctaLabel={!showArchive ? "Добавить историю" : undefined}
+              onCtaClick={!showArchive ? onAddStory : undefined}
+              secondaryCtaLabel={showArchive ? "К историям" : (archiveStories.length > 0 ? "Открыть архив" : undefined)}
+              onSecondaryClick={() => onToggleArchive?.(!showArchive)}
+            />
+          ) : (
+            <div className={classes.listWrap}>
+              {listToRender.map((s) => (
+                <StoryCard
+                  key={s.id}
+                  {...s}
+                  isHighlighted={isModalOpen && selectedId === s.id}
+                  onContextMenu={(e) => handleContextMenu(e, s.id)}
+                  onDelete={onDeleteStory}
                 />
-              ) : (
-                <>
-                  {activeStories.map((story) => (
-                    <StoryCard
-                      key={story.id}
-                      {...story}
-                      isHighlighted={isModalOpen && selectedId === story.id}
-                      onContextMenu={(e) => handleContextMenu(e, story.id)}
-                    />
-                  ))}
-                </>
-              )}
-            </>
-          )}
-
-          {showArchive && (
-            <>
-              {archiveStories.length === 0 ? (
-                <EmptyState
-                  variant="archive"
-                  title="В архиве пусто"
-                  subtitle="Архивируйте историю, если все идеи имеют нулевой психоэмоциональный заряд."
-                  secondaryCtaLabel={onToggleArchive ? "К историям" : undefined}
-                  onSecondaryClick={() => onToggleArchive?.(false)}
-                />
-              ) : (
-                <>
-                  <div style={{ marginTop: "25px"}}></div>
-                  {archiveStories.map((story) => (
-                    <StoryCard
-                      key={story.id}
-                      {...story}
-                      isHighlighted={isModalOpen && selectedId === story.id}
-                      onContextMenu={(e) => handleContextMenu(e, story.id)}
-                    />
-                  ))}
-                </>
-              )}
-            </>
+              ))}
+            </div>
           )}
 
           {isModalOpen && (
@@ -133,13 +104,11 @@ const StoriesList = ({
               open={isModalOpen}
               position={modalPosition}
               onDelete={handleDeleteClick}
-              onClose={handleCloseModal}
+              onClose={() => setIsModalOpen(false)}
             />
           )}
         </>
       )}
     </>
   );
-};
-
-export default StoriesList;
+}
