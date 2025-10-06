@@ -82,11 +82,18 @@
 .onlyDesktopFlex { display: flex; }
 .onlyMobileInline { display: none; }
 
-/* ————— мобильная сетка ————— */
+/* ————— МОБИЛЬНАЯ СЕТКА ————— */
 @media (max-width: 700px) {
   .headerPaddedMobile {
-    /* сделал хедер выше на пару пикселей */
     padding: calc(env(safe-area-inset-top, 0px) + 6px) 12px 0;
+    background: #f5f5f5;
+  }
+
+  /* Делаем сам хедер липким строго на мобилке */
+  .header {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 50;
     background: #f5f5f5;
   }
 
@@ -107,14 +114,18 @@
   .right  { justify-content: flex-end; }
   .searchWrap { min-width: 0; width: 100%; }
 
-  /* Инлайн-поиск вместо всего хедера */
   .searchInline { display: none; }
 
   .searchMode .left,
   .searchMode .center,
   .searchMode .right { display: none; }
 
-  .searchMode { grid-template-columns: 1fr auto; grid-template-areas: "search search"; gap: 10px; /* сохраняем отступ до списка */ padding-bottom: 8px; }
+  .searchMode {
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "search search";
+    gap: 10px;
+    padding-bottom: 8px;
+  }
   .searchMode .searchInline {
     display: grid;
     grid-template-columns: 1fr auto;
@@ -137,6 +148,7 @@
   .cancelBtn:active { transform: translateY(1px); }
 }
 
+/* очень узкие */
 @media (max-width: 380px) {
   .toolbar { gap: 6px; }
   .tbtn { min-width: 34px; height: 34px; padding: 0 8px; }
@@ -154,3 +166,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) { .tbtn, .toolbar { transition: none !important; } }
+
+/* iOS-PWA: не добавляем safe-top, шапка строго у самого верха */
+:global(.pwa-standalone) .header { top: 0 !important; }

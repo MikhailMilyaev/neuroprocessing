@@ -7,7 +7,8 @@
   width: 100%;
   background: var(--bg);
   border-top: 1px solid rgba(0,0,0,.08);
-  padding: 10px 8px 12px;
+  /* по умолчанию — «умный» отступ от нижнего выреза */
+  padding: 10px 8px calc(10px + env(safe-area-inset-bottom, 0px));
   transform: translate3d(0, var(--ios-bot-fix, 0px), 0);
 }
 
@@ -21,3 +22,8 @@
 .item:active { background: rgba(0,0,0,.04); }
 .icon { width: 20px; height: 20px; color: var(--brand); }
 .active { color: var(--brand); font-weight: 600; }
+
+/* Только для iOS-PWA: фиксируем 40px, чтобы уйти от «чёрной полосы» */
+:global(.pwa-standalone) .nav {
+  padding-bottom: 40px !important;
+}

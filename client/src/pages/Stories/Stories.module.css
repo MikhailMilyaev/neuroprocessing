@@ -1,8 +1,29 @@
-.storiesContainer {
-    max-width: 1000px;
-    margin: 20px auto 0;
+/* ========= ДЕСКТОП / ОБЩЕЕ — как у тебя на сервере ========= */
+/* На десктопе ничего не фиксируем: страница скроллится целиком,
+   хедер не липкий, контейнер 1000px по центру. */
+
+.storiesViewport {
+  position: static;
+  max-width: 1000px;
+  margin: 20px auto 0;
+  background: #f5f5f5;
+  overflow: visible;           /* скроллит сама страница */
 }
 
+.headerSticky {
+  position: static;            /* НЕ липкий на десктопе */
+  background: transparent;
+  z-index: auto;
+}
+
+.scrollArea {
+  position: static;            /* список в обычном потоке */
+  overflow: visible;
+  padding: 0;
+  background: transparent;
+}
+
+/* Вспомогательные стили (как были) */
 .revealBanner {
   display: flex;
   align-items: center;
@@ -14,19 +35,8 @@
   border: 1px solid #ffe29a;
   box-shadow: 0 2px 10px rgba(0,0,0,0.04);
 }
-
-.revealText {
-  flex: 1 1 auto;
-  font-size: 14px;
-  line-height: 1.35;
-  color: #5a4400;
-}
-
-.revealActions {
-  display: flex;
-  gap: 8px;
-}
-
+.revealText { flex: 1 1 auto; font-size: 14px; line-height: 1.35; color: #5a4400; }
+.revealActions { display: flex; gap: 8px; }
 .revealBtn {
   appearance: none;
   border: none;
@@ -40,7 +50,6 @@
 }
 .revealBtn:hover { transform: translateY(-1px); }
 .revealBtn:active { transform: translateY(0); opacity: .9; }
-
 .revealBtnSecondary {
   appearance: none;
   border: 1px solid rgba(0,0,0,0.08);
@@ -62,18 +71,58 @@
   outline: 2px solid rgba(255,199,0,0.55);
   border-radius: 14px;
 }
-
 @keyframes flashPulse {
-  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(17, 24, 39, 0.08), 0 0 0 0 rgba(255,199,0,0.75); }
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(17,24,39,0.08), 0 0 0 0 rgba(255,199,0,0.75); }
   20% { transform: scale(1.01); box-shadow: 0 8px 24px 0 rgba(17,24,39,0.12), 0 0 0 6px rgba(255,199,0,0.45); }
   60% { transform: scale(1.005); box-shadow: 0 6px 18px 0 rgba(17,24,39,0.10), 0 0 0 2px rgba(255,199,0,0.25); }
-  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(17,24,39,0.08), 0 0 0 0 rgba(255,199,0,0.0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(17,24,39,0,0.0); }
 }
-
 @media (prefers-reduced-motion: reduce) {
   .flashHighlight { animation: none; outline: 2px solid rgba(255,199,0,0.45); }
 }
 
-@media (max-width: 700px) {
-  .storiesContainer { margin: 0 auto 0; }
+/* ========= МОБИЛКА (<700px + тач): наши фиксы ========= */
+/* На телефонах/планшетах: экран фиксируется между верхом и нижней навигацией,
+   скролл только у списка, шапка липкая. */
+@media (max-width: 700px) and (hover: none) and (pointer: coarse) {
+  .storiesViewport {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: env(safe-area-inset-top, 0px);
+    bottom: var(--bottom-nav-h, 56px);
+    margin: 0;
+    background: #f5f5f5;
+    overflow: hidden;             /* контейнер не скроллится */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: none;
+    width: 100vw;
+    max-width: none;
+    padding-bottom: 8px;          /* чуть воздуха снизу */
+  }
+
+  .headerSticky {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 50;
+    background: #f5f5f5;
+    overscroll-behavior: contain; /* свайпы по шапке не скроллят страницу */
+  }
+
+  .scrollArea {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: var(--stories-header-h, 120px); /* JS пишет точную высоту */
+    bottom: 0;                            /* снизу ограничены навбаром */
+    overflow: auto;                       /* скролл только тут */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    background: #f5f5f5;
+    padding: 0;
+  }
 }
+
+/* ========= iOS PWA-оверрайды ========= */
+:global(.pwa-standalone) .headerSticky { top: 0 !important; }
+:global(.pwa-standalone) .storiesViewport { top: 0 !important; }

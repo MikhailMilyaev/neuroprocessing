@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ns } from '../../utils/ns';
 import { subscribe, getActorChannel, startRealtime } from '../../utils/realtime';
@@ -23,14 +23,10 @@ const getTs = (s) => {
   return Number.isFinite(t) ? t : 0;
 };
 const sortByUpdated = (arr) => (arr || []).slice().sort((a, b) => getTs(b) - getTs(a));
-
 const mapForIndex = ({ id, slug, title, archive, updatedAt, updated_at, reevalDueAt, reeval_due_at }) => ({
-   id,
-   slug,
-    title,
-    archive,
-    updatedAt: updatedAt ?? updated_at,
-    reevalDueAt: reevalDueAt ?? reeval_due_at ?? null,
+  id, slug, title, archive,
+  updatedAt: updatedAt ?? updated_at,
+  reevalDueAt: reevalDueAt ?? reeval_due_at ?? null,
 });
 
 const warmStoryChunk = (() => {
@@ -43,6 +39,49 @@ const warmStoryChunk = (() => {
     import('../../components/Story/StoryIdeas/IdeaList/IdeaList');
   };
 })();
+
+/** var под нижнюю навигацию */
+function useBottomNavHeightVar(varName = '--bottom-nav-h') {
+  useEffect(() => {
+    const setH = () => {
+      const nav = document.querySelector('nav[aria-label="Основная навигация"]');
+      const h = nav ? nav.getBoundingClientRect().height : 0;
+      document.documentElement.style.setProperty(varName, `${h}px`);
+    };
+    setH();
+    const ro = ('ResizeObserver' in window) ? new ResizeObserver(setH) : null;
+    const nav = document.querySelector('nav[aria-label="Основная навигация"]');
+    nav && ro?.observe(nav);
+    window.addEventListener('resize', setH);
+    window.addEventListener('orientationchange', setH);
+    return () => {
+      window.removeEventListener('resize', setH);
+      window.removeEventListener('orientationchange', setH);
+      ro?.disconnect();
+    };
+  }, [varName]);
+}
+
+/** var под высоту хедера */
+function useHeaderHeightVar(headerRef, varName = '--stories-header-h') {
+  useEffect(() => {
+    if (!headerRef.current) return;
+    const setH = () => {
+      const h = headerRef.current?.getBoundingClientRect?.().height || 0;
+      document.documentElement.style.setProperty(varName, `${h}px`);
+    };
+    setH();
+    const ro = ('ResizeObserver' in window) ? new ResizeObserver(setH) : null;
+    headerRef.current && ro?.observe(headerRef.current);
+    window.addEventListener('resize', setH);
+    window.addEventListener('orientationchange', setH);
+    return () => {
+      window.removeEventListener('resize', setH);
+      window.removeEventListener('orientationchange', setH);
+      ro?.disconnect();
+    };
+  }, [headerRef, varName]);
+}
 
 const Stories = () => {
   const location = useLocation();
@@ -75,6 +114,10 @@ const Stories = () => {
   const saveData = navigator.connection?.saveData || false;
   const isSlow = /(^2g|3g)/i.test(net);
 
+  const headerRef = useRef(null);
+  useBottomNavHeightVar('--bottom-nav-h');
+  useHeaderHeightVar(headerRef, '--stories-header-h');
+
   useEffect(() => {
     if (saveData) return;
     if (isSlow) return;
@@ -86,23 +129,6 @@ const Stories = () => {
       const t = setTimeout(run, 250);
       return () => clearTimeout(t);
     }
-  }, [isSlow, saveData]);
-
-  const rootRef = useRef(null);
-  useEffect(() => {
-    if (saveData || isSlow) return;
-    const root = rootRef.current;
-    if (!root) return;
-    const onHover = (e) => {
-      const a = e.target && (e.target.closest?.('a[href*="/story/"]'));
-      if (a) warmStoryChunk();
-    };
-    root.addEventListener('pointerenter', onHover, true);
-    root.addEventListener('mouseover', onHover, true);
-    return () => {
-      root.removeEventListener('pointerenter', onHover, true);
-      root.removeEventListener('mouseover', onHover, true);
-    };
   }, [isSlow, saveData]);
 
   const showCreateOverlay = useSmartDelay(creating, {
@@ -162,33 +188,33 @@ const Stories = () => {
       .then((server) => {
         if (cancelled) return;
 
-          const serverArr = Array.isArray(server) ? server : (server?.rows || []);
-          const serverIds = new Set(serverArr.map(s => Number(s.id)));
-          const cached = readStoriesIndex();
+        const serverArr = Array.isArray(server) ? server : (server?.rows || []);
+        const serverIds = new Set(serverArr.map(s => Number(s.id)));
+        const cached = readStoriesIndex();
 
-          const cleaned = (cached || []).filter(it =>
-            it.archive === true || serverIds.has(Number(it.id))
-          );
+        const cleaned = (cached || []).filter(it =>
+          it.archive === true || serverIds.has(Number(it.id))
+        );
 
-          const byId = new Map(cleaned.map(i => [Number(i.id), i]));
-          for (const s of serverArr) {
-            const prev = byId.get(Number(s.id));
-            if (!prev) {
-              byId.set(Number(s.id), s);
-            } else {
-              const tS = Date.parse(s.updatedAt ?? s.updated_at ?? 0) || 0;
-              const tP = Date.parse(prev.updatedAt ?? prev.updated_at ?? 0) || 0;
-              byId.set(Number(s.id), (tP >= tS && prev.title && prev.title.trim())
-                ? { ...s, title: prev.title }
-                : s
-              );
-            }
+        const byId = new Map(cleaned.map(i => [Number(i.id), i]));
+        for (const s of serverArr) {
+          const prev = byId.get(Number(s.id));
+          if (!prev) {
+            byId.set(Number(s.id), s);
+          } else {
+            const tS = Date.parse(s.updatedAt ?? s.updated_at ?? 0) || 0;
+            const tP = Date.parse(prev.updatedAt ?? prev.updated_at ?? 0) || 0;
+            byId.set(Number(s.id), (tP >= tS && prev.title && prev.title.trim())
+              ? { ...s, title: prev.title }
+              : s
+            );
           }
+        }
 
-          const union = Array.from(byId.values());
-          const sorted = sortByUpdated(union);
-          setStoriesList(sorted);
-          writeStoriesIndex(sorted.map(mapForIndex));
+        const union = Array.from(byId.values());
+        const sorted = sortByUpdated(union);
+        setStoriesList(sorted);
+        writeStoriesIndex(sorted.map(mapForIndex));
       })
       .catch((e) => {
         console.error('[fetchStories active]', e);
@@ -212,34 +238,34 @@ const Stories = () => {
       .then((server) => {
         if (cancelled) return;
 
-          const serverArr = Array.isArray(server) ? server : (server?.rows || []);
-          const serverIds = new Set(serverArr.map(s => Number(s.id)));
-          const current = storiesList;
+        const serverArr = Array.isArray(server) ? server : (server?.rows || []);
+        const serverIds = new Set(serverArr.map(s => Number(s.id)));
+        const current = storiesList;
 
-          const cleaned = (current || []).filter(it =>
-            it.archive === false || serverIds.has(Number(it.id))
-          );
+        const cleaned = (current || []).filter(it =>
+          it.archive === false || serverIds.has(Number(it.id))
+        );
 
-          const byId = new Map(cleaned.map(i => [Number(i.id), i]));
-          for (const s of serverArr) {
-            const prev = byId.get(Number(s.id));
-            if (!prev) {
-              byId.set(Number(s.id), s);
-            } else {
-              const tS = Date.parse(s.updatedAt ?? s.updated_at ?? 0) || 0;
-              const tP = Date.parse(prev.updatedAt ?? prev.updated_at ?? 0) || 0;
-              byId.set(Number(s.id), (tP >= tS && prev.title && prev.title.trim())
-                ? { ...s, title: prev.title }
-                : s
-              );
-            }
+        const byId = new Map(cleaned.map(i => [Number(i.id), i]));
+        for (const s of serverArr) {
+          const prev = byId.get(Number(s.id));
+          if (!prev) {
+            byId.set(Number(s.id), s);
+          } else {
+            const tS = Date.parse(s.updatedAt ?? s.updated_at ?? 0) || 0;
+            const tP = Date.parse(prev.updatedAt ?? prev.updated_at ?? 0) || 0;
+            byId.set(Number(s.id), (tP >= tS && prev.title && prev.title.trim())
+              ? { ...s, title: prev.title }
+              : s
+            );
           }
+        }
 
-          const union = Array.from(byId.values());
-          const sorted = sortByUpdated(union);
-          setStoriesList(sorted);
-          writeStoriesIndex(sorted.map(mapForIndex));
-          setArchiveLoaded(true);
+        const union = Array.from(byId.values());
+        const sorted = sortByUpdated(union);
+        setStoriesList(sorted);
+        writeStoriesIndex(sorted.map(mapForIndex));
+        setArchiveLoaded(true);
       })
       .catch((e) => console.error('[fetchStories archive]', e));
 
@@ -300,7 +326,7 @@ const Stories = () => {
 
   useEffect(() => {
     if (!pendingArchivedId) return;
-    if (!archiveLoaded) return; 
+    if (!archiveLoaded) return;
 
     const item = storiesList.find(s => Number(s.id) === Number(pendingArchivedId));
     if (!item) return;
@@ -381,10 +407,10 @@ const Stories = () => {
     try { removeFromStoriesIndex(Number(id)); } catch {}
 
     try {
-      await removeStory(id);  
+      await removeStory(id);
     } catch (e) {
       const status = e?.response?.status || e?.status || 0;
-      if (status === 404) return;  
+      if (status === 404) return;
 
       console.error('[removeStory fail]', e);
       setStoriesList(prev);
@@ -470,27 +496,32 @@ const Stories = () => {
   }, []);
 
   return (
-    <div ref={rootRef} className={classes.storiesContainer}>
+    <div className={classes.storiesViewport}>
       {showCreateOverlay && <FullScreenLoader />}
 
-      <StoriesHeader
-        showArchive={showArchive}
-        onToggleArchive={handleToggleArchive}
-        hasAnyStories={hasSearchInSelectedTab}
-        searchInput={searchInput}
-        setSearchInput={setSearchInput}
-        onAddStory={handleAddStory}
-      />
+      {/* ПОМЕТКА: блокируем скролл по этому контейнеру в iOS-PWA */}
+      <div ref={headerRef} className={classes.headerSticky} data-lock-scroll="true">
+        <StoriesHeader
+          showArchive={showArchive}
+          onToggleArchive={handleToggleArchive}
+          hasAnyStories={hasSearchInSelectedTab}
+          searchInput={searchInput}
+          setSearchInput={setSearchInput}
+          onAddStory={handleAddStory}
+        />
+      </div>
 
-      <StoriesList
-        searchInput={searchInput}
-        storiesList={storiesList}
-        isLoading={isLoading}
-        onDeleteStory={handleDeleteStory}
-        showArchive={showArchive}
-        onAddStory={handleAddStory}
-        onToggleArchive={handleToggleArchive}
-      />
+      <div className={classes.scrollArea} role="region" aria-label="Список историй">
+        <StoriesList
+          searchInput={searchInput}
+          storiesList={storiesList}
+          isLoading={isLoading}
+          onDeleteStory={handleDeleteStory}
+          showArchive={showArchive}
+          onAddStory={handleAddStory}
+          onToggleArchive={handleToggleArchive}
+        />
+      </div>
 
       <Toast
         message={toastMsg}
