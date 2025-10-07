@@ -28,22 +28,19 @@ function Icon({ name, className }) {
 export default function Landing() {
   return (
     <div className={styles.page}>
-      {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerInner}>
           <a href="#top" className={styles.brand} aria-label="Нейропроцессинг — на главную">Neuroprocessing</a>
           <nav className={styles.nav}>
             <a href="#pain" className={styles.navLink}>Проблема</a>
-            <a href="#market" className={styles.navLink}>Рынок</a>
-            <a href="#usp" className={styles.navLink}>УТП</a>
+            <a href="#usp" className={styles.navLink}>Почему мы?</a>
             <a href="#how" className={styles.navLink}>Алгоритм</a>
-            <a href="#faq" className={styles.navLink}>FAQ</a>
+            <a href="#faq" className={styles.navLink}>Частые вопросы</a>
           </nav>
           <Link to='/login' className={styles.loginBtn}>Войти</Link>
         </div>
       </header>
 
-      {/* Hero */}
       <section id="top" className={styles.hero}>
         <div className={styles.heroContent}>
           <h1 className={styles.heroTitle}>
@@ -65,7 +62,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* PROBLEM */}
       <section id="pain" className={styles.problem}>
         <div className={styles.sectionHead}>
           <h2>Проблема: почему «просто терапия» не всегда решает</h2>
@@ -103,39 +99,9 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* MARKET */}
-      <section id="market" className={styles.problem}>
-        <div className={styles.sectionHead}>
-          <h2>Рынок IT-решений: что есть и где «тонко»</h2>
-          <p className={styles.sectionLead}>Коротко о популярных подходах и их ограничениях.</p>
-        </div>
-
-        <div className={styles.cardsGrid} style={{ gridTemplateColumns: "1fr 1fr" }}>
-          <div className={styles.card}>
-            <div className={styles.cardIcon}><Icon name="phone" className={styles.icon} /></div>
-            <h3>Что есть</h3>
-            <ul className={styles.list}>
-              <li>Headspace, Calm — медитация/релаксация.</li>
-              <li>Woebot, Youper — чат-боты с базовой КПТ.</li>
-              <li>Sanvello, MindDoc — трекеры настроения.</li>
-            </ul>
-          </div>
-          <div className={styles.card}>
-            <div className={styles.cardIcon}><Icon name="warn" className={styles.icon} /></div>
-            <h3>Их недостатки</h3>
-            <ul className={styles.list}>
-              <li>Работают с симптомами, а не с корнем проблемы.</li>
-              <li>Мало персонализации под конкретную ситуацию.</li>
-              <li>Нет объективной системы оценки.</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* USP */}
       <section id="usp" className={styles.problem}>
         <div className={styles.sectionHead}>
-          <h2>Наше УТП: почему Neuroprocessing другой</h2>
+          <h2>Почему Neuroprocessing другой?</h2>
           <p className={styles.sectionLead}>По порядку — как вы этим пользуетесь и что получаете.</p>
         </div>
 
@@ -144,19 +110,18 @@ export default function Landing() {
             <Icon name="check" className={styles.featureIcon} />
             <div>
               <h3>Пошаговый протокол</h3>
-              <p className={styles.text}>Чёткая структура без «воды». Подсказки на каждом шаге.</p>
+              <p className={styles.text}>Чёткая структура. Подсказки на каждом шаге.</p>
             </div>
           </div>
 
           <div className={styles.featureItem}>
             <Icon name="brain" className={styles.featureIcon} />
             <div>
-              <h3>Работа с корнем</h3>
+              <h3>Работа с глубинными убеждениями</h3>
               <p className={styles.text}>Находим убеждения из вашей истории, а не гасим симптомы.</p>
             </div>
           </div>
 
-          {/* 50+ исследований — третьей карточкой */}
           <div className={styles.featureItem}>
             <Icon name="book" className={styles.featureIcon} />
             <div>
@@ -170,7 +135,7 @@ export default function Landing() {
           <div className={styles.featureItem}>
             <Icon name="bolt" className={styles.featureIcon} />
             <div>
-              <h3>Приоритизация по «заряду»</h3>
+              <h3>Оценка убеждений по психоэмоциональному заряду</h3>
               <p className={styles.text}>Сначала то, что сильнее всего влияет на поведение.</p>
             </div>
           </div>
@@ -178,7 +143,7 @@ export default function Landing() {
           <div className={styles.featureItem}>
             <Icon name="chart" className={styles.featureIcon} />
             <div>
-              <h3>Психология в цифрах</h3>
+              <h3>Мониторинг прогресса</h3>
               <p className={styles.text}>Шкала 0–10, сравнение «до/после», прогресс на графиках.</p>
             </div>
           </div>
@@ -272,7 +237,7 @@ export default function Landing() {
             <div>
               <h3>7. Контрольные проверки архивных историй</h3>
               <p className={styles.text}>
-                Когда психоэмоциональный заряд всех идей истории = 0 — отправьте в историю в архив. Мы напомним через 1–2 недели, месяц и позже перечитать/переоценить список. Если «заряд» вернулся — история снова активна. И нужно повторить цикл проработки.
+                Когда психоэмоциональный заряд всех идей истории = 0 — отправьте историю в архив. Мы напомним через 1–2 недели, месяц и позже перечитать/переоценить список. Если заряд вернулся — история снова активна. И нужно повторить цикл проработки.
               </p>
               <p className={styles.textSmall}>Так избегаем рестимуляции и закрепляем результат надолго.</p>
             </div>
@@ -375,7 +340,7 @@ export default function Landing() {
       {/* FAQ */}
       <section id="faq" className={styles.faq}>
         <div className={styles.sectionHead}>
-          <h2>FAQ</h2>
+          <h2>Частые вопросы</h2>
         </div>
         <div className={styles.faqGrid}>
           <details className={styles.faqItem}>

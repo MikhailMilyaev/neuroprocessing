@@ -1,3 +1,42 @@
+.row{
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  margin-bottom: 12px;
+  background: transparent;
+  touch-action: pan-y;               
+}
+.rowRevealed{
+  background: #ff3b30;          
+}
+
+.actions{
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: stretch;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.trashBtn{
+  pointer-events: auto;
+  width: 116px;
+  border: none;
+  background: transparent;          
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.trashIcon{ font-size: 24px; }
+.trashText{ font-weight: 600; letter-spacing: .2px; }
+
 .storyCard {
   position: relative;
   overflow: hidden;
@@ -6,13 +45,23 @@
   padding: 20px 64px 20px 10px;
   font-size: 18px;
   background-color: #fff;
-  /* нижний отступ перенесён на .row, чтобы ничего не "торчало" */
   margin-bottom: 0;
   border: none;
   text-align: left;
-  transition: background-color .15s ease;
+  transition: background-color .15s ease;  
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+  z-index: 1;
+  touch-action: pan-y;             
+}
+
+.slide{
+  transform: translateX(0);
+  transition: transform .18s ease;  
+  will-change: transform;
+}
+.dragging{                          
+  transition: none !important;
 }
 
 .storyCard:hover { background-color: #AFF4C6; cursor: pointer; }
@@ -40,54 +89,6 @@
   pointer-events: none;
 }
 
-/* ==== свайп-контейнер ==== */
-.row{
-  position: relative;
-  overflow: hidden;     /* прячем всё выступающее */
-  border-radius: 20px;
-  margin-bottom: 12px;  /* отступ перенесён сюда */
-}
-
-/* подложка действия (мусорка) */
-.actions{
-  position: absolute;
-  top: 0; bottom: 0;
-  right: -80px;         /* уводим полностью за край ряда */
-  width: 72px;
-  display: none;        /* на десктопе не показываем вовсе */
-  align-items: stretch;
-  justify-content: stretch;
-  border-radius: 20px;
-  overflow: hidden;
-  z-index: 0;           /* под карточкой */
-}
-
-/* когда ряд раскрыт — возвращаем подложку к правому краю */
-.actionsShown { right: 0; }
-
-/* сама кнопка удаления */
-.trashBtn{
-  flex: 1 0 auto;
-  border: none;
-  background: #ef4444;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  cursor: pointer;
-}
-.trashBtn:active { transform: translateY(1px); }
-
-/* «едущий» слой карточки */
-.slide{
-  transform: translateX(0);
-  transition: transform .18s ease;
-  will-change: transform;
-  z-index: 1; /* поверх подложки */
-}
-
-/* плавный ripple */
 .ripple{
   position: absolute;
   border-radius: 50%;
@@ -102,8 +103,6 @@
 @keyframes ripple{ to{ transform: scale(1.6); opacity: 0; } }
 
 @media (max-width:700px){
-  .actions{ display:flex; } /* на мобиле подложка существует, но её не видно из-за right:-80px и обрезки .row */
-
   .titleText, .timeRight{
     user-select: none;
     -webkit-user-select: none;

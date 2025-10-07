@@ -21,6 +21,7 @@ export default function StoriesList({
   showArchive = false,
   onAddStory,
   onToggleArchive,
+  closeKey = 0
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
@@ -94,6 +95,7 @@ export default function StoriesList({
                   isHighlighted={isModalOpen && selectedId === s.id}
                   onContextMenu={(e) => handleContextMenu(e, s.id)}
                   onDelete={onDeleteStory}
+                  closeKey={closeKey}
                 />
               ))}
             </div>

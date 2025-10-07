@@ -90,6 +90,8 @@ const Stories = () => {
   const [searchInput, setSearchInput] = useState('');
   const [storiesList, setStoriesList] = useState(() => sortByUpdated(readStoriesIndex()));
   const [isLoading, setIsLoading] = useState(true);
+  const [swipeCloseKey, setSwipeCloseKey] = useState(0);    
+  const scrollRef = useRef(null);
 
   const [showArchive, setShowArchive] = useState(() => {
     const state = location.state || {};
@@ -499,7 +501,6 @@ const Stories = () => {
     <div className={classes.storiesViewport}>
       {showCreateOverlay && <FullScreenLoader />}
 
-      {/* ПОМЕТКА: блокируем скролл по этому контейнеру в iOS-PWA */}
       <div ref={headerRef} className={classes.headerSticky} data-lock-scroll="true">
         <StoriesHeader
           showArchive={showArchive}
@@ -511,7 +512,7 @@ const Stories = () => {
         />
       </div>
 
-      <div className={classes.scrollArea} role="region" aria-label="Список историй">
+      <div className={classes.scrollArea} role="region" onScroll={() => setSwipeCloseKey(k => k + 1)} aria-label="Список историй">
         <StoriesList
           searchInput={searchInput}
           storiesList={storiesList}
@@ -520,6 +521,7 @@ const Stories = () => {
           showArchive={showArchive}
           onAddStory={handleAddStory}
           onToggleArchive={handleToggleArchive}
+          closeKey={swipeCloseKey}
         />
       </div>
 
