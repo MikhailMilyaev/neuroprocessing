@@ -1,4 +1,4 @@
-export const LENDING_ROUTE = '/';
+export const LANDING_ROUTE = '/';
 export const LOGIN_ROUTE = '/login';
 export const REGISTRATION_ROUTE = '/registration';
 export const CHECKEMAIL_ROUTE = '/check-email';
