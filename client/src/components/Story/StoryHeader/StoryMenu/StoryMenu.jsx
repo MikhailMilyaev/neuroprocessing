@@ -17,9 +17,13 @@ const FREQ_OPTS = [
   { label: 'Не менять', value: null },
 ];
 
+// ширина меню должна совпадать с CSS
+const MENU_W = 243;
+const MARGIN = 8;
+
 const StoryMenu = ({
   open,
-  position,
+  position,                 // { x, y } — координаты триггера (иконки меню)
   onClose,
   onSort,
   onReevaluate,
@@ -30,12 +34,24 @@ const StoryMenu = ({
   archiveEnabled,
   onToggleArchive,
   sorted,
-  onArchiveStory, 
+  onArchiveStory,
 }) => {
   const dialogRef = useRef(null);
   const [showFreq, setShowFreq] = useState(false);
   const [isHoveringReminders, setIsHoveringReminders] = useState(false);
 
+  // мобилка?
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' ? window.matchMedia('(max-width:900px)').matches : false
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width:900px)');
+    const onChange = () => setIsMobile(mq.matches);
+    mq.addEventListener?.('change', onChange);
+    return () => mq.removeEventListener?.('change', onChange);
+  }, []);
+
+  // открыть/закрыть native <dialog>
   useEffect(() => {
     const el = dialogRef.current;
     if (!el) return;
@@ -43,63 +59,62 @@ const StoryMenu = ({
     else el.close();
   }, [open]);
 
-  useEffect(() => {
-    const el = dialogRef.current;
-    if (!el) return;
-
-    const handleClickOutside = (e) => { if (e.target === el) onClose?.(); };
-    const handleEsc = (e) => { if (e.key === 'Escape') onClose?.(); };
-
-    if (open) {
-      el.addEventListener('click', handleClickOutside);
-      window.addEventListener('keydown', handleEsc);
-    }
-    return () => {
-      el.removeEventListener('click', handleClickOutside);
-      window.removeEventListener('keydown', handleEsc);
-    };
-  }, [open, onClose]);
-
-  const top = typeof position?.y === "number" ? `${position.y}px` : position?.y;
-  const left = typeof position?.x === "number" ? `${position.x}px` : position?.x;
-
+  // сброс подменю при закрытии
   useEffect(() => { if (!open) setShowFreq(false); }, [open]);
 
+  // hover-логика для десктопа
   useEffect(() => {
-    if (remindersEnabled && isHoveringReminders) {
-      setShowFreq(true);
-    } else if (!remindersEnabled) {
-      setShowFreq(false);
-    }
-  }, [remindersEnabled, isHoveringReminders]);
+    if (!isMobile && remindersEnabled && isHoveringReminders) setShowFreq(true);
+    if (!remindersEnabled) setShowFreq(false);
+  }, [isMobile, remindersEnabled, isHoveringReminders]);
 
-  const handleRemindersMouseEnter = () => {
-    setIsHoveringReminders(true);
-    if (remindersEnabled) setShowFreq(true);
-  };
-  const handleRemindersMouseLeave = () => {
-    setIsHoveringReminders(false);
-    setShowFreq(false);
+  // мобилка: по клику разворачиваем частоты
+  const toggleFreqMobile = () => {
+    if (!isMobile) return;
+    setShowFreq(v => !v);
   };
 
-  const handleToggleReminders = (checked) => {
-    onToggleReminders?.(checked);
-    if (checked && isHoveringReminders) setShowFreq(true);
-    if (!checked) setShowFreq(false);
-  };
+  // ======= единое умное позиционирование (и для ПК, и для мобилки) =======
+  let vw = 0;
+  let headerH = 56;
+  if (typeof window !== 'undefined') {
+    vw = window.innerWidth || 0;
+    const cssH = parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--story-header-h')
+    );
+    if (!Number.isNaN(cssH) && cssH > 0) headerH = cssH;
+  }
+
+  // исходные координаты от триггера
+  const pxX = typeof position?.x === 'number' ? position.x : (vw - MARGIN);
+  const pxY = typeof position?.y === 'number' ? position.y : (headerH + 6);
+
+  // Ставим ПРАВЫЙ край меню под точку триггера: left = x - MENU_W
+  let calcLeft = pxX - MENU_W;
+
+  // Кламп границ, чтобы не вылезать за экран
+  calcLeft = Math.min(calcLeft, vw - MENU_W - MARGIN); // не выйти справа
+  calcLeft = Math.max(calcLeft, MARGIN);               // не уйти влево за край
+
+  // Топ — как минимум под фикс-хедером
+  const calcTop = Math.max(pxY, headerH + 6);
 
   return createPortal(
     <dialog
       ref={dialogRef}
       className={classes.menuDialog}
-      style={{ top, left }}
+      style={undefined} // сам диалог — просто оверлей
       onContextMenu={(e) => e.preventDefault()}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
       aria-label="Меню истории"
     >
       <div
         className={classes.menu}
+        style={{ top: `${calcTop}px`, left: `${calcLeft}px` }}
         role="menu"
-        onMouseLeave={() => { setShowFreq(false); setIsHoveringReminders(false); }}
+        onClick={(e) => e.stopPropagation()} // клики внутри — не закрывают
+        onMouseLeave={() => { if (!isMobile) setIsHoveringReminders(false); }}
       >
         <button className={classes.item} role="menuitem" onClick={() => { onSort?.(); onClose?.(); }}>
           <LuArrowUpDown className={classes.icon} />
@@ -123,26 +138,27 @@ const StoryMenu = ({
         <div
           className={`${classes.item} ${classes.switchRow}`}
           role="menuitem"
-          onMouseEnter={handleRemindersMouseEnter}
-          onMouseLeave={handleRemindersMouseLeave}
+          onMouseEnter={() => !isMobile && setIsHoveringReminders(true)}
+          onMouseLeave={() => !isMobile && setIsHoveringReminders(false)}
+          onClick={toggleFreqMobile}
         >
           <IoNotificationsOutline className={classes.icon} />
           <span className={classes.label}>Подсказки</span>
-          <label className={classes.switch}>
+          <label className={classes.switch} onClick={(e) => e.stopPropagation()}>
             <input
               type="checkbox"
               checked={!!remindersEnabled}
-              onChange={(e) => handleToggleReminders(e.target.checked)}
+              onChange={(e) => {
+                onToggleReminders?.(e.target.checked);
+                if (!e.target.checked) setShowFreq(false);
+              }}
             />
             <span className={classes.slider} />
           </label>
         </div>
 
         {remindersEnabled && (
-          <div
-            className={`${classes.freqPanel} ${showFreq ? classes.open : ''}`}
-            onMouseEnter={() => setShowFreq(true)}
-          >
+          <div className={`${classes.freqPanel} ${((showFreq || (isMobile && remindersEnabled)) ? classes.open : '')}`}>
             <div className={classes.submenuTitle}>Смена вопросов каждые</div>
             {FREQ_OPTS.map(opt => (
               <label key={String(opt.value)} className={classes.submenuOption}>
@@ -151,9 +167,7 @@ const StoryMenu = ({
                   name="reminderFreq"
                   value={opt.value ?? ''}
                   checked={(opt.value ?? null) === (reminderFreqSec ?? null)}
-                  onChange={() => {
-                    onChangeReminderFreq?.(opt.value ?? null);
-                  }}
+                  onChange={() => onChangeReminderFreq?.(opt.value ?? null)}
                 />
                 <span>{opt.label}</span>
               </label>

@@ -112,13 +112,20 @@ export default function StoriesHeader({
                   </button>
                 )}
               </div>
+              
 
               <button
-                type="button"
-                className={`${classes.tbtn} ${classes.primary}`}
-                onClick={onAddStory}
-                aria-label="Добавить историю"
-              >
+   type="button"
+   className={`${classes.tbtn} ${classes.primary}`}
+   onClick={(e) => {
+     e.preventDefault();
+     e.stopPropagation();
+     // важно: НЕ передавать e внутрь!
+     // просим инлайн-режим + автофокус
+     onAddStory('', { inline: true });
+   }}
+   aria-label="Добавить историю"
+ >
                 <IoAdd className={classes.icon} />
                 <span className={classes.primaryLabel}>Добавить</span>
               </button>

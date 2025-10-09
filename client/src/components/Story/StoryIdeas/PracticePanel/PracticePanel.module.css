@@ -76,3 +76,22 @@
   outline: 2px solid #111;
   outline-offset: 2px;
 }
+
+/* Мобилка: вписываем панель практик в те же 10px */
+@media (max-width: 900px) {
+  .vwrap {
+    margin-left: 0;
+    margin-right: 0;
+    border-radius: 12px; /* можно оставить мягкое скругление, без рамок */
+  }
+
+  .list {
+    /* тонкий, но видимый скролл; остаётся как у текста */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,.28) transparent;
+  }
+  .list::-webkit-scrollbar        { width: 6px; }
+  .list::-webkit-scrollbar-track  { background: transparent; }
+  .list::-webkit-scrollbar-thumb  { background-color: rgba(0,0,0,.28); border-radius: 3px; }
+  .list::-webkit-scrollbar-thumb:hover { background-color: rgba(0,0,0,.38); }
+}

@@ -4,10 +4,10 @@
   border-radius: 20px;
   margin-bottom: 12px;
   background: transparent;
-  touch-action: pan-y;               
+  touch-action: pan-y;
 }
 .rowRevealed{
-  background: #ff3b30;          
+  background: #ff3b30; /* фон под кнопками, на краях видно при свайпе */
 }
 
 .actions{
@@ -18,24 +18,42 @@
   align-items: stretch;
   z-index: 0;
   pointer-events: none;
+  gap: 8px;
+  padding-right: 8px;
 }
 
-.trashBtn{
+/* Общая кнопка действия (редакт/удалить) */
+.actionBtn{
   pointer-events: auto;
-  width: 116px;
+  width: 96px;
   border: none;
-  background: transparent;          
-  color: #fff;
+  background: #f3f4f6;        /* по умолчанию серовато */
+  color: #111827;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
+  border-radius: 12px;
+  margin-block: 6px;
 }
-.trashIcon{ font-size: 24px; }
-.trashText{ font-weight: 600; letter-spacing: .2px; }
+.actionBtn:active{ opacity: .9; }
+.actionIcon{ font-size: 22px; }
+.actionText{ font-weight: 600; letter-spacing: .2px; }
+
+/* Изменить (серый) */
+.editBtn{
+  background: #e5e7eb;
+  color: #111827;
+}
+
+/* Удалить (красный) */
+.trashBtn{
+  background: #ff3b30;
+  color: #fff;
+}
 
 .storyCard {
   position: relative;
@@ -48,24 +66,29 @@
   margin-bottom: 0;
   border: none;
   text-align: left;
-  transition: background-color .15s ease;  
+  transition: background-color .15s ease;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   z-index: 1;
-  touch-action: pan-y;             
+  touch-action: pan-y;
 }
 
 .slide{
   transform: translateX(0);
-  transition: transform .18s ease;  
+  transition: transform .18s ease;
   will-change: transform;
 }
-.dragging{                          
+.dragging{
   transition: none !important;
 }
 
 .storyCard:hover { background-color: #AFF4C6; cursor: pointer; }
 .storyCardActive { background-color: #AFF4C6; cursor: pointer; }
+
+/* режим редактирования — меняем паддинги под инпут */
+.editingMode{
+  background: #fff;
+}
 
 .titleText {
   background: transparent;
@@ -89,6 +112,21 @@
   pointer-events: none;
 }
 
+/* Инпут заголовка */
+.titleInput{
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 18px;
+  line-height: 1.4;
+  padding: 2px 0 2px 2px;
+  color: #111827;
+}
+.titleInput::placeholder{ color:#9aa0a6; }
+.titleInput:focus{ outline: none; }
+
+/* Ripple */
 .ripple{
   position: absolute;
   border-radius: 50%;
@@ -111,5 +149,8 @@
     padding: 18px 64px 18px 14px;
     font-size: 16px;
     color: #000;
+  }
+  .titleInput{
+    font-size: 16px;
   }
 }

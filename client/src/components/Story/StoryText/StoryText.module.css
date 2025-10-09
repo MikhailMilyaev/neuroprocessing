@@ -175,3 +175,53 @@
   bottom: 0;
   transform: translateX(-50%) translateY(0);
 }
+
+/* ===== МОБИЛЬНЫЙ АДАПТИВ БЕЗ РАМКИ/ФОНА ===== */
+@media (max-width: 900px) {
+  .wrapper {
+    max-width: 100%;
+    padding: 0 8px;              /* умеренные поля экрана */
+  }
+
+  .stage {
+    background: transparent;      /* фон оставляем как был */
+    border-radius: 0;             /* без рамок/скруглений */
+    box-shadow: none;             /* без тени */
+    padding: 12px 8px 16px;      /* реальные отступы текста от краёв */
+    min-height: 200px;
+    -webkit-overflow-scrolling: touch; /* плавный скролл на iOS */
+
+    /* тонкий, но видимый скролл */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,.28) transparent;
+  }
+
+  .stage::-webkit-scrollbar {
+    width: 6px;                   /* узкий скроллбар */
+  }
+  .stage::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .stage::-webkit-scrollbar-thumb {
+    background-color: rgba(0,0,0,.28);
+    border-radius: 3px;
+  }
+  .stage::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0,0,0,.38);
+  }
+
+  .editable {
+    font-size: 17px;              /* читабельно как в заметках */
+    line-height: 26px;
+    padding: 0;                   /* паддинги уже у .stage */
+    color: #222;
+  }
+
+  .editable[data-empty="true"]::before {
+    left: 1px;                    /* лёгкий визуальный отступ плейсхолдера */
+    color: #888;
+  }
+
+  /* гутер целиком убираем на мобилках */
+  .gutter { display: none !important; }
+}

@@ -1,11 +1,15 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+
 import StoryCard from "./StoryCard/StoryCard";
 import StoryModal from "./StoryModal/StoryModal";
 import Spinner from "../../Spinner/Spinner";
 import useDelayedVisible from "../../../hooks/useDelayedVisible";
 import EmptyState from "../EmptyState/EmptyState";
+
 import classes from "./StoriesList.module.css";
 
+/* ===== utils ===== */
 const getTs = (s) => {
   const v = s?.updatedAt ?? s?.updated_at ?? s?.createdAt ?? s?.created_at ?? 0;
   const t = Date.parse(v);
@@ -21,31 +25,192 @@ export default function StoriesList({
   showArchive = false,
   onAddStory,
   onToggleArchive,
-  closeKey = 0
+  closeKey = 0,
+  inlineAddSignal = 0,
+  onRenameStory,
+  onTempCommit,
+  newlyCreatedId = null,         // id свежесозданной карточки (мобильный путь)
+  clearNewlyCreated = () => {},  // очистка флага после входа в редакт
 }) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
-  const [selectedId, setSelectedId] = useState(null);
-  const showSpinner = useDelayedVisible(isLoading && (storiesList?.length ?? 0) === 0, 200);
+  const navigate = useNavigate();
 
+  /* ===== спиннер ===== */
+  const showSpinner = useDelayedVisible(
+    isLoading && (storiesList?.length ?? 0) === 0,
+    200
+  );
+
+  /* ===== поиск ===== */
   const q = (searchInput || "").trim().toLocaleLowerCase("ru-RU");
 
   const activeStories = useMemo(() => {
     const base = (storiesList || []).filter((s) => !s.archive);
-    const filtered = q ? base.filter((s) => (s.title ?? "").toLocaleLowerCase("ru-RU").includes(q)) : base;
+    const filtered = q
+      ? base.filter((s) => (s.title ?? "").toLocaleLowerCase("ru-RU").includes(q))
+      : base;
     return sortByUpdated(filtered);
   }, [storiesList, q]);
 
   const archiveStories = useMemo(() => {
     const base = (storiesList || []).filter((s) => s.archive);
-    const filtered = q ? base.filter((s) => (s.title ?? "").toLocaleLowerCase("ru-RU").includes(q)) : base;
+    const filtered = q
+      ? base.filter((s) => (s.title ?? "").toLocaleLowerCase("ru-RU").includes(q))
+      : base;
     return sortByUpdated(filtered);
   }, [storiesList, q]);
 
-  const isMobile = () => window.matchMedia("(max-width:700px)").matches;
+  /* ===== инлайн-режимы редактирования ===== */
+  const [editingId, setEditingId] = useState(null);
+  const [draftId, setDraftId] = useState(null); // старый черновик (если используется)
+
+  // id -> boolean: был ли заголовок в момент входа в редакт
+  const hadTitleOnEditRef = useRef(new Map());
+
+  const isMobile = () =>
+    window.matchMedia("(max-width:700px)").matches &&
+    window.matchMedia("(hover: none)").matches &&
+    window.matchMedia("(pointer: coarse)").matches;
+
+  const rememberHadTitle = (id, title) => {
+    const had = !!(title && title.trim().length > 0);
+    hadTitleOnEditRef.current.set(String(id), had);
+  };
+  const forgetHadTitle = (id) => {
+    hadTitleOnEditRef.current.delete(String(id));
+  };
+
+  // Сигнал «создать черновик» (исторический поток)
+  useEffect(() => {
+    if (!inlineAddSignal) return;
+    const id = `draft-${Date.now()}`;
+    setDraftId((prev) => prev ?? id);
+    setEditingId((prev) => prev ?? id);
+    hadTitleOnEditRef.current.set(String(id), false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inlineAddSignal]);
+
+  // Мобильный путь: пришёл id новой карточки → включаем редакт и фокус на ней
+  useEffect(() => {
+    if (!newlyCreatedId) return;
+    const id = String(newlyCreatedId);
+    setEditingId(id);
+    hadTitleOnEditRef.current.set(id, false);
+
+    requestAnimationFrame(() => {
+      const row = document.querySelector(`[data-story-id="${id}"]`);
+     row?.scrollIntoView({ behavior: "smooth", block: "center" });
+     requestAnimationFrame(() => {
+       const input = row?.querySelector('input[aria-label="Заголовок истории"]');
+       if (input) {
+         try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+         const len = input.value?.length ?? 0;
+         try { input.setSelectionRange(len, len); } catch {}
+       }
+     });
+   });
+  }, [newlyCreatedId]);
+
+  const finishEditing = (id) => {
+    if (editingId === id) setEditingId(null);
+    forgetHadTitle(id);
+    if (newlyCreatedId && String(newlyCreatedId) === String(id)) {
+      clearNewlyCreated?.();
+    }
+  };
+
+  const beginRename = (id, title) => {
+    setEditingId(String(id));
+    rememberHadTitle(id, title);
+  };
+
+  const submitDraft = async (title) => {
+    const t = (title || "").trim();
+    if (!t) return;
+    try {
+      const created = await onAddStory?.(t);
+      setEditingId(null);
+      setDraftId(null);
+      const slug = created?.slug || created?.id;
+      if (slug) navigate(`/story/${slug}`);
+    } catch (e) {
+      console.error("[create story]", e);
+    }
+  };
+
+  const submitRename = async (id, value, currentTitle) => {
+    const trimmed = (value || "").trim();
+    const hadTitle = !!hadTitleOnEditRef.current.get(String(id));
+    const isTemp = String(id).startsWith("temp-");
+
+    if (isTemp) {
+    try {
+      await onTempCommit?.(id, trimmed);
+    } finally {
+      finishEditing(id);
+    }
+    return;
+  }
+
+    if (!trimmed) {
+      if (hadTitle) {
+        // раньше заголовок был → НЕ удаляем, сохраняем пустой
+        try {
+          await onRenameStory?.(id, "");
+        } finally {
+          finishEditing(id);
+        }
+      } else {
+        // новая пустая → удаляем
+        try {
+          await onDeleteStory?.(id);
+        } finally {
+          finishEditing(id);
+        }
+      }
+      return;
+    }
+
+    // обычное переименование
+    try {
+      await onRenameStory?.(id, trimmed);
+      if (isMobile()) {
+        const found = (storiesList || []).find((s) => String(s.id) === String(id));
+        const slug = found?.slug || id;
+        navigate(`/story/${slug}`);
+      }
+    } finally {
+      finishEditing(id);
+    }
+  };
+
+  /* ===== выбор списка ===== */
+  const listToRender = showArchive ? archiveStories : activeStories;
+  const isEmpty = listToRender.length === 0;
+
+  // подмешиваем черновик сверху, если он есть
+  const baseList = draftId
+    ? [{ id: draftId, title: "", updatedAt: new Date().toISOString(), _draft: true }, ...listToRender]
+    : listToRender;
+
+  // страховка от дублей id (на всякий)
+  const seen = new Set();
+  const listWithNoDupes = baseList.filter((s) => {
+    const k = String(s.id);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+
+  /* ===== контекстное меню (десктоп) ===== */
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
+  const [selectedId, setSelectedId] = useState(null);
 
   const handleContextMenu = (event, id) => {
-    if (isMobile()) { event.preventDefault(); return; }   // на мобиле — свайп, без модалки
+    if (window.matchMedia("(max-width:700px)").matches) {
+      event.preventDefault();
+      return;
+    }
     event.preventDefault();
     setSelectedId(id);
     setIsModalOpen(true);
@@ -54,13 +219,10 @@ export default function StoriesList({
 
   const handleDeleteClick = async () => {
     if (selectedId == null) return;
-    await onDeleteStory(selectedId);
+    await onDeleteStory?.(selectedId);
     setIsModalOpen(false);
     setSelectedId(null);
   };
-
-  const listToRender = showArchive ? archiveStories : activeStories;
-  const isEmpty = listToRender.length === 0;
 
   return (
     <>
@@ -70,7 +232,7 @@ export default function StoriesList({
         </div>
       ) : (
         <>
-          {isEmpty ? (
+          {isEmpty && !draftId ? (
             <EmptyState
               variant={showArchive ? "archive" : "active"}
               title={showArchive ? "В архиве пусто" : "Историй пока нет"}
@@ -78,26 +240,57 @@ export default function StoriesList({
                 showArchive
                   ? "Архивируйте историю, если все идеи имеют нулевой психоэмоциональный заряд."
                   : archiveStories.length > 0
-                    ? "Создайте новую или откройте архив, чтобы вернуть историю."
-                    : "Нажмите «Добавить», чтобы создать историю."
+                  ? "Создайте новую или откройте архив, чтобы вернуть историю."
+                  : "Нажмите «Добавить», чтобы создать историю."
               }
               ctaLabel={!showArchive ? "Добавить историю" : undefined}
-              onCtaClick={!showArchive ? onAddStory : undefined}
-              secondaryCtaLabel={showArchive ? "К историям" : (archiveStories.length > 0 ? "Открыть архив" : undefined)}
+              onCtaClick={
+                !showArchive
+                  ? () => {
+                      if (editingId) return;
+                      const id = `draft-${Date.now()}`;
+                      setDraftId(id);
+                      setEditingId(id);
+                      rememberHadTitle(id, "");
+                    }
+                  : undefined
+              }
+              secondaryCtaLabel={
+                showArchive ? "К историям" : archiveStories.length > 0 ? "Открыть архив" : undefined
+              }
               onSecondaryClick={() => onToggleArchive?.(!showArchive)}
             />
           ) : (
             <div className={classes.listWrap}>
-              {listToRender.map((s) => (
-                <StoryCard
-                  key={s.id}
-                  {...s}
-                  isHighlighted={isModalOpen && selectedId === s.id}
-                  onContextMenu={(e) => handleContextMenu(e, s.id)}
-                  onDelete={onDeleteStory}
-                  closeKey={closeKey}
-                />
-              ))}
+              {listWithNoDupes.map((s) => {
+                const idStr = String(s.id);
+                const isEditingThis = String(editingId) === idStr;
+
+                return (
+                  <StoryCard
+                    key={s.id}
+                    {...s}
+                    isHighlighted={isModalOpen && selectedId === s.id}
+                    onContextMenu={(e) => handleContextMenu(e, s.id)}
+                    onDelete={onDeleteStory}
+                    closeKey={closeKey}
+                    /* инлайн-режимы */
+                    isDraft={!!s._draft}
+                    isEditing={isEditingThis}
+                    onBeginRename={() => beginRename(s.id, s.title)}
+                    onSubmitTitle={(value) => (s._draft ? submitDraft(value) : submitRename(s.id, value, s.title))}
+                    onCancelEdit={() => {
+                      if (s._draft) {
+                        setEditingId(null);
+                        setDraftId(null);
+                        forgetHadTitle(s.id);
+                      } else {
+                        finishEditing(s.id);
+                      }
+                    }}
+                  />
+                );
+              })}
             </div>
           )}
 

@@ -2,7 +2,7 @@ import classes from './StoryCard.module.css';
 import { useNavigate } from 'react-router-dom';
 import { STORY_ROUTE } from '../../../../utils/consts';
 import { useMemo, useRef, useState, useEffect } from 'react';
-import { MdDeleteOutline } from 'react-icons/md';
+import { MdDeleteOutline, MdEdit } from 'react-icons/md';
 
 const toDate = (v)=> (v ? new Date(v) : null);
 const formatEditedAt = (raw)=>{
@@ -18,15 +18,50 @@ const formatEditedAt = (raw)=>{
 export default function StoryCard({
   id, slug, title, updatedAt, updated_at,
   isHighlighted, onContextMenu, onDelete,
-  closeKey = 0,                 
+  closeKey = 0,
+
+  /* инлайн-режимы (получаем сверху) */
+  isDraft = false,
+  isEditing = false,
+  onBeginRename,
+  onSubmitTitle,   // (value, id?) =>
+  onCancelEdit,    // (id?) =>
 }){
   const navigate = useNavigate();
   const btnRef = useRef(null);
+  const inputRef = useRef(null);
 
   const editedLabel = useMemo(()=>formatEditedAt(updatedAt ?? updated_at),[updatedAt,updated_at]);
-  const isTitleEmpty = !title?.trim();
-  const displayTitle = isTitleEmpty ? 'Сформулируйте проблему' : title;
+  const hadTitle = !!(title && title.trim().length > 0);
+  const isMobile = ()=> window.matchMedia('(max-width:700px)').matches;
+  const displayTitle = hadTitle ? title : 'Сформулируйте проблему';
   const targetUrl = `${STORY_ROUTE}/${slug || id}`;
+
+  // локальное состояние для инпута в режиме редактирования
+  const [value, setValue] = useState(title || '');
+
+  useEffect(() => {
+    if (isEditing) setValue(title || '');
+  }, [isEditing, title]);
+
+  // автофокус при входе в режим редактирования
+  useEffect(() => {
+    if (!isEditing) return;
+    let af1 = 0, af2 = 0;
+    af1 = requestAnimationFrame(() => {
+      af2 = requestAnimationFrame(() => {
+        const el = inputRef.current;
+        if (!el) return;
+        try { el.focus({ preventScroll: true }); } catch { el.focus(); }
+        const len = el.value.length;
+        try { el.setSelectionRange(len, len); } catch {}
+      });
+    });
+    return () => {
+      cancelAnimationFrame(af1);
+      cancelAnimationFrame(af2);
+    };
+  }, [isEditing]);
 
   const spawnRipple = (clientX, clientY, right=false)=>{
     const el = btnRef.current; if(!el) return;
@@ -42,10 +77,11 @@ export default function StoryCard({
     wave.addEventListener('animationend', ()=> wave.remove());
   };
 
-  const ACTION_W = 96;                 
-  const SNAP_RATIO = 0.6;               
-  const VEL_OPEN = -0.35;            
-  const VEL_CLOSE = 0.35;               
+  /* свайп-параметры */
+  const ACTION_W = 192;
+  const SNAP_RATIO = 0.6;
+  const VEL_OPEN = -0.35;
+  const VEL_CLOSE = 0.35;
 
   const [offset, setOffset] = useState(0);
   const [revealed, setRevealed] = useState(false);
@@ -55,11 +91,10 @@ export default function StoryCard({
   const startY = useRef(0);
   const lastX = useRef(0);
   const lastT = useRef(0);
-  const velocity = useRef(0);           
+  const velocity = useRef(0);
   const dragging = useRef(false);
-  const intent = useRef(null);         
+  const intent = useRef(null);
   const raf = useRef(0);
-  const isMobile = ()=> window.matchMedia('(max-width:700px)').matches;
 
   useEffect(()=>{
     const onGlobal = (e)=>{
@@ -87,6 +122,7 @@ export default function StoryCard({
 
   const onTouchStart = (e)=>{
     if(!isMobile()) return;
+    if (isEditing) return; // во время редактирования свайп не активируем
     dragging.current = true;
     intent.current = null;
     setDraggingActive(false);
@@ -94,7 +130,6 @@ export default function StoryCard({
     startY.current = e.touches[0].clientY;
     lastX.current = startX.current;
     lastT.current = performance.now();
-
     window.dispatchEvent(new CustomEvent('story-swipe-open', { detail: id }));
   };
 
@@ -118,13 +153,13 @@ export default function StoryCard({
     if (intent.current === 'y') return;
 
     if (intent.current === 'x') {
-      e.preventDefault();  
+      e.preventDefault();
       const base = revealed ? -ACTION_W : 0;
       const x = Math.max(-ACTION_W, Math.min(0, base + dx));
       setOffsetRaf(x);
 
       const dt = Math.max(1, now - lastT.current);
-      velocity.current = (tx - lastX.current) / dt;  
+      velocity.current = (tx - lastX.current) / dt;
       lastX.current = tx;
       lastT.current = now;
     }
@@ -153,7 +188,8 @@ export default function StoryCard({
 
   useEffect(()=>{ if(revealed || offset!==0){ closeSwipe(); } }, [closeKey]); // eslint-disable-line
 
-  const onClick=(e)=>{
+  const onRowClick=(e)=>{
+    if (isEditing) return;
     if(revealed && isMobile()){ e.preventDefault(); closeSwipe(); return; }
     spawnRipple(e.clientX ?? 0, e.clientY ?? 0, false);
     navigate(targetUrl);
@@ -161,44 +197,118 @@ export default function StoryCard({
 
   const onContext=(e)=>{
     if(isMobile()){ e.preventDefault(); return; }
+    if (isEditing) return;
     spawnRipple(e.clientX, e.clientY, true);
     onContextMenu?.(e, id);
   };
 
+  // ===== инлайн-редактирование =====
+  const commit = ()=>{
+    const t = (value ?? '').trim();
+    if (!t) {
+      if (hadTitle) {
+        // раньше заголовок был → НЕ удаляем, сохраняем пустую строку
+        onSubmitTitle?.('', id);
+        onCancelEdit?.(id);
+      } else {
+        // новая пустая → удаляем
+        onDelete?.(id);
+      }
+      return;
+    }
+    onSubmitTitle?.(t, id);
+    onCancelEdit?.(id);
+  };
+
+  const onInputKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      onCancelEdit?.(id);
+    }
+  };
+
   const rowRevealed = (revealed || offset < 0);
+  const showTime = !!editedLabel && !isEditing && hadTitle;
 
   return (
     <div className={`${classes.row} ${rowRevealed ? classes.rowRevealed : ''}`}>
       <div className={classes.actions} aria-hidden={!rowRevealed}>
         <button
           type="button"
-          className={classes.trashBtn}
+          className={`${classes.actionBtn} ${classes.editBtn}`}
+          onClick={(ev)=>{ ev.stopPropagation(); onBeginRename?.(id); closeSwipe(); }}
+          aria-label="Изменить"
+          title="Изменить"
+        >
+          <MdEdit className={classes.actionIcon}/>
+          <span className={classes.actionText}>Изменить</span>
+        </button>
+
+        <button
+          type="button"
+          className={`${classes.actionBtn} ${classes.trashBtn}`}
           onClick={(ev)=>{ ev.stopPropagation(); onDelete?.(id); }}
           aria-label="Удалить"
           title="Удалить"
         >
-          <MdDeleteOutline className={classes.trashIcon}/>
-          <span className={classes.trashText}>Удалить</span>
+          <MdDeleteOutline className={classes.actionIcon}/>
+          <span className={classes.actionText}>Удалить</span>
         </button>
       </div>
 
-      <button
-        ref={btnRef}
-        className={`${classes.storyCard} ${classes.slide} ${draggingActive ? classes.dragging : ''} ${isHighlighted ? classes.storyCardActive : ''}`}
-        style={{ transform:`translateX(${offset}px)` }}
-        onClick={onClick}
-        onContextMenu={onContext}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={onTouchCancel}
-        data-story-id={id}
-      >
-        <span className={`${classes.titleText} ${isTitleEmpty ? classes.placeholderText : ''}`}>
-          {displayTitle}
-        </span>
-        {editedLabel && <span className={classes.timeRight}>{editedLabel}</span>}
-      </button>
+
+{isEditing ? (
+        <div
+          ref={btnRef}
+          className={`${classes.storyCard} ${classes.slide} ${classes.editingMode}`}
+style={{ transform:`translateX(${offset}px)` }}
+          // свайпы во время редактирования можно отключить; оставь при необходимости:
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchCancel}
+          data-story-id={id}
+        >
+          <input
+            ref={inputRef}
+            className={classes.titleInput}            placeholder="Сформулируйте проблему"
+            value={value}
+            onChange={(e)=> setValue(e.target.value)}
+            onBlur={commit}
+            onKeyDown={onInputKeyDown}
+            type="text"
+            inputMode="text"
+           autoCapitalize="sentences"
+            autoCorrect="on"
+           enterKeyHint="done"
+            aria-label="Заголовок истории"
+            autoFocus
+          />
+        </div>
+      ) : (
+        <button
+          ref={btnRef}
+          className={`${classes.storyCard} ${classes.slide} ${draggingActive ? classes.dragging : ''} ${isHighlighted ? classes.storyCardActive : ''}`}
+          style={{ transform:`translateX(${offset}px)` }}
+          onClick={onRowClick}
+          onContextMenu={onContext}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchCancel}
+          data-story-id={id}
+        >
+          <>
+            <span className={`${classes.titleText} ${!hadTitle ? classes.placeholderText : ''}`}>
+              {displayTitle}
+            </span>
+            {showTime && <span className={classes.timeRight}>{editedLabel}</span>}
+          </>
+        </button>
+      )}
     </div>
   );
 }

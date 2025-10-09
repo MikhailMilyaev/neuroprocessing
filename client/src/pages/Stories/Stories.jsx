@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { flushSync } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ns } from '../../utils/ns';
 import { subscribe, getActorChannel, startRealtime } from '../../utils/realtime';
@@ -9,7 +10,7 @@ import Toast from '../../components/Toast/Toast';
 
 import classes from './Stories.module.css';
 import { STORY_ROUTE } from '../../utils/consts';
-import { fetchStories, createStory, removeStory } from '../../http/storyApi';
+import { fetchStories, createStory, removeStory, updateStory } from '../../http/storyApi';
 import { readStoriesIndex, writeStoriesIndex, removeFromStoriesIndex } from '../../utils/cache/storiesCache';
 import { useSmartDelay } from '../../hooks/useSmartDelay';
 import { markSeenThisSession, writeSnapshot, purgeStoryLocal } from '../../utils/cache/storySnapshot';
@@ -90,7 +91,7 @@ const Stories = () => {
   const [searchInput, setSearchInput] = useState('');
   const [storiesList, setStoriesList] = useState(() => sortByUpdated(readStoriesIndex()));
   const [isLoading, setIsLoading] = useState(true);
-  const [swipeCloseKey, setSwipeCloseKey] = useState(0);    
+  const [swipeCloseKey, setSwipeCloseKey] = useState(0);
   const scrollRef = useRef(null);
 
   const [showArchive, setShowArchive] = useState(() => {
@@ -108,9 +109,13 @@ const Stories = () => {
   const [toastKey, setToastKey] = useState(0);
 
   const [creating, setCreating] = useState(false);
+  const lastAddAtRef = useRef(0);
 
   const [pendingArchivedId, setPendingArchivedId] = useState(null);
   const [pendingActiveId, setPendingActiveId] = useState(null);
+
+  // Новый: id только что созданной истории для МОБИЛКИ, чтобы включить инлайн-редакт
+  const [newlyCreatedId, setNewlyCreatedId] = useState(null);
 
   const net = navigator.connection?.effectiveType || '';
   const saveData = navigator.connection?.saveData || false;
@@ -354,13 +359,29 @@ const Stories = () => {
     }, 50);
   }, [pendingActiveId, storiesList, isLoading, scrollAndFlash]);
 
-  const handleAddStory = async () => {
-    if (creating) return;
+  const isMobile = () =>
+    window.matchMedia('(max-width:700px)').matches &&
+    window.matchMedia('(hover: none)').matches &&
+    window.matchMedia('(pointer: coarse)').matches;
+
+const tempMapRef = useRef(new Map()); // tempId -> realId
+
+const handleAddStory = async (initialTitleArg = '', opts = {}) => {
+   const initialTitle = typeof initialTitleArg === 'string' ? initialTitleArg : '';
+   const preferInline = !!opts.inline;
+  const now = Date.now();
+  if (creating || now - lastAddAtRef.current < 600) return;
+  lastAddAtRef.current = now;
+
+  const isReallyInline = preferInline || (
+     window.matchMedia('(max-width:700px)').matches &&
+     window.matchMedia('(hover: none)').matches &&
+     window.matchMedia('(pointer: coarse)').matches
+   );
+   if (!isReallyInline) {
     setCreating(true);
-
     try {
-      const story = await createStory({ title: '', content: '' });
-
+      const story = await createStory({ title: initialTitle || '', content: '' });
       try { markSeenThisSession(String(story.id)); } catch {}
       try {
         writeSnapshot(String(story.id), {
@@ -372,32 +393,109 @@ const Stories = () => {
           reevalCount: 0,
           showArchiveSection: true,
           lastViewContentY: null,
-
-          remindersEnabled: true,
-          remindersFreqSec: 30,
-          remindersIndex: 0,
-          remindersPaused: false,
-
-          title: story?.title || '',
-          content: story?.content || '',
-          ideas: [],
+          remindersEnabled: true, remindersFreqSec: 30, remindersIndex: 0, remindersPaused: false,
+          title: story?.title || '', content: story?.content || '', ideas: [],
         });
       } catch {}
-
       setStoriesList(prev => {
         const next = sortByUpdated([story, ...(prev || [])]);
         writeStoriesIndex(next.map(mapForIndex));
         return next;
       });
-
       navigate(`${STORY_ROUTE}/${story.slug}`);
+      return story;
     } catch (e) {
       console.error(e);
       alert('Не удалось создать историю. Проверьте соединение и попробуйте ещё раз.');
     } finally {
       setCreating(false);
     }
-  };
+    return;
+  }
+const tempId = `temp-${Date.now()}`;
+  flushSync(() => {
+   setStoriesList(prev => {
+     const tempStory = {
+       id: tempId, slug: null, title: initialTitle || '', archive: false,
+       updatedAt: new Date().toISOString(), reevalDueAt: null
+     };
+     const next = sortByUpdated([tempStory, ...(prev || [])]);
+     writeStoriesIndex(next.map(mapForIndex));
+     return next;
+   });
+   setNewlyCreatedId(tempId);
+ });
+ // 2) сразу фокусируем инпут (всё ещё внутри пользовательского жеста)
+ const tryFocusNow = () => {
+   const row = document.querySelector(`[data-story-id="${tempId}"]`);
+   const input = row?.querySelector('input[aria-label="Заголовок истории"]');
+   if (input) {
+     try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+     const len = input.value?.length ?? 0;
+     try { input.setSelectionRange(len, len); } catch {}
+   }
+ };
+ tryFocusNow();
+ // запасной дубль — если layout ещё «доезжает»
+ setTimeout(tryFocusNow, 0);
+  // параллельно создаём на сервере
+  try {
+    const story = await createStory({ title: '', content: '' });
+
+    // сохраняем снапшот как и раньше
+    try { markSeenThisSession(String(story.id)); } catch {}
+    try {
+      writeSnapshot(String(story.id), {
+        updatedAt: story?.updatedAt || new Date().toISOString(),
+        archive: false, reevalDueAt: null,
+        stopContentY: null, baselineContent: story?.content || '',
+        reevalCount: 0, showArchiveSection: true, lastViewContentY: null,
+        remindersEnabled: true, remindersFreqSec: 30, remindersIndex: 0, remindersPaused: false,
+        title: story?.title || '', content: story?.content || '', ideas: [],
+      });
+    } catch {}
+
+    tempMapRef.current.set(tempId, Number(story.id));
+
+    // если temp-карточка уже удалена (пользователь вышел с пустым) — удаляем и на сервере
+    const stillHasTemp = (lst) => lst.some(s => String(s.id) === String(tempId));
+    let deletedAlready = false;
+
+    setStoriesList(prev => {
+      if (!stillHasTemp(prev)) {
+        deletedAlready = true;
+        return prev; // карточки уже нет
+      }
+      // подменяем temp на реальную
+      const withoutTemp = prev.filter(s => String(s.id) !== String(tempId));
+      const next = sortByUpdated([{ ...story }, ...withoutTemp]);
+      writeStoriesIndex(next.map(mapForIndex));
+      return next;
+    });
+
+    if (deletedAlready) {
+      // пользователь успел «выйти пустым» — удаляем созданную историю на сервере
+      try {
+        await removeStory(story.id);
+        try { purgeStoryLocal(String(story.id)); } catch {}
+        try { removeFromStoriesIndex(Number(story.id)); } catch {}
+      } catch (e) {
+        // если 404 — ок; иначе просто лог
+        const status = e?.response?.status || e?.status || 0;
+        if (status !== 404) console.error('[cleanup removeStory after temp delete]', e);
+      }
+    }
+  } catch (e) {
+    console.error(e);
+    // создание не удалось — убираем temp
+    setStoriesList(prev => {
+      const next = prev.filter(s => String(s.id) !== String(tempId));
+      writeStoriesIndex(next.map(mapForIndex));
+      return next;
+    });
+    alert('Не удалось создать историю. Проверьте соединение и попробуйте ещё раз.');
+  } 
+};
 
   const handleDeleteStory = async (id) => {
     const prev = storiesList;
@@ -497,6 +595,61 @@ const Stories = () => {
     return () => { off(); };
   }, []);
 
+   const handleTempCommit = async (tempId, title) => {
+   const trimmed = (title || '').trim();
+   if (!trimmed) {
+     // пустой заголовок -> удалить временную карточку
+     setStoriesList(prev => {
+       const next = prev.filter(s => String(s.id) !== String(tempId));
+       writeStoriesIndex(next.map(mapForIndex));
+       return next;
+     });
+     return;
+   }
+
+   // 1) есть ли уже маппинг на реальный id?
+   const realId = tempMapRef.current.get(tempId);
+   if (realId) {
+     await updateStory(realId, { title: trimmed });
+     // подчистим tmp и перейдём на историю
+     setStoriesList(prev => {
+       const withoutTemp = prev.filter(s => String(s.id) !== String(tempId));
+       writeStoriesIndex(withoutTemp.map(mapForIndex));
+       return sortByUpdated(withoutTemp);
+     });
+     const found = (storiesList || []).find(s => Number(s.id) === Number(realId));
+     navigate(`${STORY_ROUTE}/${found?.slug || realId}`);
+     return;
+   }
+
+   // 2) реального id ещё нет — создаём сейчас с заголовком
+   const created = await createStory({ title: trimmed, content: '' });
+   try { markSeenThisSession(String(created.id)); } catch {}
+try {
+     writeSnapshot(String(created.id), {
+       updatedAt: created?.updatedAt || new Date().toISOString(),
+       archive: false, reevalDueAt: null,
+       stopContentY: null, baselineContent: created?.content || '',
+       reevalCount: 0, showArchiveSection: true, lastViewContentY: null,
+       remindersEnabled: true, remindersFreqSec: 30, remindersIndex: 0, remindersPaused: false,
+       title: created?.title || '', content: created?.content || '', ideas: [],
+     });
+   } catch {}
+
+   setStoriesList(prev => {
+     const withoutTemp = prev.filter(s => String(s.id) !== String(tempId));
+     const next = sortByUpdated([{ ...created }, ...withoutTemp]);
+     writeStoriesIndex(next.map(mapForIndex));
+     return next;
+   });
+   navigate(`${STORY_ROUTE}/${created.slug || created.id}`);
+ };
+
+  // колбэк для переименования — прокинем вниз
+  const onRenameStory = async (id, title) => {
+    await updateStory(id, { title });
+  };
+
   return (
     <div className={classes.storiesViewport}>
       {showCreateOverlay && <FullScreenLoader />}
@@ -522,6 +675,10 @@ const Stories = () => {
           onAddStory={handleAddStory}
           onToggleArchive={handleToggleArchive}
           closeKey={swipeCloseKey}
+          onRenameStory={onRenameStory}
+          onTempCommit={handleTempCommit}
+          newlyCreatedId={newlyCreatedId}   // <<< важно для мобильного инлайн-редакта
+          clearNewlyCreated={() => setNewlyCreatedId(null)}
         />
       </div>
 

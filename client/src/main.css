@@ -8,24 +8,19 @@ html, body, #root {
   background: #f5f5f5;
 }
 
-/* удобный токен для высоты вьюпорта */
+
 :root { --vh: 100dvh; }
 @supports not (height: 100dvh) { :root { --vh: 100vh; } }
 
-/* фон для экранов Stories, как было */
 .storiesContainer, .listWrap {
   background: #f5f5f5;
 }
 
-/* ===== Красивый скролл на ДЕСКТОПЕ ===== */
-
-/* Firefox */
 html {
   scrollbar-width: thin;
   scrollbar-color: #b6b6b6 transparent;
 }
 
-/* WebKit */
 html::-webkit-scrollbar        { width: 10px; }
 html::-webkit-scrollbar-track  { background: transparent; }
 html::-webkit-scrollbar-thumb  {

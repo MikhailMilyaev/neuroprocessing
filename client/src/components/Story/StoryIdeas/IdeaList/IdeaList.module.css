@@ -11,3 +11,16 @@
   animation: none !important;
   transition: none !important;
 }
+
+/* Мобилка: те же отступы, что у header и текста (10px) */
+@media (max-width: 900px) {
+  .wrap {
+    padding: 0 10px;
+  }
+
+  /* Шапку архива делаем вровень с паддингом .wrap */
+  .archiveHeader {
+    max-width: 100%;
+    margin: 20px 0 6px; /* убираем авто-центрирование */
+  }
+}

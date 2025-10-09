@@ -20,6 +20,7 @@ import { readSnapshot, writeSnapshot, isSeenThisSession, markSeenThisSession, ma
 import { patchStoriesIndex, removeFromStoriesIndex } from '../../utils/cache/storiesCache';
 import { readStoriesIndex } from '../../utils/cache/storiesCache';
 import { useSmartDelay } from '../../hooks/useSmartDelay';
+import s from './Story.module.css';
 
 const HK  = id => ns(`story_history_${id}`);
 const PK  = id => ns(`story_pointer_${id}`);
@@ -134,15 +135,17 @@ export default function Story() {
   const showError = msg => { setToastMsg(msg); setToastType('error'); setToastKey(k => k + 1); };
 
   const [sortedView, setSortedView] = useState(false);
+  const vkRef = useRef(null);
+  const contentRef = useRef(null); // <— СКРОЛЛ-КОНТЕЙНЕР ДЛЯ МОБИЛЬНОГО
 
   useEffect(() => {
-  if (!id) return;
-  try {
-    const v = localStorage.getItem(SORT_KEY(id));
-    if (v === '1') setSortedView(true);
-    if (v === '0') setSortedView(false);
-  } catch {}
-}, [id]);
+    if (!id) return;
+    try {
+      const v = localStorage.getItem(SORT_KEY(id));
+      if (v === '1') setSortedView(true);
+      if (v === '0') setSortedView(false);
+    } catch {}
+  }, [id]);
 
   const [unsortedOrder, setUnsortedOrder] = useState(null);
 
@@ -201,7 +204,6 @@ export default function Story() {
     return reevaluateStory(storyId, { opId });
   };
 
-
   const openUnarchivedToast = () => {
     setToastType('info');
     setToastMsg('История стала активной');
@@ -246,54 +248,54 @@ export default function Story() {
     return () => { cancelled = true; };
   }, [slug, navigate]);
 
-useEffect(() => {
-  if (!id) return;
+  useEffect(() => {
+    if (!id) return;
 
-  const onStorage = (e) => {
-    if (e.key !== SORT_KEY(id)) return;
+    const onStorage = (e) => {
+      if (e.key !== SORT_KEY(id)) return;
 
-    const wantSorted = e.newValue === '1';
-    setSortedView(wantSorted);
+      const wantSorted = e.newValue === '1';
+      setSortedView(wantSorted);
 
-    const full = (history[pointer]?.beliefs || []);
-    if (!full.length) return;
+      const full = (history[pointer]?.beliefs || []);
+      if (!full.length) return;
 
-    const isArchivedFlag = (b) => b?.score !== '' && b?.score != null && Number(b?.score) === 0;
+      const isArchivedFlag = (b) => b?.score !== '' && b?.score != null && Number(b?.score) === 0;
 
-    if (wantSorted) {
-      const active = full.filter(b => !isArchivedFlag(b));
-      const archived = full.filter(isArchivedFlag);
-      const activeSorted = active
-        .map((b, idx) => ({ ...b, _idx: idx }))
-        .sort((a, b) => Number(b.score) - Number(a.score) || a._idx - b._idx)
-        .map(({ _idx, ...b }) => b);
-      const nextBeliefs = [...activeSorted, ...archived];
-      apply({ ...current, beliefs: nextBeliefs });
+      if (wantSorted) {
+        const active = full.filter(b => !isArchivedFlag(b));
+        const archived = full.filter(isArchivedFlag);
+        const activeSorted = active
+          .map((b, idx) => ({ ...b, _idx: idx }))
+          .sort((a, b) => Number(b.score) - Number(a.score) || a._idx - b._idx)
+          .map(({ _idx, ...b }) => b);
+        const nextBeliefs = [...activeSorted, ...archived];
+        apply({ ...current, beliefs: nextBeliefs });
 
-      try {
-        const raw = localStorage.getItem(SORT_BASE_KEY(id));
-        if (!raw) {
-          localStorage.setItem(SORT_BASE_KEY(id), JSON.stringify(full.map(b => b.id)));
-        }
-      } catch {}
-    } else {
-      let base = [];
-      try {
-        base = JSON.parse(localStorage.getItem(SORT_BASE_KEY(id)) || '[]');
-      } catch {}
-      if (!Array.isArray(base) || base.length === 0) return;
+        try {
+          const raw = localStorage.getItem(SORT_BASE_KEY(id));
+          if (!raw) {
+            localStorage.setItem(SORT_BASE_KEY(id), JSON.stringify(full.map(b => b.id)));
+          }
+        } catch {}
+      } else {
+        let base = [];
+        try {
+          base = JSON.parse(localStorage.getItem(SORT_BASE_KEY(id)) || '[]');
+        } catch {}
+        if (!Array.isArray(base) || base.length === 0) return;
 
-      const pos = new Map(base.map((bid, i) => [bid, i]));
-      const restored = full.slice().sort((a, b) =>
-        (pos.get(a.id) ?? Infinity) - (pos.get(b.id) ?? Infinity)
-      );
-      apply({ ...current, beliefs: restored });
-    }
-  };
+        const pos = new Map(base.map((bid, i) => [bid, i]));
+        const restored = full.slice().sort((a, b) =>
+          (pos.get(a.id) ?? Infinity) - (pos.get(b.id) ?? Infinity)
+        );
+        apply({ ...current, beliefs: restored });
+      }
+    };
 
-  window.addEventListener('storage', onStorage);
-  return () => window.removeEventListener('storage', onStorage);
-}, [id, history, pointer, current]);
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [id, history, pointer, current]);
 
   useEffect(() => {
     if (!id) return;
@@ -420,9 +422,9 @@ useEffect(() => {
         setIdeasLoading(false);
 
         if ((doFreeze || startedFromArchive || !localCanTrustCache) && !sameOrder) {
-  setFreezeAnimKey(k => k + 1);
-}
-hydratedFromCacheRef.current = false;
+          setFreezeAnimKey(k => k + 1);
+        }
+        hydratedFromCacheRef.current = false;
       } catch {
         setShowOverlay(false);
         setIdeasLoading(false);
@@ -431,6 +433,51 @@ hydratedFromCacheRef.current = false;
 
     return () => { cancelled = true; };
   }, [id]);
+
+  const isIOSStandalone = useMemo(() => {
+    const ua = navigator.userAgent || '';
+    const isiOS = /iP(hone|ad|od)/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    return isiOS && standalone;
+  }, []);
+
+  // «пустая» история — нет идей (StoryText сам со своим скроллом)
+  const isEmptyStory = (current.beliefs?.length ?? 0) === 0;
+
+  // ЛОК СКРОЛЛА ДЛЯ PWA iOS, когда история пустая
+  useEffect(() => {
+    if (!isIOSStandalone) return;
+
+    if (isEmptyStory) {
+      const scrollY = window.scrollY || 0;
+      document.documentElement.classList.add('ios-lock');
+      document.body.classList.add('ios-lock');
+
+      Object.assign(document.body.style, {
+        position: 'fixed',
+        top: `-${scrollY}px`,
+        left: '0',
+        right: '0',
+        width: '100%',
+        overflow: 'hidden',
+      });
+
+      return () => {
+        const top = parseInt(document.body.style.top || '0', 10) || 0;
+        document.body.removeAttribute('style');
+        document.documentElement.classList.remove('ios-lock');
+        document.body.classList.remove('ios-lock');
+        window.scrollTo(0, Math.abs(top));
+      };
+    }
+  }, [isIOSStandalone, isEmptyStory]);
+
+  useEffect(() => {
+    if (isIOSStandalone) {
+      document.documentElement.classList.add('ios-standalone');
+      return () => document.documentElement.classList.remove('ios-standalone');
+    }
+  }, [isIOSStandalone]);
 
   useEffect(() => {
     if (!id) return;
@@ -509,21 +556,21 @@ hydratedFromCacheRef.current = false;
           const p = msg.patch || {};
           try {
             if (p.deleted === true) {
-            removeFromStoriesIndex(Number(id));
-            setToastType('info');
-            setToastMsg('История была удалена в другой вкладке');
-            setToastKey(k => k + 1);
-            navigate('/stories', { replace: true });
-            return;
-          }
-          patchStoriesIndex(Number(id), {
-           id: Number(id),
-            ...(p.title   !== undefined ? { title: p.title } : {}),
-            ...(p.archive !== undefined ? { archive: !!p.archive } : {}),
-            ...(p.slug    !== undefined ? { slug: p.slug } : {}),
-            ...(p.reevalDueAt !== undefined ? { reevalDueAt: p.reevalDueAt ?? null } : {}),
-            updatedAt: p.updatedAt || new Date().toISOString(),
-          });
+              removeFromStoriesIndex(Number(id));
+              setToastType('info');
+              setToastMsg('История была удалена в другой вкладке');
+              setToastKey(k => k + 1);
+              navigate('/stories', { replace: true });
+              return;
+            }
+            patchStoriesIndex(Number(id), {
+              id: Number(id),
+              ...(p.title   !== undefined ? { title: p.title } : {}),
+              ...(p.archive !== undefined ? { archive: !!p.archive } : {}),
+              ...(p.slug    !== undefined ? { slug: p.slug } : {}),
+              ...(p.reevalDueAt !== undefined ? { reevalDueAt: p.reevalDueAt ?? null } : {}),
+              updatedAt: p.updatedAt || new Date().toISOString(),
+            });
           } catch {}
         })
       : () => {};
@@ -546,8 +593,21 @@ hydratedFromCacheRef.current = false;
         case 'idea.created': {
           const i = msg.payload;
           if (!i?.id) return;
+
           patchBeliefs((list) => {
+            // если уже есть серверный id — ничего не делаем
             if (list.some(b => b.id === i.id)) return list;
+
+            const norm = (t) => (t || '').trim();
+            const serverText = norm(i.text);
+
+            // если у нас уже есть локальная пустая/полупустая заготовка с тем же текстом — не дублируем
+            const hasTempSame = list.some(b =>
+              b.id < 0 && norm(b.text) === serverText
+            );
+            if (hasTempSame) return list;
+
+            // обычное добавление: перед активными, перед архивом
             const b = mapIdeasToBeliefs([i])[0];
             const isArchived = (v) => v.score !== '' && v.score != null && Number(v.score) === 0;
             const active = list.filter(x => !isArchived(x));
@@ -629,47 +689,47 @@ hydratedFromCacheRef.current = false;
           break;
         }
 
-            case 'reeval.completed': {
-        setReevalRound((msg.round || 0));
-        setHistory((prev) => {
-          const last = prev[prev.length - 1] || { title: '', content: '', beliefs: [] };
-          const nextBeliefs = (last.beliefs || []).map(b => {
-            const isArchived = b.score !== '' && b.score != null && Number(b.score) === 0;
-            return isArchived ? b : { ...b, score: '' };
+        case 'reeval.completed': {
+          setReevalRound((msg.round || 0));
+          setHistory((prev) => {
+            const last = prev[prev.length - 1] || { title: '', content: '', beliefs: [] };
+            const nextBeliefs = (last.beliefs || []).map(b => {
+              const isArchived = b.score !== '' && b.score != null && Number(b.score) === 0;
+              return isArchived ? b : { ...b, score: '' };
+            });
+            const base = prev.slice(0, prev.length - 1);
+            return [...base, { ...last, beliefs: nextBeliefs }];
           });
-          const base = prev.slice(0, prev.length - 1);
-          return [...base, { ...last, beliefs: nextBeliefs }];
-        });
 
-        try {
-          const prevSnap = readSnapshot(id) || {};
-          writeSnapshot(id, {
-            ...prevSnap,
-            reevalCount: (msg.round || prevSnap.reevalCount || 0),
-            baselineContent: prevSnap.baselineContent ?? '',
-            updatedAt: new Date().toISOString(),
-          });
-        } catch {}
-        break;
-      }
+          try {
+            const prevSnap = readSnapshot(id) || {};
+            writeSnapshot(id, {
+              ...prevSnap,
+              reevalCount: (msg.round || prevSnap.reevalCount || 0),
+              baselineContent: prevSnap.baselineContent ?? '',
+              updatedAt: new Date().toISOString(),
+            });
+          } catch {}
+          break;
+        }
 
-      case 'rereview.started': {
-        setReevalRound((msg.round || 0));
-        setIsArchivedStory(false);  
-        setArchiveOn(true);     
+        case 'rereview.started': {
+          setReevalRound((msg.round || 0));
+          setIsArchivedStory(false);  
+          setArchiveOn(true);     
 
-        try {
-          const prevSnap = readSnapshot(id) || {};
-          writeSnapshot(id, {
-            ...prevSnap,
-            archive: false,
-            reevalDueAt: null,
-            reevalCount: (msg.round || prevSnap.reevalCount || 0),
-            updatedAt: new Date().toISOString(),
-          });
-        } catch {}
-        break;
-      }
+          try {
+            const prevSnap = readSnapshot(id) || {};
+            writeSnapshot(id, {
+              ...prevSnap,
+              archive: false,
+              reevalDueAt: null,
+              reevalCount: (msg.round || prevSnap.reevalCount || 0),
+              updatedAt: new Date().toISOString(),
+            });
+          } catch {}
+          break;
+        }
 
         default:
           break;
@@ -697,26 +757,26 @@ hydratedFromCacheRef.current = false;
 
     return () => {
       (async () => {
-      const saveTimer   = saveTimerRef.current;
-      const lastPayload = lastStoryPayloadRef.current;
+        const saveTimer   = saveTimerRef.current;
+        const lastPayload = lastStoryPayloadRef.current;
 
-      if (lastPayload) {
-        try { await sendStoryUpdate(lastPayload); } catch {}
-      }
-      if (saveTimer) clearTimeout(saveTimer);
-      lastStoryPayloadRef.current = null;
+        if (lastPayload) {
+          try { await sendStoryUpdate(lastPayload); } catch {}
+        }
+        if (saveTimer) clearTimeout(saveTimer);
+        lastStoryPayloadRef.current = null;
 
-      if (snapTimerRef.current) clearTimeout(snapTimerRef.current);
+        if (snapTimerRef.current) clearTimeout(snapTimerRef.current);
 
-      for (const [, t] of timersMap.entries()) clearTimeout(t);
-      for (const [iid, payload] of pendingMap.entries()) {
-        try { await sendIdeaUpdate(iid, payload); } catch {}
-      }
-      timersMap.clear();
-      pendingMap.clear();
+        for (const [, t] of timersMap.entries()) clearTimeout(t);
+        for (const [iid, payload] of pendingMap.entries()) {
+          try { await sendIdeaUpdate(iid, payload); } catch {}
+        }
+        timersMap.clear();
+        pendingMap.clear();
 
-      for (const t of moveTimers.values()) clearTimeout(t);
-      moveTimers.clear();
+        for (const t of moveTimers.values()) clearTimeout(t);
+        moveTimers.clear();
       })();
     };
   }, [id]);
@@ -920,7 +980,54 @@ hydratedFromCacheRef.current = false;
     ideaTimersRef.current.set(key, t);
   };
 
+const focusBeliefInput = (bid) => {
+  const el = document.getElementById(`belief-input-${bid}`);
+  if (!el) return;
+
+  try { el.focus({ preventScroll: true }); } catch { el.focus(); }
+  const len = el.value?.length ?? 0;
+  try { el.setSelectionRange(len, len); } catch {}
+
+  const container = contentRef.current;
+  if (!container) { try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch {} return; }
+
+  const ensureVisible = () => {
+    const cRect = container.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    const vvH = window.visualViewport?.height ?? window.innerHeight;
+    const bottomLimit = Math.min(cRect.bottom, vvH) - 16;
+    const topLimit = cRect.top + 8;
+    if (r.top < topLimit) {
+      container.scrollBy({ top: r.top - topLimit, behavior: 'smooth' });
+    } else if (r.bottom > bottomLimit) {
+      container.scrollBy({ top: r.bottom - bottomLimit, behavior: 'smooth' });
+    }
+  };
+
+  ensureVisible();
+  const vv = window.visualViewport;
+  if (vv) {
+    const onVV = () => { setTimeout(ensureVisible, 25); vv.removeEventListener('resize', onVV); };
+    vv.addEventListener('resize', onVV);
+  }
+  setTimeout(ensureVisible, 120);
+};
+
   const addBelief = async (initialText = '', sourceRange = null) => {
+    // 1) если уже есть пустая идея — просто сфокусируем её и выходим
+    const currentList = current?.beliefs || [];
+    const existingEmpty = currentList.find(b => !((b.text || '').trim()));
+    if (existingEmpty) {
+      // показываем список, если был скрыт
+      setShowBelief(true);
+      // дождёмся отрисовки и фокусим
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => focusBeliefInput(existingEmpty.id));
+      });
+      return existingEmpty.id;
+    }
+
+    // 2) обычное создание (как было)
     userTouchedRef.current = true;
     markStoryDirty(id);
 
@@ -943,28 +1050,30 @@ hydratedFromCacheRef.current = false;
     };
 
     latestIdeaTextRef.current.set(tempId, safeText);
+    apply({ ...current, beliefs: [beliefObj, ...currentList] });
 
-    const nextBeliefs = [beliefObj, ...(current.beliefs || [])];
-    apply({ ...current, beliefs: nextBeliefs });
-
+    // мягкий фокус + прокрутка в зону видимости
     requestAnimationFrame(() => {
-      document.getElementById(`belief-input-${tempId}`)?.focus();
+      requestAnimationFrame(() => {
+        focusBeliefInput(tempId);
+        setTimeout(() => focusBeliefInput(tempId), 50);
+      });
     });
 
     patchStoriesIndex(Number(id), { updatedAt: new Date().toISOString() });
 
-       if (safeText && safeText.trim()) {
-     try {
-       await ensureIdeaCreated(tempId, {
-         text: safeText.trim().slice(0, IDEA_CHAR_LIMIT),
-         score: null,
-         introducedRound: reevalRound,
-       });
-       await ensureUnarchiveOnWork();  
-     } catch (e) {
-       console.warn('[create idea immediately] failed', e);
-     }
-   }
+    if (safeText && safeText.trim()) {
+      try {
+        await ensureIdeaCreated(tempId, {
+          text: safeText.trim().slice(0, IDEA_CHAR_LIMIT),
+          score: null,
+          introducedRound: reevalRound,
+        });
+        await ensureUnarchiveOnWork();
+      } catch (e) {
+        console.warn('[create idea immediately] failed', e);
+      }
+    }
 
     return tempId;
   };
@@ -1165,21 +1274,21 @@ hydratedFromCacheRef.current = false;
       b.id === bid ? { ...b, score: String(n) } : b
     );
 
-       let serverId = bid;
-   if (serverId < 0) {
-     try {
-       serverId = await ensureIdeaCreated(serverId, {
-         text: (bEntry.text || '').slice(0, IDEA_CHAR_LIMIT),
-         score: null,
-         introducedRound: bEntry.introducedRound ?? reevalRound,
-       });
-     } catch (e) {
-       console.warn('[ensure create before score] failed', e);
-     }
-   }
-   if (serverId > 0) {
-     scheduleIdeaUpdate(serverId, { score: n });
-   }
+    let serverId = bid;
+    if (serverId < 0) {
+      try {
+        serverId = await ensureIdeaCreated(serverId, {
+          text: (bEntry.text || '').slice(0, IDEA_CHAR_LIMIT),
+          score: null,
+          introducedRound: bEntry.introducedRound ?? reevalRound,
+        });
+      } catch (e) {
+        console.warn('[ensure create before score] failed', e);
+      }
+    }
+    if (serverId > 0) {
+      scheduleIdeaUpdate(serverId, { score: n });
+    }
 
     if (wasArchived !== nowArchived) {
       const reordered = reorderImmediately(nextBeliefs, bid, nowArchived);
@@ -1481,96 +1590,117 @@ hydratedFromCacheRef.current = false;
   }
 
   return (
-    <div key={id || slug}>
+    <div key={id || slug} className={s.viewport}>
       {showOverlaySmart && <FullScreenLoader />}
 
-      <BackBtn />
+      <BackBtn className={s.hideBackOnMobile} />
 
-      <StoryHeader
-        title={current.title}
-        onTitleChange={(v) => changeField('title', v)}
-        canUndo={pointer > 0}
-        canRedo={pointer < history.length - 1}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
-        onAddBelief={() => addBelief()}
-        onOpenMenu={(e) => openMenu(e)}
-        menuOpen={menuOpen}
-        reevalRound={reevalRound}
-      />
-
-      <StoryText
-        value={current.content}
-        onChange={(v) => changeField('content', v)}
-        storyId={id}
-        initialStopContentY={stopY}
-        initialViewContentY={initialViewY}
-        onViewYChange={handleViewYChange}
-        onReady={() => {}}
-        onStopChange={handleStopChange}
-        baseline={baseline}
-        reevalRound={reevalRound}
-        vhRatio={0.50}
-        onAddIdeaFromSelection={handleAddIdeaFromSelection}
-        activeHighlight={activeHighlight}
-      />
-
-      {remindersOn !== null && (
-        <Tips
-          visible={!!remindersOn}
-          index={reminderIdx}
-          onIndexChange={handleReminderIndexChange}
-          freqSec={reminderFreqSec ?? null}
-          pausedExternal={reminderPaused}
-          onPauseChange={handlePauseChange}
-        />
-      )}
-
-      {!canTrustCache && showIdeasSpinner ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
-          <Spinner size={24} />
-        </div>
-      ) : (
-        <IdeaList
-          visible={showBelief || (current.beliefs?.length > 0)}
-          beliefs={current.beliefs || []}
-          showArchive={archiveOn}
+      <div className={s.headerSticky} data-lock-scroll="true">
+        <StoryHeader
+          title={current.title}
+          onTitleChange={(v) => changeField('title', v)}
+          onTitleBlur={() => scheduleSave({ title: current.title, content: current.content })}
+          canUndo={pointer > 0}
+          canRedo={pointer < history.length - 1}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          onAddBelief={(mode) => {
+            if (mode === 'pointer') {
+              try { vkRef.current?.focus({ preventScroll: true }); } catch {}
+            }
+            addBelief();
+          }}
+          onOpenMenu={(e) => openMenu(e)}
+          menuOpen={menuOpen}
           reevalRound={reevalRound}
-          onTextChange={updateBeliefText}
-          onScoreChange={updateBeliefScore}
-          onBlurEmpty={handleBeliefBlur}
-          practicesById={{ __default: PRACTICES.map(p => ({ id: p.slug, slug: p.slug, title: p.title, description: p.description })) }}
-          onIdeaClick={handleIdeaClick}
-          onIdeaFocus={handleIdeaFocus}
-          onIdeaBlur={handleIdeaBlur}
-          initialHydrate={canTrustCache}
-          freezeAnimKey={freezeAnimKey}
+          onBack={() => navigate('/stories')}
         />
-      )}
+      </div>
 
-      <StoryMenu
-        open={menuOpen}
-        position={menuPos}
-        onClose={() => setMenuOpen(false)}
-        onSort={handleSortToggle}
-        sorted={sortedView}
-        onReevaluate={handleReevaluate}
-        remindersEnabled={!!remindersOn}
-        onToggleReminders={handleToggleReminders}
-        reminderFreqSec={reminderFreqSec}
-        onChangeReminderFreq={handleChangeReminderFreq}
-        archiveEnabled={archiveOn}
-        onToggleArchive={handleToggleArchive}
-        onArchiveStory={handleArchiveRequest}
-      />
+      <div className={s.scrollArea} ref={contentRef} role="region" aria-label="История">
+        <StoryText
+          value={current.content}
+          onChange={(v) => changeField('content', v)}
+          storyId={id}
+          initialStopContentY={stopY}
+          initialViewContentY={initialViewY}
+          onViewYChange={handleViewYChange}
+          onReady={() => {}}
+          onStopChange={handleStopChange}
+          baseline={baseline}
+          reevalRound={reevalRound}
+          vhRatio={0.50}
+          onAddIdeaFromSelection={handleAddIdeaFromSelection}
+          activeHighlight={activeHighlight}
+        />
 
-      <CompleteModal
-        open={confirmArchiveOpen}
-        onCancel={() => setConfirmArchiveOpen(false)}
-        onConfirm={handleCompleteArchive}
-      />
+        {remindersOn !== null && (
+          <Tips
+            visible={!!remindersOn}
+            index={reminderIdx}
+            onIndexChange={handleReminderIndexChange}
+            freqSec={reminderFreqSec ?? null}
+            pausedExternal={reminderPaused}
+            onPauseChange={handlePauseChange}
+          />
+        )}
 
-      <Toast message={toastMsg} type={toastType || 'success'} duration={5000} version={toastKey} />
+        {!canTrustCache && showIdeasSpinner ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
+            <Spinner size={24} />
+          </div>
+        ) : (
+          <IdeaList
+            visible={showBelief || (current.beliefs?.length > 0)}
+            beliefs={current.beliefs || []}
+            showArchive={archiveOn}
+            reevalRound={reevalRound}
+            onTextChange={updateBeliefText}
+            onScoreChange={updateBeliefScore}
+            onBlurEmpty={handleBeliefBlur}
+            practicesById={{ __default: PRACTICES.map(p => ({ id: p.slug, slug: p.slug, title: p.title, description: p.description })) }}
+            onIdeaClick={handleIdeaClick}
+            onIdeaFocus={handleIdeaFocus}
+            onIdeaBlur={handleIdeaBlur}
+            initialHydrate={canTrustCache}
+            freezeAnimKey={freezeAnimKey}
+          />
+        )}
+
+        <StoryMenu
+          open={menuOpen}
+          position={menuPos}
+          onClose={() => setMenuOpen(false)}
+          onSort={handleSortToggle}
+          sorted={sortedView}
+          onReevaluate={handleReevaluate}
+          remindersEnabled={!!remindersOn}
+          onToggleReminders={handleToggleReminders}
+          reminderFreqSec={reminderFreqSec}
+          onChangeReminderFreq={handleChangeReminderFreq}
+          archiveEnabled={archiveOn}
+          onToggleArchive={handleToggleArchive}
+          onArchiveStory={handleArchiveRequest}
+        />
+
+        <CompleteModal
+          open={confirmArchiveOpen}
+          onCancel={() => setConfirmArchiveOpen(false)}
+          onConfirm={handleCompleteArchive}
+        />
+
+        <input
+          ref={vkRef}
+          className={s.vkCatcher}
+          type="text"
+          inputMode="text"
+          autoComplete="off"
+          aria-hidden="true"
+          tabIndex={-1}
+        />
+
+        <Toast message={toastMsg} type={toastType || 'success'} duration={5000} version={toastKey} />
+      </div>
     </div>
   );
 }
