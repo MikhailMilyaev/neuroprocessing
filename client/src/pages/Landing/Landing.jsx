@@ -88,60 +88,53 @@ function Icon({ name, className }) {
 
 export default function Landing() {
   const progressData = [
-  { label: "«Слабость — это просить»", before: 8, after: 7 },
-  { label: "«Ошибаться нельзя»", before: 7, after: 6 },
-  { label: "«Если попрошу — потеряю уважение»", before: 10, after: 7 },
-  { label: "«Должен справляться сам всегда»", before: 9, after: 7 },
-  { label: "«Просить о помощи нельзя»", before: 5, after: 3 },
-];
+    { label: "«Слабость — это просить»", before: 8, after: 7 },
+    { label: "«Ошибаться нельзя»", before: 7, after: 6 },
+    { label: "«Если попрошу — потеряю уважение»", before: 10, after: 7 },
+    { label: "«Должен справляться сам всегда»", before: 9, after: 7 },
+    { label: "«Просить о помощи нельзя»", before: 5, after: 3 },
+  ];
   const avgBefore = Math.round((progressData.reduce((s, x) => s + x.before, 0) / progressData.length) * 10) / 10;
   const avgAfter  = Math.round((progressData.reduce((s, x) => s + x.after, 0) / progressData.length) * 10) / 10;
   const improvement = Math.round(((avgBefore - avgAfter) / avgBefore) * 100);
 
-  const [hideHeader, setHideHeader] = useState(false);
-  const lastY = useRef(typeof window !== "undefined" ? window.scrollY : 0);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const isMobile = window.matchMedia("(max-width: 720px)").matches;
-    if (isMobile) {
-      setHideHeader(false);
-      return; 
-    }
-
-    let rafId = 0;
-    const onScroll = () => {
-      const y = window.scrollY || 0;
-      const dy = y - lastY.current;
-      const goingDown = dy > 4;
-      const goingUp = dy < -4;
-      if (y < 80) setHideHeader(false);
-      else if (goingDown) setHideHeader(true);
-      else if (goingUp) setHideHeader(false);
-      lastY.current = y;
-    };
-    const handler = () => { rafId = requestAnimationFrame(onScroll); };
-    window.addEventListener("scroll", handler, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", handler);
-      cancelAnimationFrame(rafId);
-    };
-  }, []);
-
+  const headerRef = useRef(null);
+  const pageRef = useRef(null);
   const scrollerRef = useRef(null);
   const imgRefs = useRef([]);
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  const slides = [
-    { src: "/assets/algorithm/1.png", title: "Сформулируйте проблему, опишите историю, выпишите убеждения и оцените их.", icon: "note",  scale: 0.8 },
-    { src: "/assets/algorithm//2.png", title: "Перечитайте историю и переоцените список первый раз (кнопка «Переоценить» в настройках).", icon: "repeat", scale: 0.8 },
-    { src: "/assets/algorithm/3.png", title: "Перечитайте историю и переоцените список второй раз.", icon: "repeat", scale: 0.8 },
-    { src: "/assets/algorithm/4.png", title: "Перечитайте историю и переоцените список третий раз.",  icon: "repeat", scale: 0.8 },
-    { src: "/assets/algorithm/5.png", title: "После 3–4 переоценок 80% убеждений теряет заряд. Для оставшихся примените практику и переоцените список снова.", icon: "brain", scale: 0.6 },
-    { src: "/assets/algorithm/6.png", title: "Цель: через практики и переоценки свести заряд каждого убеждения к 0, что означает полную проработку истории.", icon: "check", scale: 0.8 },
-    { src: "/assets/algorithm/7.png", title: "Архивируйте историю — программа напомнит пересмотреть позже для проверки.", icon: "archive", scale: 0.8 },
-  ];
+  // фиксируем высоту хедера в CSS-переменной
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const setH = () => {
+      const h = el.getBoundingClientRect().height || 64;
+      document.documentElement.style.setProperty('--header-h', `${h}px`);
+    };
+    const ro = new ResizeObserver(setH);
+    ro.observe(el);
+    setH();
+    window.addEventListener('load', setH);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('load', setH);
+    };
+  }, []);
 
+  // белый цвет темы для этой страницы
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const prevColor = meta?.getAttribute('content') ?? null;
+    document.documentElement.classList.add('landing-white');
+    if (meta) meta.setAttribute('content', '#ffffff');
+    return () => {
+      document.documentElement.classList.remove('landing-white');
+      if (meta && prevColor) meta.setAttribute('content', prevColor);
+    };
+  }, []);
+
+  // слайдер: выставляем active-класс текущему изображению
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -170,9 +163,19 @@ export default function Landing() {
     el.scrollBy({ left: dir * el.clientWidth, behavior: "smooth" });
   };
 
+  const slides = [
+    { src: "/assets/algorithm/1.png", title: "Сформулируйте проблему, опишите историю, выпишите убеждения и оцените их.", icon: "note",  scale: 0.8 },
+    { src: "/assets/algorithm//2.png", title: "Перечитайте историю и переоцените список первый раз (кнопка «Переоценить» в настройках).", icon: "repeat", scale: 0.8 },
+    { src: "/assets/algorithm/3.png", title: "Перечитайте историю и переоцените список второй раз.", icon: "repeat", scale: 0.8 },
+    { src: "/assets/algorithm/4.png", title: "Перечитайте историю и переоцените список третий раз.",  icon: "repeat", scale: 0.8 },
+    { src: "/assets/algorithm/5.png", title: "После 3–4 переоценок 80% убеждений теряет заряд. Для оставшихся примените практику и переоцените список снова.", icon: "brain", scale: 0.6 },
+    { src: "/assets/algorithm/6.png", title: "Цель: через практики и переоценки свести заряд каждого убеждения к 0, что означает полную проработку истории.", icon: "check", scale: 0.8 },
+    { src: "/assets/algorithm/7.png", title: "Архивируйте историю — программа напомнит пересмотреть позже для проверки.", icon: "archive", scale: 0.8 },
+  ];
+
   return (
-    <div className={styles.page}>
-      <header className={`${styles.header} ${hideHeader ? styles.headerHidden : ""}`}>
+    <div className={styles.page} ref={pageRef}>
+      <header className={styles.header} ref={headerRef}>
         <div className={styles.headerInner}>
           <a href="#top" className={styles.brand} aria-label="Нейропроцессинг — на главную">
             <span className={styles.brandText}>Neuroprocessing</span>
@@ -186,7 +189,6 @@ export default function Landing() {
         </div>
       </header>
 
-      {/* HERO */}
       <section id="top" className={styles.hero}>
         <div className={styles.heroContent}>
           <h1 className={styles.heroTitle}>
@@ -202,7 +204,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ПРОБЛЕМА */}
       <section id="pain" className={`${styles.sectionMuted} ${styles.bgPain}`}>
         <div className={styles.problem}>
           <div className={styles.sectionHead}>
@@ -247,6 +248,29 @@ export default function Landing() {
             ];
 
             const [showAllPain, setShowAllPain] = useState(false);
+
+            // ⬇️ Оставляем плавный скролл ТОЛЬКО на десктопе.
+            useEffect(() => {
+              if (!showAllPain) return;
+              const isDesktop =
+                typeof window !== "undefined" &&
+                window.matchMedia("(min-width: 721px)").matches;
+              if (!isDesktop) return;
+
+              const target = document.querySelector("#pain");
+              if (!target) return;
+              const headerH = headerRef?.current?.getBoundingClientRect().height ?? 64;
+              const y = Math.max(
+                0,
+                Math.round(window.scrollY + target.getBoundingClientRect().top - headerH + 2)
+              );
+              try {
+                window.scrollTo({ top: y, behavior: "smooth" });
+              } catch {
+                window.scrollTo(0, y);
+              }
+            }, [showAllPain]);
+
             const top3 = (arr) => arr.slice(0, 3);
             const rest = (arr) => arr.slice(3);
 
@@ -282,7 +306,7 @@ export default function Landing() {
                   <button
                     type="button"
                     className={styles.painToggleBtn}
-                    onClick={() => setShowAllPain(v => !v)}
+                    onClick={() => setShowAllPain((prev) => !prev)}
                     aria-expanded={showAllPain}
                   >
                     {showAllPain ? "Скрыть" : "Показать ещё"}
@@ -294,8 +318,6 @@ export default function Landing() {
         </div>
       </section>
 
-
-      {/* УТП */}
       <section id="usp" className={`${styles.sectionLight} ${styles.bgUsp}`}>
         <div className={styles.problem}>
           <div className={styles.sectionHead}>
@@ -362,7 +384,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ПОШАГОВЫЙ АЛГОРИТМ */}
       <section id="how" className={styles.sectionDark}>
         <div className={styles.programFinal}>
           <div className={styles.programFinalInner}>
@@ -420,7 +441,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ПРОГРЕСС */}
       <section id="progress" className={`${styles.sectionMuted} ${styles.bgProgress}`}>
         <div className={styles.progressSection}>
           <div className={styles.sectionHead}>
@@ -467,7 +487,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* CTA */}
       <section className={styles.sectionDark}>
         <div className={styles.cta}>
           <h2>Готовы начать?</h2>
@@ -476,7 +495,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* FAQ (общие) */}
       <section id="faq" className={`${styles.sectionLight} ${styles.bgFaq}`}>
         <div className={styles.faq}>
           <div className={styles.sectionHead}>
@@ -511,7 +529,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* FAQ (алгоритм) */}
       <section id="faq-algo" className={`${styles.sectionMuted} ${styles.bgFaqAlgo}`}>
         <div className={styles.faq}>
           <div className={styles.sectionHead}>
@@ -606,7 +623,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
           <a href="#top" className={styles.footerBrand} aria-label="К началу страницы">
@@ -620,6 +636,10 @@ export default function Landing() {
           <div className={styles.copy}>© {new Date().getFullYear()} Neuroprocessing</div>
         </div>
       </footer>
+
+      <Link to="/login" className={styles.floatingBtn} aria-label="Начать Neuroprocessing">
+        Начать
+      </Link>
     </div>
   );
 }
