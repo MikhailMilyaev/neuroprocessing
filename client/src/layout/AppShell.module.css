@@ -41,3 +41,13 @@
     padding-bottom: constant(safe-area-inset-bottom);
   }
 }
+
+@media (max-width:700px){
+  .main {
+    overflow: hidden;
+    /* было: padding-top: env(safe-area-inset-top); (и constant) */
+    padding-top: 0 !important;   /* safe-top на мобилке задают экраны с фикс-хедерами */
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: constant(safe-area-inset-bottom);
+  }
+}

@@ -135,9 +135,24 @@
     box-shadow: 0 1px 0 rgba(0,0,0,.08);
     gap: 12px;
   }
+  .reevalPill {
+  display: inline-flex;
+  align-items: center;          /* выравнивает текст по вертикали */
+  justify-content: center;      /* по центру по горизонтали */
+  padding: 6px 12px;            /* немного симметричнее */
+  font-size: 14px;
+  line-height: 1;               /* чтобы текст не тянул высоту */
+  border-radius: 12px;
+  margin-left: 6px;             /* отступ от стрелки */
+  background: #cde7ff;
+  color: #0b3a64;
+  height: 32px;                 /* фиксируем высоту под кнопки */
+  box-sizing: border-box;
+}
+
+  .actions{ margin-left: auto; gap: 12px; }
 
   .backBtn{ display:inline-flex; }
-  .reevalPill{ display:none; }
   .actions{ gap: 12px; }
   .iconBtn{ width:34px; height:34px; }
 }

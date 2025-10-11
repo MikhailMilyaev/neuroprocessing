@@ -18,5 +18,6 @@ export const EDUCATION_ROUTE = '/education';
 export const NOTFOUND_ROUTE = '/404';
 
 export const EDUCATION_BASICS_PATH = `${EDUCATION_ROUTE}/basics`;
+export const EDUCATION_THEORY_PATH = `${EDUCATION_ROUTE}/theory`;
 export const PRACTICE_BASE = `${EDUCATION_ROUTE}/practice`;
 export const practicePath = (slug) => `${PRACTICE_BASE}/${slug}`;

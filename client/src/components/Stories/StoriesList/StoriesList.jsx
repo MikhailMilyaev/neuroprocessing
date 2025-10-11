@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-
+import { flushSync } from 'react-dom';
 import StoryCard from "./StoryCard/StoryCard";
 import StoryModal from "./StoryModal/StoryModal";
 import Spinner from "../../Spinner/Spinner";
@@ -78,7 +78,35 @@ export default function StoriesList({
   const forgetHadTitle = (id) => {
     hadTitleOnEditRef.current.delete(String(id));
   };
-
+useEffect(() => {
+   const onFocusNew = (e) => {
+     const raw = e?.detail;
+     if (raw == null) return;
+     const id = String(raw);
+     // На мобилке — сразу включаем режим редактирования СИНХРОННО
+     if (window.matchMedia('(max-width:700px)').matches &&
+         window.matchMedia('(hover: none)').matches &&
+         window.matchMedia('(pointer: coarse)').matches) {
+       flushSync(() => {
+         setEditingId(id);
+         rememberHadTitle(id, '');
+       });
+       // Моментальный фокус (та же цепочка жеста)
+       const row = document.querySelector(`[data-story-id="${id}"]`);
+       if (row) {
+         try { row.scrollIntoView({ behavior: 'auto', block: 'center' }); } catch {}
+       }
+       const input = row?.querySelector('input[aria-label="Заголовок истории"]');
+       if (input) {
+         try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+         const len = input.value?.length ?? 0;
+         try { input.setSelectionRange(len, len); } catch {}
+       }
+     }
+   };
+   document.addEventListener('stories:focus-new', onFocusNew);
+   return () => document.removeEventListener('stories:focus-new', onFocusNew);
+ }, []);
   // Сигнал «создать черновик» (исторический поток)
   useEffect(() => {
     if (!inlineAddSignal) return;
@@ -124,18 +152,56 @@ export default function StoriesList({
   };
 
   const submitDraft = async (title) => {
-    const t = (title || "").trim();
-    if (!t) return;
-    try {
-      const created = await onAddStory?.(t);
-      setEditingId(null);
-      setDraftId(null);
-      const slug = created?.slug || created?.id;
-      if (slug) navigate(`/story/${slug}`);
-    } catch (e) {
-      console.error("[create story]", e);
+  const t = (title || "").trim();
+  if (!t) return;
+
+  try {
+    // создаём историю (Stories.handleAddStory сам добавит её в список и вернёт объект)
+    await onAddStory?.(t);
+
+    // просто выходим из режима редактирования, НИКАКОГО navigate
+    setEditingId(null);
+    setDraftId(null);
+  } catch (e) {
+    console.error("[create story]", e);
+  }
+};
+  useEffect(() => {
+  const onTempResolved = (e) => {
+    const { tempId, realId } = e?.detail || {};
+    if (!tempId || !realId) return;
+
+    // Если редактировали именно temp — переносим режим редактирования на реальный id
+    const wasEditing = String(editingId) === String(tempId);
+    if (!wasEditing) return;
+
+    flushSync(() => {
+      setEditingId(String(realId));
+      // перенесём флаг "был ли заголовок" на новый id
+      const had = hadTitleOnEditRef.current.get(String(tempId));
+      if (had !== undefined) {
+        hadTitleOnEditRef.current.delete(String(tempId));
+        hadTitleOnEditRef.current.set(String(realId), had);
+      }
+    });
+
+    // вернуть фокус в инпут новой карточки
+    const row = document.querySelector(`[data-story-id="${realId}"]`);
+    if (row) {
+      try { row.scrollIntoView({ behavior: 'auto', block: 'center' }); } catch {}
+    }
+    const input = row?.querySelector('input[aria-label="Заголовок истории"]');
+    if (input) {
+      try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+      const len = input.value?.length ?? 0;
+      try { input.setSelectionRange(len, len); } catch {}
     }
   };
+
+  document.addEventListener('stories:temp-resolved', onTempResolved);
+  return () => document.removeEventListener('stories:temp-resolved', onTempResolved);
+}, [editingId]);
+
 
   const submitRename = async (id, value, currentTitle) => {
     const trimmed = (value || "").trim();
@@ -172,15 +238,11 @@ export default function StoriesList({
 
     // обычное переименование
     try {
-      await onRenameStory?.(id, trimmed);
-      if (isMobile()) {
-        const found = (storiesList || []).find((s) => String(s.id) === String(id));
-        const slug = found?.slug || id;
-        navigate(`/story/${slug}`);
-      }
-    } finally {
-      finishEditing(id);
-    }
+  await onRenameStory?.(id, trimmed);
+  // на мобиле НЕ навигируем — остаёмся в списке
+} finally {
+  finishEditing(id);
+}
   };
 
   /* ===== выбор списка ===== */
@@ -244,17 +306,39 @@ export default function StoriesList({
                   : "Нажмите «Добавить», чтобы создать историю."
               }
               ctaLabel={!showArchive ? "Добавить историю" : undefined}
-              onCtaClick={
-                !showArchive
-                  ? () => {
-                      if (editingId) return;
-                      const id = `draft-${Date.now()}`;
-                      setDraftId(id);
-                      setEditingId(id);
-                      rememberHadTitle(id, "");
-                    }
-                  : undefined
-              }
+onCtaClick={
+  !showArchive
+    ? () => {
+        if (editingId) return;
+        const id = `draft-${Date.now()}`;
+
+        flushSync(() => {
+          setDraftId(id);
+          setEditingId(id);
+          rememberHadTitle(id, "");
+        });
+
+        const tryFocus = (retries = 6) => {
+          const row = document.querySelector(`[data-story-id="${id}"]`);
+          const input = row?.querySelector('input[aria-label="Заголовок истории"]');
+          if (input) {
+            try { row?.scrollIntoView({ behavior: 'auto', block: 'center' }); } catch {}
+            try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+            const len = input.value?.length ?? 0;
+            try { input.setSelectionRange(len, len); } catch {}
+            return;
+          }
+          if (retries > 0) {
+            requestAnimationFrame(() => tryFocus(retries - 1));
+          }
+        };
+
+        // первая попытка сразу (тот же жест), затем — ретрай через rAF
+        tryFocus();
+      }
+    : undefined
+}
+
               secondaryCtaLabel={
                 showArchive ? "К историям" : archiveStories.length > 0 ? "Открыть архив" : undefined
               }

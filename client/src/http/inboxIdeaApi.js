@@ -33,8 +33,8 @@ export const moveInboxIdea = async (id, targetStoryId, { opId } = {}) => {
   return data;
 };
 
-export const createStoryFromInboxIdea = async (id, { opId } = {}) => {
-  const { data } = await $authHost.post(`/fast-idea/${id}/create-story`, null, {
+export const createStoryFromInboxIdea = async (id, payload = {}, { opId } = {}) => {
+  const { data } = await $authHost.post(`/fast-idea/${id}/create-story`, payload, {
     headers: opId ? { 'x-op-id': opId } : undefined,
   });
   return data;

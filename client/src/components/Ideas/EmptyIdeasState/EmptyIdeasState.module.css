@@ -53,3 +53,24 @@
 @media (prefers-color-scheme: dark) {
   .subtitle { color: #9ca3af; }
 }
+
+
+/* Центрирование EmptyState на мобильной версии между хедером и нижней навигацией */
+@media (max-width:700px){
+  .wrapper{
+    /* высота = весь экран минус отступы контейнера под хедер и нижнюю навигацию */
+    min-height: calc(
+      100dvh
+      - (var(--ideas-header-h, 50px) + env(safe-area-inset-top, 0px) + 6px)
+      - (96px + env(safe-area-inset-bottom, 0px))
+    );
+
+    /* именно центрирование по вертикали и горизонтали */
+    align-content: center;     /* переопределяем align-content: start */
+    place-content: center;
+
+    /* небольшой внутренний зазор, чтобы картинка не прилипала */
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+}

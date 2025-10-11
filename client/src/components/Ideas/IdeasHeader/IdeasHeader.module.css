@@ -1,13 +1,17 @@
+/* —— ДЕСКТОП (компактная ширина, центр) —— */
 .topbar {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 12px;
+
+  position: static;
+  max-width: 820px;       /* как было на десктопе */
+  margin: 20px auto 0;    /* вернул margin-top: 20px */
+  padding: 0 16px;        /* как у контейнера */
 }
 
-.hdrBtn {
-  font-size: 15px;
-}
+.hdrBtn { font-size: 15px; }
 
 .selectBtn {
   border: none;
@@ -17,7 +21,14 @@
   cursor: pointer;
 }
 
-.title { justify-self: center; font-weight: 600; font-size: 18px; }
+.title {
+  justify-self: center;
+  font-weight: 600;
+  font-size: 18px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .addBtn,
 .moveBtn {
@@ -27,9 +38,59 @@
   cursor: pointer;
   color: #fff;
   font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 .addBtn { background: #14AE5C; }
 .addBtn:hover { opacity: .95; }
-
 .moveBtn { background: #111827; }
 .moveBtn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* на десктопе — текстовая кнопка */
+.addText { display: inline; }
+.addIcon { display: none; }
+
+/* —— МОБИЛЬНЫЙ ФИКС-ХЕДЕР —— */
+@media (max-width:700px){
+  .topbar{
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;  /* прижимаем к самому верху */
+    /* высота хедера = базовая высота + safe-top */
+    height: calc(var(--ideas-header-h, 50px) + env(safe-area-inset-top, 0px));
+    /* safe-top добавляем ВНУТРЬ хедера, чтобы контент не залезал под статус-бар */
+    padding: calc(env(safe-area-inset-top, 0px)) 12px 0;
+    z-index: 2000;
+    isolation: isolate;
+    background: #f5f5f5;
+    box-shadow: 0 1px 0 rgba(0,0,0,.08);
+    max-width: none;
+    margin: 0;
+  }
+
+  .title{
+    font-weight: 600;
+    font-size: 18px;
+    text-align: center;
+  }
+
+  .selectBtn{
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+
+  /* справа — круглый плюсик */
+  .addBtn, .moveBtn{
+    padding: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    display: inline-grid;
+    place-items: center;
+  }
+  .addText{ display: none; }
+  .addIcon{ display: inline-grid; }
+  .addIcon svg{ width: 20px; height: 20px; }
+}

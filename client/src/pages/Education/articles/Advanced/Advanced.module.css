@@ -26,11 +26,10 @@ body{
   line-height: 1.7;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  overflow-x: hidden;
+  overflow-x: hidden; /* ⛔️ убираем горизонтальный скролл */
 }
 
 html { scroll-behavior: smooth; }
-
 a{ color: var(--accent-600); text-decoration: none; }
 a:hover{ text-decoration: underline; }
 
@@ -100,6 +99,7 @@ p{ margin: 0 0 .9rem; color: var(--ink-dim); }
   border-radius: 12px;
   box-shadow: var(--shadow);
   padding: 24px 22px;
+  overflow-x: hidden; /* ⛔️ перестраховка от переполнения */
 }
 .header{ margin-bottom: 12px; }
 .title{
@@ -120,16 +120,18 @@ p{ margin: 0 0 .9rem; color: var(--ink-dim); }
 }
 .subsectionTitle{ font-size: 1.15rem; }
 
-/* Тело раздела — выравнивание по ширине и переносы */
+/* Тело раздела — шире и выравнивание по ширине */
 .sectionBody{
-  text-align: justify;
-  text-justify: inter-word;
-  hyphens: auto;
-  overflow-wrap: anywhere;
+  text-align: justify;          /* ✅ выравнивание по ширине */
+  text-justify: inter-word;     /* hint для движков */
+  hyphens: auto;                /* мягкие переносы */
+  overflow-wrap: anywhere;      /* перенос длинных слов/ссылок */
 }
 .sectionBody p { margin: 0 0 .9rem; }
 .sectionBody ul { margin: .4rem 0 .9rem 1.2rem; color: var(--ink-dim); }
 .sectionBody li { margin-bottom: .3rem; }
+.sectionBody img, .sectionBody video, .sectionBody canvas { max-width: 100%; height: auto; display: block; }
+.sectionBody pre, .sectionBody code, .sectionBody table { max-width: 100%; overflow-x: auto; }
 
 /* ===== Источники ===== */
 .refsBlock{
@@ -150,17 +152,22 @@ p{ margin: 0 0 .9rem; color: var(--ink-dim); }
 }
 .refsList a{ word-break: break-word; }
 
+/* ссылки-цитаты [n] */
 .citation{
   text-decoration: none;
   border-bottom: 1px dotted currentColor;
 }
 .citation:hover{ text-decoration: underline; }
+
+/* подсветка конкретного <li> источника */
 .refHighlight{
   background: var(--accent-soft);
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   transition: background .2s ease, outline .2s ease;
 }
+
+/* подсветка всей карточки источников */
 .refCardHighlight{
   box-shadow: 0 0 0 3px var(--accent-soft);
   transition: box-shadow .2s ease;
@@ -200,7 +207,6 @@ p{ margin: 0 0 .9rem; color: var(--ink-dim); }
     box-shadow: 0 1px 0 rgba(0,0,0,.08);
     z-index: 2000;
   }
-
   .mBackBtn{
     justify-self: start;
     width: 44px; height: 36px;
@@ -211,7 +217,6 @@ p{ margin: 0 0 .9rem; color: var(--ink-dim); }
     -webkit-tap-highlight-color: transparent;
   }
   .mBackBtn:active{ background: rgba(0,0,0,.06); }
-
   .mTitle{
     justify-self: center;
     font-size: 18px;
@@ -225,9 +230,9 @@ p{ margin: 0 0 .9rem; color: var(--ink-dim); }
     top: calc(var(--basics-header-h) + env(safe-area-inset-top, 0px));
     bottom: env(safe-area-inset-bottom, 0px);
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: hidden;            /* ⛔️ убираем горизонтальный скролл в контейнере */
     -webkit-overflow-scrolling: touch;
-    padding: 0 10px 24px;  /* ✅ одинаково с Advanced */
+    padding: 0 8px 20px;           /* ✅ меньше боковых отступов — шире текст */
     background: #f5f5f5;
   }
 
@@ -238,13 +243,35 @@ p{ margin: 0 0 .9rem; color: var(--ink-dim); }
     padding: 0;
   }
 
+  /* Делаем статью плоской и шире на мобилке */
   .article{
     border: none;
     box-shadow: none;
     border-radius: 0;
     background: transparent;
-    padding: 18px 10px 40px; /* ✅ одинаково с Advanced */
+    padding: 14px 8px 28px;        /* ✅ меньше внутренних отступов — шире полотно */
   }
 
-  .title{ font-size: clamp(24px, 5vw, 36px); }
+  /* Источники: без карточки, чтобы не сужало текст */
+  .refsBlock{
+    margin: 10px 0 4px;
+    padding: 0;                    /* убираем «рамку-карточку» */
+    border: none;
+    border-radius: 0;
+    background: transparent;
+  }
+  .refsTitle{
+    margin: 8px 0 6px;
+    font-weight: 700;
+  }
+  .refsList ol{
+    margin-left: 1rem;             /* чуть компактнее */
+  }
+
+  /* Подсветка источников без тени-карточки */
+  .refCardHighlight{
+    box-shadow: none;
+    outline: 2px solid var(--accent-soft);
+    outline-offset: 2px;
+  }
 }

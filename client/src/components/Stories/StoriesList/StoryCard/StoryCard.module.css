@@ -1,4 +1,4 @@
-.row{
+.row {
   position: relative;
   overflow: hidden;
   border-radius: 20px;
@@ -6,11 +6,14 @@
   background: transparent;
   touch-action: pan-y;
 }
-.rowRevealed{
-  background: #ff3b30; /* фон под кнопками, на краях видно при свайпе */
+
+/* теперь фон под кнопками совпадает с закруглением карточки */
+.rowRevealed {
+  background: #0a84ff; /* синий фон под радиусами, чтобы не было просветов */
+  border-radius: 20px;
 }
 
-.actions{
+.actions {
   position: absolute;
   inset: 0;
   display: flex;
@@ -18,17 +21,18 @@
   align-items: stretch;
   z-index: 0;
   pointer-events: none;
-  gap: 8px;
-  padding-right: 8px;
+  gap: 0;
+  padding-right: 0;
+  overflow: hidden;
+  border-radius: 20px; /* радиус совпадает с карточкой */
 }
 
-/* Общая кнопка действия (редакт/удалить) */
-.actionBtn{
+/* Общие кнопки действий */
+.actionBtn {
   pointer-events: auto;
-  width: 96px;
+  width: 96px; /* 2×96 = 192px — совпадает с ACTION_W */
+  height: 100%;
   border: none;
-  background: #f3f4f6;        /* по умолчанию серовато */
-  color: #111827;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -36,23 +40,34 @@
   gap: 4px;
   font-size: 13px;
   cursor: pointer;
-  border-radius: 12px;
-  margin-block: 6px;
+  border-radius: 0;
+  margin: 0;
 }
-.actionBtn:active{ opacity: .9; }
-.actionIcon{ font-size: 22px; }
-.actionText{ font-weight: 600; letter-spacing: .2px; }
-
-/* Изменить (серый) */
-.editBtn{
-  background: #e5e7eb;
-  color: #111827;
+.actionBtn:active {
+  opacity: 0.9;
+}
+.actionIcon {
+  font-size: 22px;
+}
+.actionText {
+  font-weight: 600;
+  letter-spacing: 0.2px;
 }
 
-/* Удалить (красный) */
-.trashBtn{
+/* Изменить — синяя, с плавным закруглением слева */
+.editBtn {
+  background: #0a84ff;
+  color: #fff;
+  border-top-left-radius: 20px;
+  border-bottom-left-radius: 20px;
+}
+
+/* Удалить — красная, прилегает вплотную справа */
+.trashBtn {
   background: #ff3b30;
   color: #fff;
+  border-top-right-radius: 20px;
+  border-bottom-right-radius: 20px;
 }
 
 .storyCard {
@@ -66,27 +81,35 @@
   margin-bottom: 0;
   border: none;
   text-align: left;
-  transition: background-color .15s ease;
+  transition: background-color 0.15s ease;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   z-index: 1;
   touch-action: pan-y;
 }
 
-.slide{
+.slide {
   transform: translateX(0);
-  transition: transform .18s ease;
+  transition: transform 0.18s ease;
   will-change: transform;
 }
-.dragging{
+
+.dragging {
   transition: none !important;
 }
 
-.storyCard:hover { background-color: #AFF4C6; cursor: pointer; }
-.storyCardActive { background-color: #AFF4C6; cursor: pointer; }
+.storyCard:hover {
+  background-color: #aff4c6;
+  cursor: pointer;
+}
 
-/* режим редактирования — меняем паддинги под инпут */
-.editingMode{
+.storyCardActive {
+  background-color: #aff4c6;
+  cursor: pointer;
+}
+
+/* режим редактирования */
+.editingMode {
   background: #fff;
 }
 
@@ -98,7 +121,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.placeholderText { color: #9aa0a6; }
+
+.placeholderText {
+  color: #9aa0a6;
+}
 
 .timeRight {
   position: absolute;
@@ -113,7 +139,7 @@
 }
 
 /* Инпут заголовка */
-.titleInput{
+.titleInput {
   width: 100%;
   border: none;
   outline: none;
@@ -123,34 +149,51 @@
   padding: 2px 0 2px 2px;
   color: #111827;
 }
-.titleInput::placeholder{ color:#9aa0a6; }
-.titleInput:focus{ outline: none; }
+.titleInput::placeholder {
+  color: #9aa0a6;
+}
+.titleInput:focus {
+  outline: none;
+}
 
 /* Ripple */
-.ripple{
+.ripple {
   position: absolute;
   border-radius: 50%;
   transform: scale(0);
   pointer-events: none;
-  opacity: .9;
-  animation: ripple 10s cubic-bezier(.22,.61,.36,1) forwards;
+  opacity: 0.9;
+  animation: ripple 10s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
   will-change: transform, opacity;
 }
-.rippleLeft  { background: rgba(34,197,94,.22); }
-.rippleRight { background: rgba(34,197,94,.30); }
-@keyframes ripple{ to{ transform: scale(1.6); opacity: 0; } }
+.rippleLeft {
+  background: rgba(34, 197, 94, 0.22);
+}
+.rippleRight {
+  background: rgba(34, 197, 94, 0.3);
+}
+@keyframes ripple {
+  to {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
 
-@media (max-width:700px){
-  .titleText, .timeRight{
+/* Мобильные правки */
+@media (max-width: 700px) {
+  .titleText,
+  .timeRight {
     user-select: none;
     -webkit-user-select: none;
   }
-  .storyCard{
+
+  .storyCard {
     padding: 18px 64px 18px 14px;
     font-size: 16px;
     color: #000;
   }
-  .titleInput{
+
+  .titleInput {
     font-size: 16px;
   }
 }

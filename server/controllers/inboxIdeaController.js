@@ -190,85 +190,95 @@ class InboxIdeaController {
     }
   }
 
-  async createStory(req, res, next) {
-    const t = await sequelize.transaction();
-    try {
-      const actor_id = req.actorId;
-      const { id } = req.params;
 
-      const ctx = await ensureInboxOwner(actor_id, id);
-      if (!ctx) { await t.rollback(); return res.status(404).json({ message: 'Запись не найдена' }); }
+async createStory(req, res, next) {
+  const t = await sequelize.transaction();
+  try {
+    const actor_id = req.actorId;
+    const { id } = req.params;
+    const { additionalIds = [] } = req.body || {};
 
-      const story = await Story.create(
-        { actor_id, title: '', content: ctx.row.text || '', archive: false, slug: String(Date.now()) },
+    // Собираем все переносимые id (уникальные)
+    const allIds = [Number(id), ...additionalIds.map(Number)]
+      .filter((v, i, a) => Number.isFinite(v) && a.indexOf(v) === i);
+
+    // Проверим, что "первая" запись точно принадлежит актору
+    const base = await InboxIdea.findOne({ where: { id: allIds[0], actor_id }, transaction: t });
+    if (!base) { await t.rollback(); return res.status(404).json({ message: 'Запись не найдена' }); }
+
+    // Создаём пустую историю
+    const story = await Story.create(
+      { actor_id, title: '', content: '', archive: false, slug: String(Date.now()), showArchiveSection: true },
+      { transaction: t }
+    );
+
+    // Берём все инбокс-строки актёра по этим id в том порядке, как на экране Inbox:
+    // (sortOrder DESC, id DESC)
+    const inboxRows = await InboxIdea.findAll({
+      where: { actor_id, id: allIds },
+      order: [['sortOrder', 'DESC'], ['id', 'DESC']],
+      transaction: t,
+    });
+
+    // Узнаём текущий MAX(sort_order) по идеям этой истории (для новой истории = 0)
+    const [[{ max_sort }]] = await sequelize.query(
+      'SELECT COALESCE(MAX("sort_order"), 0) AS max_sort FROM ideas WHERE "storyId" = :sid',
+      { replacements: { sid: story.id }, transaction: t }
+    );
+    const baseMax = Number(max_sort) || 0;
+
+    // Назначаем sort_order так, чтобы первый из inboxRows оказался сверху в истории
+    // Порядок сортировки идей в истории у тебя: sortOrder DESC, id DESC
+    // Значит даём убывающую «лестницу» сверху вниз: baseMax + N, baseMax + (N-1), ...
+    const N = inboxRows.length;
+    for (let i = 0; i < N; i++) {
+      const row = inboxRows[i];
+      const sortOrder = baseMax + (N - i);
+      await Idea.create(
+        { storyId: story.id, text: row.text || '', score: null, introducedRound: 0, sortOrder },
         { transaction: t }
       );
-      await InboxIdea.destroy({ where: { id }, transaction: t });
-
-      await t.commit();
-
-      // 🔔 realtime:
-      // 1) инбокс — удалили запись
-      // 2) индекс историй — добавили/обновили карточку
-      // 3) комната истории — стартовое состояние
-      try {
-        const hub  = req.app?.locals?.hub;
-        const opId = req.headers['x-op-id'] || null;
-        if (hub) {
-          hub.publish(`inbox:${actor_id}`, {
-            type: 'inbox.deleted',
-            opId,
-            id: Number(id)
-          });
-
-          hub.publish(`actor:${actor_id}`, {
-            type: 'stories.index.patch',
-            storyId: Number(story.id),
-            opId,
-            patch: {
-              id: Number(story.id),
-              slug: story.slug,
-              title: story.title,
-              archive: story.archive,
-              reevalDueAt: story.reevalDueAt ?? null,
-              updatedAt: story.updatedAt,
-            }
-          });
-
-          hub.publish(`story:${story.id}`, {
-            type: 'story.updated',
-            storyId: Number(story.id),
-            version: new Date().toISOString(),
-            opId,
-            patch: {
-              title: story.title,
-              content: story.content,
-              archive: story.archive,
-              slug: story.slug,
-              remindersEnabled: story.remindersEnabled,
-              remindersFreqSec: story.remindersFreqSec,
-              remindersPaused: story.remindersPaused,
-              remindersIndex: story.remindersIndex,
-              showArchiveSection: story.showArchiveSection ?? true,
-              baselineContent: story.baselineContent ?? '',
-              reevalCount: story.reevalCount ?? 0,
-              stopContentY: story.stopContentY ?? null,
-              lastViewContentY: story.lastViewContentY ?? null,
-              reevalDueAt: story.reevalDueAt ?? null,
-              updatedAt: story.updatedAt,
-            }
-          });
-        }
-      } catch (e) {
-        console.warn('[ws publish inbox.createStory] fail:', e?.message || e);
-      }
-
-      return res.status(201).json(story);
-    } catch (e) {
-      await t.rollback();
-      return next(e);
     }
+
+    // Удаляем все перенесённые из инбокса разом
+    await InboxIdea.destroy({ where: { actor_id, id: allIds }, transaction: t });
+
+    await t.commit();
+
+    // 🔔 realtime
+    try {
+      const hub  = req.app?.locals?.hub;
+      const opId = req.headers['x-op-id'] || null;
+      if (hub) {
+        for (const delId of allIds) {
+          hub.publish(`inbox:${actor_id}`, { type: 'inbox.deleted', opId, id: Number(delId) });
+        }
+        hub.publish(`actor:${actor_id}`, {
+          type: 'stories.index.patch',
+          storyId: Number(story.id),
+          opId,
+          patch: {
+            id: Number(story.id),
+            slug: story.slug,
+            title: story.title,
+            archive: story.archive,
+            reevalDueAt: story.reevalDueAt ?? null,
+            updatedAt: story.updatedAt,
+          }
+        });
+      }
+    } catch (e) {
+      console.warn('[ws publish inbox.createStory bulk order] fail:', e?.message || e);
+    }
+
+    return res.status(201).json({ storyId: story.id, slug: story.slug });
+  } catch (e) {
+    await t.rollback();
+    return next(e);
   }
+}
+
+
 }
 
 module.exports = new InboxIdeaController();

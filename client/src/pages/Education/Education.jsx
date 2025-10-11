@@ -1,33 +1,46 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import classes from './Education.module.css';
 import BackBtn from '../../components/BackBtn/BackBtn';
-import { PRACTICES } from '../../utils/practices';
-import { EDUCATION_BASICS_PATH, practicePath } from '../../utils/consts';
+import { EDUCATION_BASICS_PATH, EDUCATION_THEORY_PATH } from '../../utils/consts';
 
 export default function Education() {
+  // Мобилка: блокируем скролл документа (страница не скроллится вовсе)
+  useEffect(() => {
+    if (!window.matchMedia('(max-width:700px)').matches) return;
+    const prevHtml = document.documentElement.style.overflow;
+    const prevBody = document.body.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.documentElement.style.overflow = prevHtml;
+      document.body.style.overflow = prevBody;
+    };
+  }, []);
+
   return (
     <div className={classes.index}>
-      <BackBtn />
-      
+      {/* Десктоп: кнопка «назад» (на мобилке скрыта через CSS) */}
+      <BackBtn className={classes.backDesktop} />
+
+      {/* Моб: фикс-хедер слева */}
+      <div className={classes.mHeader}>
+        <h1>Обучение</h1>
+      </div>
+
+      {/* Карточка «NEUROPROCESSING — основы» */}
       <Link to={EDUCATION_BASICS_PATH} className={classes.cardLink}>
         <div className={classes.hero}>
           <h2 className={classes.heroTitle}>NEUROPROCESSING — основы</h2>
           <div className={classes.heroHint}>Открыть</div>
         </div>
       </Link>
-
-      <h2 className={classes.sectionTitle}>Практики</h2>
-
-      <div className={classes.grid}>
-        {PRACTICES.map((p) => (
-          <Link key={p.slug} to={practicePath(p.slug)} className={classes.cardLink}>
-            <article className={classes.card}>
-              <h3 className={classes.cardHead} title={p.title}>{p.title}</h3>
-              <p className={classes.cardDesc} title={p.description}>{p.description}</p>
-            </article>
-          </Link>
-        ))}
-      </div>
+      <Link to={EDUCATION_THEORY_PATH} className={classes.cardLink}>
+        <div className={classes.hero}>
+          <h2 className={classes.heroTitle}>NEUROPROCESSING — подробная теория</h2>
+          <div className={classes.heroHint}>Открыть</div>
+        </div>
+      </Link>
     </div>
   );
 }

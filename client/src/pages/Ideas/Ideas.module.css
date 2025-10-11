@@ -1,6 +1,17 @@
-.container { max-width: 820px; margin: 20px auto; padding: 0 16px; }
+:root{
+  /* базовая высота мобильного хедера (без safe-top) */
+  --ideas-header-h: 50px;
+}
 
-.menuOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.15); display: grid; place-items: center; z-index: 1000; }
+/* ——— ДЕСКТОП / ОБЩЕЕ ——— */
+.container { max-width: 820px; margin: 0 auto; padding: 0 16px; }
+
+.menuOverlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.15);
+  display: grid; place-items: center;
+  z-index: 1000;
+}
 .menu {
   width: min(720px, 92vw);
   max-height: 80vh;
@@ -25,3 +36,40 @@
 .center { display: grid; place-items: center; min-height: 40vh; }
 .spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid #e5e7eb; border-top-color: #111; animation: r .9s linear infinite; }
 @keyframes r { to { transform: rotate(360deg); } }
+
+/* базовые контейнеры */
+.backDesktop { display: inline-block; }
+.viewport { position: static; }
+.scrollArea { position: static; }
+
+/* ДЕСКТОПНЫЙ отступ сверху у контента (как просил) */
+@media (min-width:701px){
+  .container { margin: 20px auto; }
+}
+
+/* ===== МОБИЛЬНАЯ ВЕРСИЯ ===== */
+@media (max-width:700px){
+  /* BackBtn скрываем на мобилке */
+  .backDesktop { display: none !important; }
+
+  /* полотно скроллится целиком */
+  .viewport{
+    position: static;
+    background: #f5f5f5;
+    padding: 0 12px;
+  }
+
+  .scrollArea{
+    position: static;
+    overflow: visible;
+  }
+
+  /* Отступ под фикс-хедер и под нижнюю навигацию */
+  .container{
+    max-width: 820px;
+    margin: 0 auto;
+    /* высота хедера = базовая + safe-top; даём ещё небольшой зазор 6px */
+    padding-top: calc(var(--ideas-header-h, 50px) + env(safe-area-inset-top, 0px) + 6px);
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+}

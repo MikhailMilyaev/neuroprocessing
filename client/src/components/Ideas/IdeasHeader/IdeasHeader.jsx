@@ -1,4 +1,5 @@
 import classes from './IdeasHeader.module.css';
+import { IoAdd } from 'react-icons/io5';
 
 export default function IdeasHeader({
   title = 'Идеи на обработку',
@@ -12,6 +13,7 @@ export default function IdeasHeader({
 
   return (
     <div className={classes.topbar}>
+      {/* слева — «Выбор / Готово» */}
       <button
         className={`${classes.hdrBtn} ${classes.selectBtn}`}
         onClick={onToggleSelectMode}
@@ -19,15 +21,20 @@ export default function IdeasHeader({
         {selectMode ? 'Готово' : 'Выбор'}
       </button>
 
+      {/* центр — заголовок */}
       <div className={classes.title}>{title}</div>
 
+      {/* справа — на десктопе большая кнопка, на мобилке круглая с плюсиком */}
       <button
         className={`${classes.hdrBtn} ${selectMode ? classes.moveBtn : classes.addBtn}`}
         onClick={onPrimaryClick}
         disabled={primaryDisabled}
         title={primaryDisabled ? 'Выберите идеи' : undefined}
       >
-        {primaryLabel}
+        <span className={classes.addText}>{primaryLabel}</span>
+        <span className={classes.addIcon} aria-hidden>
+          <IoAdd />
+        </span>
       </button>
     </div>
   );

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import classes from './IdeaList.module.css';
 
 export default function IdeaList({
@@ -10,9 +11,47 @@ export default function IdeaList({
   onOpenMenu,
   inputRefs,
 }) {
+  const lastAutoFocusKeyRef = useRef(null);
+
+  // Автофокус: берём первую пустую идею (обычно только что добавленную)
+  useEffect(() => {
+    if (!items || items.length === 0) return;
+
+    // приоритет: самая верхняя пустая идея; если есть временная (id < 0) — её
+    const candidate =
+      items.find((it) => it.id < 0) ||
+      items.find((it) => String(it.text || '').trim() === '');
+
+    if (!candidate) return;
+
+    const key = candidate.uiKey;
+    if (lastAutoFocusKeyRef.current === key) return; // не дёргаем повторно
+
+    // подождём, пока ref попадёт в карту
+    const tryFocus = (tries = 12) => {
+      const el = inputRefs.current.get(key);
+      if (el) {
+        try {
+          el.focus({ preventScroll: true });
+        } catch {
+          try { el.focus(); } catch {}
+        }
+        // курсор в конец
+        const len = el.value?.length ?? 0;
+        try { el.setSelectionRange(len, len); } catch {}
+        lastAutoFocusKeyRef.current = key;
+        return;
+      }
+      if (tries > 0) setTimeout(() => tryFocus(tries - 1), 30);
+    };
+
+    // два тика на всякий случай
+    setTimeout(() => tryFocus(), 0);
+  }, [items, inputRefs]);
+
   return (
     <div className={`${classes.list} ${selectMode ? classes.selecting : ''}`}>
-      {items.map(it => (
+      {items.map((it) => (
         <div key={it.uiKey} className={classes.row}>
           {selectMode && (
             <label className={classes.checkWrap}>
@@ -39,6 +78,7 @@ export default function IdeaList({
           />
 
           <button
+            type="button"
             className={classes.moreBtn}
             onClick={() => onOpenMenu(it.id)}
             aria-label="Действия"

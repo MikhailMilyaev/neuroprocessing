@@ -1,104 +1,130 @@
+:root{
+  /* Высота мобильного хедера (визуальная), используется чтобы опустить карточку ниже него */
+  --edu-header-h: 44px;
+}
+
 .index {
   width: min(1100px, 92%);
   margin: 20px auto 120px;
 }
 
+/* Прячем раздел «Практики» везде */
+.sectionTitle, .grid { display: none !important; }
+
+/* ВАЖНО: не растягиваем ссылку на всю высоту контейнера */
 .cardLink {
   display: block;
-  height: 100%;
   color: inherit;
   text-decoration: none;
   outline: none;
+  width: 100%;
 }
 
 .hero {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #ffffff;
+  background: #ffffff; /* на десктопе остаётся белой */
   border-radius: 16px;
   padding: 25px 20px;
   box-shadow: 0 1px 2px rgba(0,0,0,.05);
   transition: transform .15s ease, box-shadow .2s ease;
 }
-.heroTitle {
-  font-size: 22px;
-  font-weight: 500;
-  margin: 0;
+
+.heroTitle { 
+  font-size: 22px; 
+  font-weight: 500; 
+  margin: 0; 
 }
-.heroHint {
-  color: #6f6f6f;
-  font-weight: 500;
-  white-space: nowrap;
-}
-.hero:hover,
-.cardLink:focus-visible .hero {
-  transform: translateY(-2px) scale(1.01);
-  box-shadow: 0 0 5px rgba(0,0,0,0.15);
+.heroHint { 
+  color: #6f6f6f; 
+  font-weight: 500; 
+  white-space: nowrap; 
 }
 
-.sectionTitle {
-  margin: 24px 0 16px;
+/* Ховер-анимация только на устройствах с курсором */
+@media (hover: hover) and (pointer: fine) {
+  .hero:hover, .cardLink:focus-visible .hero {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 0 5px rgba(0,0,0,0.15);
+  }
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
-  align-items: stretch;
-}
-@media (max-width: 760px) {
-  .grid { grid-template-columns: 1fr; }
+/* ——— десктоп: BackBtn показываем ——— */
+.backDesktop { display: inline-block; }
+
+/* ——— мобильный хедер (фикс сверху) ——— */
+.mHeader { display: none; }
+
+/* ===== МОБИЛЬНАЯ ВЕРСИЯ ===== */
+@media (max-width:700px){
+  /* страница-экран: фиксируем между верхом и нижней навигацией */
+  .index{
+    position: fixed;
+    left: 0; right: 0;
+    top: 0;
+    bottom: 0;                       /* навбар перекроет низ, дадим внутренний отступ */
+    width: 100%;
+    margin: 0;
+    padding: 0 12px calc(96px + env(safe-area-inset-bottom, 0px));
+    background: #f5f5f5;
+    overflow: hidden;                /* не скроллится вовсе */
+    z-index: 60;                     /* ниже MobileNav (у него 61) */
+  }
+
+  /* BackBtn прячем на мобилке */
+  .backDesktop { display: none !important; }
+
+  .mHeader{
+    display: block;
+    position: fixed;
+    left: 0; right: 0;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 61;
+    background: #f5f5f5;
+    height: var(--edu-header-h);
+    box-shadow: 0 1px 0 rgba(0,0,0,.08);
+    display: flex;
+    align-items: center;
+  }
+  .mHeader h1{
+    margin: 0;
+    font-size: 20px;
+    font-weight: 500;      /* обычный шрифт */
+    text-align: left;      /* слева */
+    padding: 0 12px;
+  }
+
+  /* ✅ Только первая карточка опускается под фикс-хедер */
+  .cardLink:first-of-type .hero {
+    margin-top: calc(env(safe-area-inset-top, 0px) + var(--edu-header-h) + 8px);
+  }
+
+  /* Остальные карточки без дополнительного отступа сверху */
+  .hero { 
+    margin-top: 0; 
+    padding: 18px 16px; /* чуть компактнее на мобилке */
+  }
+
+  .heroTitle { 
+    font-size: 20px; 
+    font-weight: 500; 
+    margin: 0; 
+  }
+
+  /* Межкарточный зазор на мобилке */
+  .cardLink + .cardLink {
+    margin-top: 8px;
+  }
 }
 
-.card {
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 1px 2px rgba(0,0,0,.05);
-  transition: transform .15s ease, box-shadow .2s ease;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+/* Отступы между карточками на десктопе */
+.cardLink + .cardLink {
+  margin-top: 20px;
 }
 
-.cardHead {
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0 0 10px 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: clip;
-}
-
-.cardDesc {
-  --lines: 2;           
-  --lh: 1.55;         
-  margin: 0;
-  color: #2b2b2b;
-  line-height: var(--lh);
-  height: calc(1em * var(--lh) * var(--lines));
-  overflow: hidden;    
-}
-
-.cardLink:hover .card,
-.cardLink:focus-visible .card {
-  transform: translateY(-2px) scale(1.01);
-  box-shadow: 0 0 5px rgba(0,0,0,0.15);
-}
-
-.btnDark,
-.btnSuccess { display: none; }
-
-.loader {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 24px;
-  color: #111;
-}
-
-.loaderText {
-  font-size: 14px;
-  font-weight: 500;
+/* Тёмная тема — без изменения цвета карточки на десктопе */
+@media (prefers-color-scheme: dark){
+  .mHeader{ background:#0b0f14; box-shadow: 0 1px 0 rgba(255,255,255,.08); }
+  .heroHint{ color:#9aa3ad; }
 }

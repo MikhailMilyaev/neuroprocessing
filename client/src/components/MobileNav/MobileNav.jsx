@@ -18,7 +18,6 @@ export default function MobileNav() {
   const items = [
     { to: STORIES_ROUTE,     label: 'Истории',   Icon: IoListOutline },
     { to: IDEAS_ROUTE,       label: 'Идеи',      Icon: IoBulbOutline },
-    { to: EDUCATION_ROUTE,   label: 'Практики',  Icon: IoBookOutline },
     { to: EDUCATION_ROUTE,   label: 'Обучение',  Icon: IoSchoolOutline },
     { to: SETTINGS_ROUTE,    label: 'Настройки', Icon: IoSettingsOutline }, // <-- сюда
   ];

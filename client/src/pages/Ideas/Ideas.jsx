@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import classes from './Ideas.module.css';
 import BackBtn from '../../components/BackBtn/BackBtn';
 import { subscribe, getActorChannel, startRealtime } from '../../utils/realtime';
+import Toast from '../../components/Toast/Toast';
 
 import {
   listInboxIdeas,
@@ -19,6 +20,7 @@ import { STORY_ROUTE } from '../../utils/consts';
 import EmptyIdeasState from '../../components/Ideas/EmptyIdeasState/EmptyIdeasState';
 import IdeasHeader from '../../components/Ideas/IdeasHeader/IdeasHeader';
 import IdeaList from '../../components/Ideas/IdeaList/IdeaList';
+import { flushSync } from 'react-dom';
 
 // 👇 добавлено для opId-схемы
 import { genOpId, markSentOp, isOwnOp } from '../../utils/opId';
@@ -26,8 +28,9 @@ import { genOpId, markSentOp, isOwnOp } from '../../utils/opId';
 const CHAR_LIMIT = 80;
 
 export default function Ideas() {
+  const [toast, setToast] = useState({ msg: '', ver: 0 });
   const navigate = useNavigate();
-
+const showToast = (msg) => setToast(({ ver }) => ({ msg, ver: ver + 1 }));
   const [items, setItems] = useState([]);
   const [stories, setStories] = useState({ active: [], archive: [] });
   const [loading, setLoading] = useState(true);
@@ -125,11 +128,17 @@ export default function Ideas() {
   };
 
   const addQuick = () => {
-    const uiKey = `t${Date.now()}_${seqRef.current++}`;
-    const sortOrder = Date.now();
-    setItems(prev => [{ id: -sortOrder, uiKey, text: '', sortOrder }, ...prev]);
-    focusByUiKey(uiKey);
-  };
+   const uiKey = `t${Date.now()}_${seqRef.current++}`;
+   const sortOrder = Date.now();
+   // Синхронно вставляем элемент, чтобы ref уже существовал в том же жесте
+   flushSync(() => {
+     setItems(prev => [{ id: -sortOrder, uiKey, text: '', sortOrder }, ...prev]);
+   });
+   // Немедленный фокус — открывает клавиатуру на iOS
+   focusByUiKey(uiKey, 1);
+   // fail-safe на случай медленного layout
+   setTimeout(() => focusByUiKey(uiKey), 0);
+ };
 
   const handleChange = async (id, uiKey, text) => {
     const limited = String(text || '').slice(0, CHAR_LIMIT);
@@ -176,21 +185,24 @@ export default function Ideas() {
   const closeMenu = () => setMenuFor(null);
 
   const moveTo = async (storyId) => {
-    const id = menuFor;
-    if (!id || id === 'bulk') return;
-    closeMenu();
-    await withOp(moveInboxIdea, id, storyId);
-    // моментально скрываем локально
-    setItems(prev => prev.filter(i => i.id !== id));
-  };
+  const id = menuFor;
+  if (!id || id === 'bulk') return;
+  closeMenu();
+  await withOp(moveInboxIdea, id, storyId);
+  setItems(prev => prev.filter(i => i.id !== id));
+  showToast('Идея перемещена');
+};
 
-  const createStory = async () => {
-    const id = menuFor;
-    if (!id || id === 'bulk') return;
-    closeMenu();
-    const { storyId, slug } = await withOp(createStoryFromInboxIdea, id);
-    navigate(`${STORY_ROUTE}/${slug || storyId}`);
-  };
+const createStory = async () => {
+  const id = menuFor;
+  if (!id || id === 'bulk') return;
+  closeMenu();
+  const { storyId, slug } = await withOp(createStoryFromInboxIdea, id);
+  // удалим из списка локально, если ещё есть
+  setItems(prev => prev.filter(i => i.id !== id));
+  showToast('Создана новая история с идеей');
+  navigate(`${STORY_ROUTE}/${slug || storyId}`);
+};
 
   const toggleSelectMode = () => {
     setSelectMode(v => !v);
@@ -211,31 +223,50 @@ export default function Ideas() {
     setMenuFor('bulk');
   };
 
-  const moveSelectedTo = async (storyId) => {
-    const ids = [...selectedIds];
-    if (ids.length === 0) return;
-    setMenuFor(null);
-    await Promise.all(ids.map(id => withOp(moveInboxIdea, id, storyId)));
-    setItems(prev => prev.filter(i => !selectedIds.has(i.id)));
-    setSelectedIds(new Set());
-    setSelectMode(false);
-  };
+const moveSelectedTo = async (storyId) => {
+  const ids = [...selectedIds];
+  if (ids.length === 0) return;
+  setMenuFor(null);
 
-  const createStoryFromSelected = async () => {
-    const ids = [...selectedIds];
-    if (ids.length === 0) return;
-    setMenuFor(null);
+  // Идём СНИЗУ ВВЕРХ, чтобы верхние получили больший sortOrder и оказались сверху
+  for (const id of ids.slice().reverse()) {
+    await withOp(moveInboxIdea, id, storyId);
+  }
 
-    // фикс: достаём slug, чтобы корректно перейти
-    const { storyId, slug } = await withOp(createStoryFromInboxIdea, ids[0]);
-    if (ids.length > 1) {
-      await Promise.all(ids.slice(1).map(id => withOp(moveInboxIdea, id, storyId)));
-    }
-    setItems(prev => prev.filter(i => !selectedIds.has(i.id)));
-    setSelectedIds(new Set());
-    setSelectMode(false);
-    navigate(`${STORY_ROUTE}/${slug || storyId}`);
-  };
+  setItems(prev => prev.filter(i => !selectedIds.has(i.id)));
+  setSelectedIds(new Set());
+  setSelectMode(false);
+  showToast(ids.length === 1 ? 'Идея перемещена' : `Перемещено идей: ${ids.length}`);
+};
+
+
+const createStoryFromSelected = async () => {
+  const ids = [...selectedIds];
+  if (ids.length === 0) return;
+  setMenuFor(null);
+
+  // один вызов: первая — в URL, остальные — в additionalIds
+  const firstId = ids[0];
+  const tail = ids.slice(1);
+
+  const { storyId, slug } = await withOp(
+    (first, rest, opts) => createStoryFromInboxIdea(first, { additionalIds: rest }, opts),
+    firstId,
+    tail
+  );
+
+  // локально чистим из инбокса
+  setItems(prev => prev.filter(i => !selectedIds.has(i.id)));
+  setSelectedIds(new Set());
+  setSelectMode(false);
+
+  showToast(ids.length === 1
+    ? 'Создана новая история с идеей'
+    : `Создана история и перемещено идей: ${ids.length}`);
+
+  navigate(`${STORY_ROUTE}/${slug || storyId}`);
+};
+
 
   const filteredActive = useMemo(() => {
     const q = searchStory.trim().toLowerCase();
@@ -259,8 +290,12 @@ export default function Ideas() {
 
   return (
     <>
-      <BackBtn />
-      <div className={classes.container}>
+      {/* Десктоп: BackBtn есть; на мобилке спрячем через CSS */}
+      <BackBtn className={classes.backDesktop} />
+      <Toast message={toast.msg} version={toast.ver} placement="bottom" />
+
+      <div className={classes.viewport}>
+        {/* Мобильный фикс-хедер: слева «Выбор», по центру заголовок, справа круглый + */}
         <IdeasHeader
           title="Идеи на обработку"
           selectMode={selectMode}
@@ -269,86 +304,91 @@ export default function Ideas() {
           onPrimaryClick={selectMode ? openBulkMenu : addQuick}
         />
 
-        {items.length === 0 ? (
-          <EmptyIdeasState onAdd={addQuick} />
-        ) : (
-          <IdeaList
-            items={items}
-            selectMode={selectMode}
-            isSelected={isSelected}
-            toggleSelect={toggleSelect}
-            onChange={handleChange}
-            onBlurEmpty={handleBlurEmpty}
-            onOpenMenu={openMenu}
-            inputRefs={inputRefs}
-          />
-        )}
-
-        {menuFor && (
-          <div className={classes.menuOverlay} onClick={() => { setMenuFor(null); }}>
-            <div className={classes.menu} onClick={(e) => e.stopPropagation()}>
-              <div className={classes.menuTitle}>
-                {menuFor === 'bulk'
-                  ? `Переместить выбранные идеи (${selectedIds.size})`
-                  : 'Переместить в историю'}
-              </div>
-
-              <input
-                className={classes.search}
-                placeholder="Поиск истории"
-                value={searchStory}
-                onChange={(e) => setSearchStory(e.target.value)}
+        {/* Скроллится только список */}
+        <div className={classes.scrollArea} role="region" aria-label="Список идей">
+          <div className={classes.container}>
+            {items.length === 0 ? (
+              <EmptyIdeasState onAdd={addQuick} />
+            ) : (
+              <IdeaList
+                items={items}
+                selectMode={selectMode}
+                isSelected={isSelected}
+                toggleSelect={toggleSelect}
+                onChange={handleChange}
+                onBlurEmpty={handleBlurEmpty}
+                onOpenMenu={openMenu}
+                inputRefs={inputRefs}
               />
-
-              <div className={classes.section}>
-                <div className={classes.sectionTitle}>Активные</div>
-                <div className={classes.storyList}>
-                  {filteredActive.map(s => (
-                    <button
-                      key={s.id}
-                      className={classes.storyBtn}
-                      onClick={() => (menuFor === 'bulk' ? moveSelectedTo(s.id) : moveTo(s.id))}
-                    >
-                      {s.title || '(без названия)'}
-                    </button>
-                  ))}
-                  {filteredActive.length === 0 && <div className={classes.dim}>Не найдено</div>}
-                </div>
-              </div>
-
-              <div className={classes.section}>
-                <div className={classes.sectionTitle}>Архив</div>
-                <div className={classes.storyList}>
-                  {filteredArchive.map(s => (
-                    <button
-                      key={s.id}
-                      className={classes.storyBtn}
-                      onClick={() => (menuFor === 'bulk' ? moveSelectedTo(s.id) : moveTo(s.id))}
-                    >
-                      {s.title || '(без названия)'}
-                    </button>
-                  ))}
-                  {filteredArchive.length === 0 && <div className={classes.dim}>Не найдено</div>}
-                </div>
-              </div>
-
-              <div className={classes.hr} />
-
-              {menuFor === 'bulk' ? (
-                <button className={classes.createBtn} onClick={createStoryFromSelected}>
-                  Создать новую историю из выбранных
-                </button>
-              ) : (
-                <button className={classes.createBtn} onClick={createStory}>
-                  Создать новую историю с этой идеей
-                </button>
-              )}
-
-              <button className={classes.cancelBtn} onClick={closeMenu}>Отмена</button>
-            </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
+
+      {menuFor && (
+        <div className={classes.menuOverlay} onClick={() => { setMenuFor(null); }}>
+          <div className={classes.menu} onClick={(e) => e.stopPropagation()}>
+            <div className={classes.menuTitle}>
+              {menuFor === 'bulk'
+                ? `Переместить выбранные идеи (${selectedIds.size})`
+                : 'Переместить в историю'}
+            </div>
+
+            <input
+              className={classes.search}
+              placeholder="Поиск истории"
+              value={searchStory}
+              onChange={(e) => setSearchStory(e.target.value)}
+            />
+
+            <div className={classes.section}>
+              <div className={classes.sectionTitle}>Активные</div>
+              <div className={classes.storyList}>
+                {filteredActive.map(s => (
+                  <button
+                    key={s.id}
+                    className={classes.storyBtn}
+                    onClick={() => (menuFor === 'bulk' ? moveSelectedTo(s.id) : moveTo(s.id))}
+                  >
+                    {s.title || '(без названия)'}
+                  </button>
+                ))}
+                {filteredActive.length === 0 && <div className={classes.dim}>Не найдено</div>}
+              </div>
+            </div>
+
+            <div className={classes.section}>
+              <div className={classes.sectionTitle}>Архив</div>
+              <div className={classes.storyList}>
+                {filteredArchive.map(s => (
+                  <button
+                    key={s.id}
+                    className={classes.storyBtn}
+                    onClick={() => (menuFor === 'bulk' ? moveSelectedTo(s.id) : moveTo(s.id))}
+                  >
+                    {s.title || '(без названия)'}
+                  </button>
+                ))}
+                {filteredArchive.length === 0 && <div className={classes.dim}>Не найдено</div>}
+              </div>
+            </div>
+
+            <div className={classes.hr} />
+
+            {menuFor === 'bulk' ? (
+              <button className={classes.createBtn} onClick={createStoryFromSelected}>
+                Создать новую историю из выбранных
+              </button>
+            ) : (
+              <button className={classes.createBtn} onClick={createStory}>
+                Создать новую историю с этой идеей
+              </button>
+            )}
+
+            <button className={classes.cancelBtn} onClick={() => setMenuFor(null)}>Отмена</button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

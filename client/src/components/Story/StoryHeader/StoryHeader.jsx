@@ -52,9 +52,7 @@ const StoryHeader = ({
         aria-label="Назад к историям"
         title="Истории"
       >
-        <span className={classes.backChevron} aria-hidden>‹</span>
-        Истории
-      </button>
+        <span className={classes.backChevron} aria-hidden>‹</span></button>
 
       <input
         name="title"

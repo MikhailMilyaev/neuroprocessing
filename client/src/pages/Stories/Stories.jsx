@@ -367,21 +367,25 @@ const Stories = () => {
 const tempMapRef = useRef(new Map()); // tempId -> realId
 
 const handleAddStory = async (initialTitleArg = '', opts = {}) => {
-   const initialTitle = typeof initialTitleArg === 'string' ? initialTitleArg : '';
-   const preferInline = !!opts.inline;
+  const initialTitle = typeof initialTitleArg === 'string' ? initialTitleArg : '';
+  const preferInline = !!opts.inline;
+
   const now = Date.now();
   if (creating || now - lastAddAtRef.current < 600) return;
   lastAddAtRef.current = now;
 
-  const isReallyInline = preferInline || (
-     window.matchMedia('(max-width:700px)').matches &&
-     window.matchMedia('(hover: none)').matches &&
-     window.matchMedia('(pointer: coarse)').matches
-   );
-   if (!isReallyInline) {
+  const isReallyInline =
+    preferInline ||
+    (window.matchMedia('(max-width:700px)').matches &&
+      window.matchMedia('(hover: none)').matches &&
+      window.matchMedia('(pointer: coarse)').matches);
+
+  // ===== НЕ-ИНЛАЙН (десктоп и т.п.) — всё как было =====
+  if (!isReallyInline) {
     setCreating(true);
     try {
       const story = await createStory({ title: initialTitle || '', content: '' });
+
       try { markSeenThisSession(String(story.id)); } catch {}
       try {
         writeSnapshot(String(story.id), {
@@ -394,14 +398,18 @@ const handleAddStory = async (initialTitleArg = '', opts = {}) => {
           showArchiveSection: true,
           lastViewContentY: null,
           remindersEnabled: true, remindersFreqSec: 30, remindersIndex: 0, remindersPaused: false,
-          title: story?.title || '', content: story?.content || '', ideas: [],
+          title: story?.title || '',
+          content: story?.content || '',
+          ideas: [],
         });
       } catch {}
+
       setStoriesList(prev => {
         const next = sortByUpdated([story, ...(prev || [])]);
         writeStoriesIndex(next.map(mapForIndex));
         return next;
       });
+
       navigate(`${STORY_ROUTE}/${story.slug}`);
       return story;
     } catch (e) {
@@ -412,37 +420,63 @@ const handleAddStory = async (initialTitleArg = '', opts = {}) => {
     }
     return;
   }
-const tempId = `temp-${Date.now()}`;
+
+  // ===== ИНЛАЙН (МОБИЛКА) =====
+
+  // 1) ЕСЛИ уже есть текст (EmptyState -> ввёл заголовок -> blur/Готово),
+  //    создаём сразу на сервере С ЭТИМ заголовком и возвращаем объект наверх.
+  if (initialTitle.trim().length > 0) {
+    const created = await createStory({ title: initialTitle.trim(), content: '' });
+
+    try { markSeenThisSession(String(created.id)); } catch {}
+    try {
+      writeSnapshot(String(created.id), {
+        updatedAt: created?.updatedAt || new Date().toISOString(),
+        archive: false, reevalDueAt: null,
+        stopContentY: null, baselineContent: created?.content || '',
+        reevalCount: 0, showArchiveSection: true, lastViewContentY: null,
+        remindersEnabled: true, remindersFreqSec: 30, remindersIndex: 0, remindersPaused: false,
+        title: created?.title || '', content: created?.content || '', ideas: [],
+      });
+    } catch {}
+
+    setStoriesList(prev => {
+      const next = sortByUpdated([{ ...created }, ...(prev || [])]);
+      writeStoriesIndex(next.map(mapForIndex));
+      return next;
+    });
+
+    // submitDraft сам сделает navigate по возвращённому объекту
+    return created;
+  }
+
+  // 2) ПУСТОЙ заголовок — создаём temp-карточку, фокусим, а сервер — параллельно
+  const tempId = `temp-${Date.now()}`;
+
   flushSync(() => {
-   setStoriesList(prev => {
-     const tempStory = {
-       id: tempId, slug: null, title: initialTitle || '', archive: false,
-       updatedAt: new Date().toISOString(), reevalDueAt: null
-     };
-     const next = sortByUpdated([tempStory, ...(prev || [])]);
-     writeStoriesIndex(next.map(mapForIndex));
-     return next;
-   });
-   setNewlyCreatedId(tempId);
- });
- // 2) сразу фокусируем инпут (всё ещё внутри пользовательского жеста)
- const tryFocusNow = () => {
-   const row = document.querySelector(`[data-story-id="${tempId}"]`);
-   const input = row?.querySelector('input[aria-label="Заголовок истории"]');
-   if (input) {
-     try { input.focus({ preventScroll: true }); } catch { input.focus(); }
-     const len = input.value?.length ?? 0;
-     try { input.setSelectionRange(len, len); } catch {}
-   }
- };
- tryFocusNow();
- // запасной дубль — если layout ещё «доезжает»
- setTimeout(tryFocusNow, 0);
-  // параллельно создаём на сервере
+    setStoriesList(prev => {
+      const tempStory = {
+        id: tempId,
+        slug: null,
+        title: '',
+        archive: false,
+        updatedAt: new Date().toISOString(),
+        reevalDueAt: null,
+      };
+      const next = sortByUpdated([tempStory, ...(prev || [])]);
+      writeStoriesIndex(next.map(mapForIndex));
+      return next;
+    });
+    setNewlyCreatedId(tempId);
+  });
+
+  // Сигнал списку: переведи temp-карточку в режим редактирования и фокусни input
+  document.dispatchEvent(new CustomEvent('stories:focus-new', { detail: tempId }));
+
+  // Параллельно создаём реальную историю на сервере
   try {
     const story = await createStory({ title: '', content: '' });
 
-    // сохраняем снапшот как и раньше
     try { markSeenThisSession(String(story.id)); } catch {}
     try {
       writeSnapshot(String(story.id), {
@@ -457,45 +491,49 @@ const tempId = `temp-${Date.now()}`;
 
     tempMapRef.current.set(tempId, Number(story.id));
 
-    // если temp-карточка уже удалена (пользователь вышел с пустым) — удаляем и на сервере
+    // Если temp-карточку уже удалили (вышли пустым), удалим и на сервере
     const stillHasTemp = (lst) => lst.some(s => String(s.id) === String(tempId));
     let deletedAlready = false;
 
     setStoriesList(prev => {
       if (!stillHasTemp(prev)) {
         deletedAlready = true;
-        return prev; // карточки уже нет
+        return prev;
       }
-      // подменяем temp на реальную
+      // Подменяем temp на реальную
       const withoutTemp = prev.filter(s => String(s.id) !== String(tempId));
       const next = sortByUpdated([{ ...story }, ...withoutTemp]);
       writeStoriesIndex(next.map(mapForIndex));
       return next;
     });
 
+    // Сообщим списку, что temp заменился реальным id (чтобы сохранить фокус/режим редактирования)
+    document.dispatchEvent(new CustomEvent('stories:temp-resolved', {
+      detail: { tempId, realId: story.id },
+    }));
+
     if (deletedAlready) {
-      // пользователь успел «выйти пустым» — удаляем созданную историю на сервере
       try {
         await removeStory(story.id);
         try { purgeStoryLocal(String(story.id)); } catch {}
         try { removeFromStoriesIndex(Number(story.id)); } catch {}
       } catch (e) {
-        // если 404 — ок; иначе просто лог
         const status = e?.response?.status || e?.status || 0;
         if (status !== 404) console.error('[cleanup removeStory after temp delete]', e);
       }
     }
   } catch (e) {
     console.error(e);
-    // создание не удалось — убираем temp
+    // Создание на сервере не удалось — убираем temp
     setStoriesList(prev => {
       const next = prev.filter(s => String(s.id) !== String(tempId));
       writeStoriesIndex(next.map(mapForIndex));
       return next;
     });
     alert('Не удалось создать историю. Проверьте соединение и попробуйте ещё раз.');
-  } 
+  }
 };
+
 
   const handleDeleteStory = async (id) => {
     const prev = storiesList;
@@ -637,12 +675,21 @@ try {
    } catch {}
 
    setStoriesList(prev => {
-     const withoutTemp = prev.filter(s => String(s.id) !== String(tempId));
-     const next = sortByUpdated([{ ...created }, ...withoutTemp]);
-     writeStoriesIndex(next.map(mapForIndex));
-     return next;
-   });
-   navigate(`${STORY_ROUTE}/${created.slug || created.id}`);
+  const withoutTemp = prev.filter(s => String(s.id) !== String(tempId));
+  const next = sortByUpdated([{ ...created }, ...withoutTemp]);
+  writeStoriesIndex(next.map(mapForIndex));
+  return next;
+});
+
+// остаёмся в списке на мобиле
+const isMobile =
+  window.matchMedia('(max-width:700px)').matches &&
+  window.matchMedia('(hover: none)').matches &&
+  window.matchMedia('(pointer: coarse)').matches;
+
+if (!isMobile) {
+  navigate(`${STORY_ROUTE}/${created.slug || created.id}`);
+}
  };
 
   // колбэк для переименования — прокинем вниз
