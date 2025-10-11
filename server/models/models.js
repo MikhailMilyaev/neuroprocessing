@@ -9,6 +9,9 @@ const User = sequelize.define('user', {
   prevPasswordHash: { type: DataTypes.STRING, allowNull: true },
   role: { type: DataTypes.STRING, defaultValue: 'USER' },
 
+  phone: { type: DataTypes.STRING(16), allowNull: false },           
+  phoneVerified: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+
   isVerified: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   verificationToken: { type: DataTypes.STRING, allowNull: true },
   verificationTokenExpires: { type: DataTypes.DATE, allowNull: true },

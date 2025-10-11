@@ -8,6 +8,15 @@ const { encryptLink, KEY_VERSION, decryptLink } = require('../utils/cryptoIdenti
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../smtp');
 const { v4: uuidv4 } = require('uuid');
 
+function normalizeRuPhone(raw) {
+  const digits = String(raw || '').replace(/\D/g, '');
+  if (!/^[78]\d{10}$/.test(digits)) return null;
+  return '+7' + digits.slice(1); 
+}
+function isValidRuPhone(raw) {
+  return normalizeRuPhone(raw) !== null;
+}
+
 const VERIFY_RESEND_COOLDOWN      = Number(process.env.VERIFY_RESEND_COOLDOWN || 60);
 const VERIFY_DAILY_LIMIT          = Number(process.env.VERIFY_DAILY_LIMIT || 2);
 const VERIFY_DAILY_WINDOW_HOURS   = Number(process.env.VERIFY_DAILY_WINDOW_HOURS || 24);
@@ -100,13 +109,19 @@ class userController {
   try {
     const rawName = req.body?.name ?? ''
     const rawEmail = req.body?.email ?? ''
+    const rawPhone = req.body?.phone ?? ''           
     const password = req.body?.password ?? ''
 
     const name = String(rawName).trim()
     const email = String(rawEmail).trim().toLowerCase()
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !rawPhone) {
       return next(ApiError.badRequest('Заполните все поля.'))
     }
+
+    if (!isValidRuPhone(rawPhone)) {
+      return next(ApiError.badRequest('Неверный формат телефона (РФ).'))
+    }
+    const phoneE164 = normalizeRuPhone(rawPhone) 
 
     const now = new Date()
     let user = await User.findOne({ where: { email } })
@@ -155,6 +170,10 @@ class userController {
       email,
       role: 'USER',
       password: hashPassword,
+
+      phone: phoneE164,                 
+      phoneVerified: false,              
+
       isVerified: false,
       verificationToken: tokenHash,
       verificationTokenExpires: expires,

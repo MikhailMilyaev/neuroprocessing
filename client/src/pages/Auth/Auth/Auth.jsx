@@ -5,7 +5,7 @@ import AuthSwitcher from '../../../components/Auth/AuthSwitcher/AuthSwitcher'
 import RecoveryButton from '../../../components/Auth/ResetButton/ResetButton'
 import SubmitButton from '../../../components/Auth/SubmitButton/SubmitButton'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { LOGIN_ROUTE, REGISTRATION_ROUTE, STORIES_ROUTE, CHECKEMAIL_ROUTE } from '../../../utils/consts'
+import { LOGIN_ROUTE, REGISTRATION_ROUTE, STORIES_ROUTE } from '../../../utils/consts'
 import { registration, login } from '../../../http/userApi'
 import classes from './Auth.module.css'
 import { useContext, useState, useEffect } from 'react'
@@ -22,6 +22,7 @@ const Auth = observer(() => {
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [confirmedPassword, setConfirmedPassword] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
@@ -47,7 +48,7 @@ const Auth = observer(() => {
 
     const error = isLogin
       ? validateLogin({ email, password })
-      : validateRegistration({ name, email, password, confirmedPassword })
+      : validateRegistration({ name, email, password, confirmedPassword, phone })
 
     if (error) {
       setErrorMessage(error)
@@ -67,7 +68,7 @@ const Auth = observer(() => {
         setTimeout(() => navigate(STORIES_ROUTE), 1000)
       } else {
         try {
-          const data = await registration(name, email, password)
+          const data = await registration(name, email, password, phone)
           if (data?.needsVerification) {
             sessionStorage.setItem('pendingEmail', email)
             navigate('/check-email?email=' + encodeURIComponent(email), { replace: true })
@@ -105,6 +106,7 @@ const Auth = observer(() => {
     setWasSubmitted(false)
     setName('')
     setEmail('')
+    setPhone('')
     setPassword('')
     setConfirmedPassword('')
   }, [location.pathname])
@@ -143,6 +145,13 @@ const Auth = observer(() => {
             onChange={(e) => setEmail(e.target.value)}
             type='email'
             placeholder='Электронная почта'
+          />
+          <FormInput
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            type='tel'
+            autoComplete='tel'
+            placeholder='Телефон (РФ: 8XXXXXXXXXX)'   
           />
           <FormInput
             value={password}
