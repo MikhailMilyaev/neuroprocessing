@@ -11,20 +11,40 @@
 }
 
 .menu {
-  width: 220px;         
+  width: 220px;
   min-width: 220px;
   max-width: 220px;
-  background: #6F6F6F;
+  background: #6F6F6F; /* как у тебя было */
   color: #fff;
   border-radius: 16px;
-  padding: 10px;     
-  overflow: hidden;     
+  padding: 10px;
+  overflow: hidden;
+}
+
+/* Плашка триала внутри меню */
+.trialBox{
+  background: rgba(255,255,255,0.10);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 12px;
+  padding: 10px;
+  margin: 2px 0 8px;
+}
+.trialTitle{
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: #22c55e; /* зелёный акцент */
+}
+.trialText{
+  font-size: 13px;
+  color: #e5e7eb;
+  opacity: .95;
 }
 
 .item {
   display: flex;
   align-items: center;
-  gap: 10px;              
+  gap: 10px;
   width: 100%;
   border: none;
   background: transparent;
@@ -33,8 +53,8 @@
   padding: 12px 8px;
   cursor: pointer;
   border-radius: 10px;
-  box-sizing: border-box; 
-  text-align: left;       
+  box-sizing: border-box;
+  text-align: left;
 }
 
 .item > * { background: transparent; }
@@ -56,4 +76,24 @@
   background: rgba(255,255,255,0.12);
   margin: 6px 10px;
   border-radius: 1px;
+}
+
+
+.subBox{
+  background: rgba(34,197,94,0.10);
+  color: #fff;
+  border: 1px solid rgba(34,197,94,0.25);
+  border-radius: 12px;
+  padding: 10px;
+  margin: 8px 0;
+}
+.subTitle{
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: #22c55e;
+}
+.subText{
+  font-size: 13px;
+  color: #e5e7eb;
+  opacity: .95;
 }

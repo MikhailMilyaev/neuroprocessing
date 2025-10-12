@@ -4,6 +4,7 @@ export const REGISTRATION_ROUTE = '/registration';
 export const CHECKEMAIL_ROUTE = '/check-email';
 export const ACTIVATED_ROUTE = '/account-activated';
 export const SETTINGS_ROUTE = '/settings';
+export const ADMIN_ROUTE = '/admin';
 
 export const RESET_ROUTE = '/reset';
 export const RESET_SENT_ROUTE = '/reset-sent';

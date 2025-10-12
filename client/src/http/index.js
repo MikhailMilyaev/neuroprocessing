@@ -27,8 +27,10 @@ function softRedirectToLoginOnce() {
   softRedirectDone = true;
   try { localStorage.removeItem(ACCESS_KEY); } catch {}
   if (typeof window !== 'undefined') {
-    const from = window.location?.pathname || '/';
-    const sp = new URLSearchParams({ from }).toString();
+    const path = window.location?.pathname || '/';
+    // если уже на /login — не накручиваем ?from=/login и не дергаем редирект снова
+    if (path.startsWith('/login')) return;
+    const sp = new URLSearchParams({ from: path }).toString();
     window.location.replace(`/login?${sp}`);
   }
 }

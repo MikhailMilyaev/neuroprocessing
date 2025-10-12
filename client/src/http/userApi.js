@@ -48,6 +48,11 @@ export const refreshTokens = async () => {
   }
 };
 
+export const getMe = async () => {
+  const { data } = await $authHost.get('/user/me');
+  return data;  
+};
+
 export const logout = async () => {
   try { await $host.post('/user/logout'); } catch {}
   localStorage.removeItem(ACCESS_KEY);

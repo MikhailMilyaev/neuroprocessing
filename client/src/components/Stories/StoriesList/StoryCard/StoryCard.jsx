@@ -16,7 +16,7 @@ const formatEditedAt = (raw)=>{
 };
 
 export default function StoryCard({
-  id, slug, title, updatedAt, updated_at,
+  id, slug, title, updatedAt, updated_at, createdAt, created_at,
   isHighlighted, onContextMenu, onDelete,
   closeKey = 0,
 
@@ -31,7 +31,15 @@ export default function StoryCard({
   const btnRef = useRef(null);
   const inputRef = useRef(null);
 
-  const editedLabel = useMemo(()=>formatEditedAt(updatedAt ?? updated_at),[updatedAt,updated_at]);
+  // ✅ сырой таймстамп из пропсов
+  const rawTs = updatedAt ?? updated_at ?? createdAt ?? created_at;
+
+  const editedLabel = useMemo(() => {
+    if (isEditing) return '';
+    const src = rawTs ?? new Date(); // <-- fallback на “сейчас”
+    return formatEditedAt(src);
+  }, [isEditing, rawTs]);
+
   const hadTitle = !!(title && title.trim().length > 0);
   const isMobile = ()=> window.matchMedia('(max-width:700px)').matches;
   const displayTitle = hadTitle ? title : 'Сформулируйте проблему';
@@ -231,7 +239,7 @@ export default function StoryCard({
   };
 
   const rowRevealed = (revealed || offset < 0);
-  const showTime = !!editedLabel && !isEditing && hadTitle;
+  const showTime = !isEditing && hadTitle; // <-- всегда показываем, editedLabel сам корректный
 
   return (
     <div className={`${classes.row} ${rowRevealed ? classes.rowRevealed : ''}`}>
@@ -259,13 +267,11 @@ export default function StoryCard({
         </button>
       </div>
 
-
-{isEditing ? (
+      {isEditing ? (
         <div
           ref={btnRef}
           className={`${classes.storyCard} ${classes.slide} ${classes.editingMode}`}
-style={{ transform:`translateX(${offset}px)` }}
-          // свайпы во время редактирования можно отключить; оставь при необходимости:
+          style={{ transform:`translateX(${offset}px)` }}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
@@ -274,16 +280,17 @@ style={{ transform:`translateX(${offset}px)` }}
         >
           <input
             ref={inputRef}
-            className={classes.titleInput}            placeholder="Сформулируйте проблему"
+            className={classes.titleInput}
+            placeholder="Сформулируйте проблему"
             value={value}
             onChange={(e)=> setValue(e.target.value)}
             onBlur={commit}
             onKeyDown={onInputKeyDown}
             type="text"
             inputMode="text"
-           autoCapitalize="sentences"
+            autoCapitalize="sentences"
             autoCorrect="on"
-           enterKeyHint="done"
+            enterKeyHint="done"
             aria-label="Заголовок истории"
             autoFocus
           />

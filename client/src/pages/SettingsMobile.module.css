@@ -65,9 +65,40 @@
   @media (prefers-color-scheme: dark) {
     .viewport, .header, .content { background:#0b0f14; }
     .header { box-shadow: 0 1px 0 rgba(255,255,255,.08); }
+    .trialCard{ background:#0f141a; color:#e5e7eb; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+  .trialText{ color:#9aa4af; }
   }
 }
 
 /* iOS PWA: без safe-top смещения у sticky-хедера */
 :global(.pwa-standalone) .header { top: 0 !important; }
 :global(.pwa-standalone) .viewport { top: 0 !important; }
+
+
+.trialCard{
+  background: #fff;
+  color: #0b1f16;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 6px 20px rgba(16,24,40,.08);
+  margin: 6px 0 12px;
+}
+.trialTitle{ font-weight: 700; margin-bottom: 4px; }
+.trialText{ color:#37424a; }
+
+.subCard{
+  background: #fff;
+  color: #0b1f16;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 6px 20px rgba(16,24,40,.08);
+  margin: 6px 0 12px;
+  border: 1px solid rgba(0,0,0,.06);
+}
+.subTitle{ font-weight: 700; margin-bottom: 4px; color:#22c55e; }
+.subText{ color:#37424a; }
+
+@media (prefers-color-scheme: dark){
+  .subCard{ background:#0f141a; color:#e5e7eb; box-shadow: 0 6px 20px rgba(0,0,0,.35); border-color: rgba(255,255,255,.08); }
+  .subText{ color:#9aa4af; }
+}

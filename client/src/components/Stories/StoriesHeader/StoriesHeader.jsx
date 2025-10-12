@@ -118,12 +118,14 @@ export default function StoriesHeader({
    type="button"
    className={`${classes.tbtn} ${classes.primary}`}
    onClick={(e) => {
-     e.preventDefault();
-     e.stopPropagation();
-     // важно: НЕ передавать e внутрь!
-     // просим инлайн-режим + автофокус
-     onAddStory('', { inline: true });
-   }}
+   e.preventDefault();
+   e.stopPropagation();
+   const isMobile =
+     window.matchMedia('(max-width:700px)').matches &&
+     window.matchMedia('(hover: none)').matches &&
+     window.matchMedia('(pointer: coarse)').matches;
+   onAddStory('', { inline: isMobile }); // десктоп → без inline
+ }}
    aria-label="Добавить историю"
  >
                 <IoAdd className={classes.icon} />

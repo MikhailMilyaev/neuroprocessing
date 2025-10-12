@@ -65,6 +65,7 @@ export default function StoriesList({
 
   // id -> boolean: был ли заголовок в момент входа в редакт
   const hadTitleOnEditRef = useRef(new Map());
+  const suppressReopenRef = useRef(false);
 
   const isMobile = () =>
     window.matchMedia("(max-width:700px)").matches &&
@@ -78,35 +79,38 @@ export default function StoriesList({
   const forgetHadTitle = (id) => {
     hadTitleOnEditRef.current.delete(String(id));
   };
-useEffect(() => {
-   const onFocusNew = (e) => {
-     const raw = e?.detail;
-     if (raw == null) return;
-     const id = String(raw);
-     // На мобилке — сразу включаем режим редактирования СИНХРОННО
-     if (window.matchMedia('(max-width:700px)').matches &&
-         window.matchMedia('(hover: none)').matches &&
-         window.matchMedia('(pointer: coarse)').matches) {
-       flushSync(() => {
-         setEditingId(id);
-         rememberHadTitle(id, '');
-       });
-       // Моментальный фокус (та же цепочка жеста)
-       const row = document.querySelector(`[data-story-id="${id}"]`);
-       if (row) {
-         try { row.scrollIntoView({ behavior: 'auto', block: 'center' }); } catch {}
-       }
-       const input = row?.querySelector('input[aria-label="Заголовок истории"]');
-       if (input) {
-         try { input.focus({ preventScroll: true }); } catch { input.focus(); }
-         const len = input.value?.length ?? 0;
-         try { input.setSelectionRange(len, len); } catch {}
-       }
-     }
-   };
-   document.addEventListener('stories:focus-new', onFocusNew);
-   return () => document.removeEventListener('stories:focus-new', onFocusNew);
- }, []);
+
+  useEffect(() => {
+    const onFocusNew = (e) => {
+      const raw = e?.detail;
+      if (raw == null) return;
+      if (suppressReopenRef.current) return;
+      const id = String(raw);
+      // На мобилке — сразу включаем режим редактирования СИНХРОННО
+      if (window.matchMedia('(max-width:700px)').matches &&
+          window.matchMedia('(hover: none)').matches &&
+          window.matchMedia('(pointer: coarse)').matches) {
+        flushSync(() => {
+          setEditingId(id);
+          rememberHadTitle(id, '');
+        });
+        // Моментальный фокус (та же цепочка жеста)
+        const row = document.querySelector(`[data-story-id="${id}"]`);
+        if (row) {
+          try { row.scrollIntoView({ behavior: 'auto', block: 'center' }); } catch {}
+        }
+        const input = row?.querySelector('input[aria-label="Заголовок истории"]');
+        if (input) {
+          try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+          const len = input.value?.length ?? 0;
+          try { input.setSelectionRange(len, len); } catch {}
+        }
+      }
+    };
+    document.addEventListener('stories:focus-new', onFocusNew);
+    return () => document.removeEventListener('stories:focus-new', onFocusNew);
+  }, []);
+
   // Сигнал «создать черновик» (исторический поток)
   useEffect(() => {
     if (!inlineAddSignal) return;
@@ -120,23 +124,18 @@ useEffect(() => {
   // Мобильный путь: пришёл id новой карточки → включаем редакт и фокус на ней
   useEffect(() => {
     if (!newlyCreatedId) return;
-    const id = String(newlyCreatedId);
-    setEditingId(id);
-    hadTitleOnEditRef.current.set(id, false);
-
-    requestAnimationFrame(() => {
-      const row = document.querySelector(`[data-story-id="${id}"]`);
-     row?.scrollIntoView({ behavior: "smooth", block: "center" });
-     requestAnimationFrame(() => {
-       const input = row?.querySelector('input[aria-label="Заголовок истории"]');
-       if (input) {
-         try { input.focus({ preventScroll: true }); } catch { input.focus(); }
-         const len = input.value?.length ?? 0;
-         try { input.setSelectionRange(len, len); } catch {}
-       }
-     });
-   });
-  }, [newlyCreatedId]);
+    // Мобилка: инлайн-создание уже отработало → НЕ возвращаем в редакт и просто чистим флаг
+    const isMob =
+      window.matchMedia('(max-width:700px)').matches &&
+      window.matchMedia('(hover: none)').matches &&
+      window.matchMedia('(pointer: coarse)').matches;
+    if (isMob) {
+      clearNewlyCreated?.();
+      return;
+    }
+    // Десктоп: обычно роутинг делается в onAddStory, здесь ничего не делаем.
+    clearNewlyCreated?.();
+  }, [newlyCreatedId, clearNewlyCreated]);
 
   const finishEditing = (id) => {
     if (editingId === id) setEditingId(null);
@@ -152,85 +151,122 @@ useEffect(() => {
   };
 
   const submitDraft = async (title) => {
-  const t = (title || "").trim();
-  if (!t) return;
+    const t = (title || "").trim();
+    if (!t) return;
 
-  try {
-    // создаём историю (Stories.handleAddStory сам добавит её в список и вернёт объект)
-    await onAddStory?.(t);
+    try {
+      suppressReopenRef.current = true;
 
-    // просто выходим из режима редактирования, НИКАКОГО navigate
-    setEditingId(null);
-    setDraftId(null);
-  } catch (e) {
-    console.error("[create story]", e);
-  }
-};
-  useEffect(() => {
-  const onTempResolved = (e) => {
-    const { tempId, realId } = e?.detail || {};
-    if (!tempId || !realId) return;
+      // Только МОБИЛЬНЫЙ путь
+      const isMob =
+        window.matchMedia('(max-width:700px)').matches &&
+        window.matchMedia('(hover: none)').matches &&
+        window.matchMedia('(pointer: coarse)').matches;
 
-    // Если редактировали именно temp — переносим режим редактирования на реальный id
-    const wasEditing = String(editingId) === String(tempId);
-    if (!wasEditing) return;
-
-    flushSync(() => {
-      setEditingId(String(realId));
-      // перенесём флаг "был ли заголовок" на новый id
-      const had = hadTitleOnEditRef.current.get(String(tempId));
-      if (had !== undefined) {
-        hadTitleOnEditRef.current.delete(String(tempId));
-        hadTitleOnEditRef.current.set(String(realId), had);
+      if (isMob) {
+        // 1) Немедленно выходим из режима редактирования (до await)
+        flushSync(() => {
+          setEditingId(null);
+          setDraftId(null);
+        });
+        // 2) Снимаем фокус с поля — прячем клавиатуру
+        try { document.activeElement?.blur?.(); } catch {}
       }
-    });
 
-    // вернуть фокус в инпут новой карточки
-    const row = document.querySelector(`[data-story-id="${realId}"]`);
-    if (row) {
-      try { row.scrollIntoView({ behavior: 'auto', block: 'center' }); } catch {}
-    }
-    const input = row?.querySelector('input[aria-label="Заголовок истории"]');
-    if (input) {
-      try { input.focus({ preventScroll: true }); } catch { input.focus(); }
-      const len = input.value?.length ?? 0;
-      try { input.setSelectionRange(len, len); } catch {}
+      // 3) Создаём историю (список потом сам обновится)
+      await onAddStory?.(t);
+
+      clearNewlyCreated?.();
+    } catch (e) {
+      console.error("[create story]", e);
+    } finally {
+      // Даём списку перерендериться и защищаемся от stories:focus-new
+      setTimeout(() => { suppressReopenRef.current = false; }, 120);
     }
   };
 
-  document.addEventListener('stories:temp-resolved', onTempResolved);
-  return () => document.removeEventListener('stories:temp-resolved', onTempResolved);
-}, [editingId]);
+  useEffect(() => {
+    const onTempResolved = (e) => {
+      const { tempId, realId } = e?.detail || {};
+      if (!tempId || !realId) return;
+      if (suppressReopenRef.current) return;
 
+      // Если редактировали именно temp — переносим режим редактирования на реальный id
+      const wasEditing = String(editingId) === String(tempId);
+      if (!wasEditing) return;
 
-  const submitRename = async (id, value, currentTitle) => {
+      flushSync(() => {
+        setEditingId(String(realId));
+        // перенесём флаг "был ли заголовок" на новый id
+        const had = hadTitleOnEditRef.current.get(String(tempId));
+        if (had !== undefined) {
+          hadTitleOnEditRef.current.delete(String(tempId));
+          hadTitleOnEditRef.current.set(String(realId), had);
+        }
+      });
+
+      // вернуть фокус в инпут новой карточки
+      const row = document.querySelector(`[data-story-id="${realId}"]`);
+      if (row) {
+        try { row.scrollIntoView({ behavior: 'auto', block: 'center' }); } catch {}
+      }
+      const input = row?.querySelector('input[aria-label="Заголовок истории"]');
+      if (input) {
+        try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+        const len = input.value?.length ?? 0;
+        try { input.setSelectionRange(len, len); } catch {}
+      }
+    };
+
+    document.addEventListener('stories:temp-resolved', onTempResolved);
+    return () => document.removeEventListener('stories:temp-resolved', onTempResolved);
+  }, [editingId]);
+
+  const submitRename = async (id, value /* currentTitle */) => {
     const trimmed = (value || "").trim();
     const hadTitle = !!hadTitleOnEditRef.current.get(String(id));
     const isTemp = String(id).startsWith("temp-");
 
     if (isTemp) {
-    try {
-      await onTempCommit?.(id, trimmed);
-    } finally {
-      finishEditing(id);
+      // temp → коммитим через onTempCommit
+      try {
+        suppressReopenRef.current = true;
+
+        const isMob =
+          window.matchMedia('(max-width:700px)').matches &&
+          window.matchMedia('(hover: none)').matches &&
+          window.matchMedia('(pointer: coarse)').matches;
+
+        if (isMob) {
+          flushSync(() => { setEditingId(null); });
+          try { document.activeElement?.blur?.(); } catch {}
+        }
+
+        await onTempCommit?.(id, trimmed);
+
+        if (!isMob) finishEditing(id);
+      } finally {
+        setTimeout(() => { suppressReopenRef.current = false; }, 120);
+      }
+      return;
     }
-    return;
-  }
 
     if (!trimmed) {
       if (hadTitle) {
-        // раньше заголовок был → НЕ удаляем, сохраняем пустой
         try {
+          suppressReopenRef.current = true;
           await onRenameStory?.(id, "");
-        } finally {
           finishEditing(id);
+        } finally {
+          setTimeout(() => { suppressReopenRef.current = false; }, 0);
         }
       } else {
-        // новая пустая → удаляем
         try {
+          suppressReopenRef.current = true;
           await onDeleteStory?.(id);
-        } finally {
           finishEditing(id);
+        } finally {
+          setTimeout(() => { suppressReopenRef.current = false; }, 0);
         }
       }
       return;
@@ -238,11 +274,25 @@ useEffect(() => {
 
     // обычное переименование
     try {
-  await onRenameStory?.(id, trimmed);
-  // на мобиле НЕ навигируем — остаёмся в списке
-} finally {
-  finishEditing(id);
-}
+      suppressReopenRef.current = true;
+
+      const isMob =
+        window.matchMedia('(max-width:700px)').matches &&
+        window.matchMedia('(hover: none)').matches &&
+        window.matchMedia('(pointer: coarse)').matches;
+
+      if (isMob) {
+        // Закрываем редакт сразу, до await — карточка моментально кликабельна
+        flushSync(() => { setEditingId(null); });
+        try { document.activeElement?.blur?.(); } catch {}
+      }
+
+      await onRenameStory?.(id, trimmed);
+
+      if (!isMob) finishEditing(id);
+    } finally {
+      setTimeout(() => { suppressReopenRef.current = false; }, 120);
+    }
   };
 
   /* ===== выбор списка ===== */
@@ -306,39 +356,38 @@ useEffect(() => {
                   : "Нажмите «Добавить», чтобы создать историю."
               }
               ctaLabel={!showArchive ? "Добавить историю" : undefined}
-onCtaClick={
-  !showArchive
-    ? () => {
-        if (editingId) return;
-        const id = `draft-${Date.now()}`;
+              onCtaClick={
+                !showArchive
+                  ? () => {
+                      if (editingId) return;
+                      const id = `draft-${Date.now()}`;
 
-        flushSync(() => {
-          setDraftId(id);
-          setEditingId(id);
-          rememberHadTitle(id, "");
-        });
+                      flushSync(() => {
+                        setDraftId(id);
+                        setEditingId(id);
+                        rememberHadTitle(id, "");
+                      });
 
-        const tryFocus = (retries = 6) => {
-          const row = document.querySelector(`[data-story-id="${id}"]`);
-          const input = row?.querySelector('input[aria-label="Заголовок истории"]');
-          if (input) {
-            try { row?.scrollIntoView({ behavior: 'auto', block: 'center' }); } catch {}
-            try { input.focus({ preventScroll: true }); } catch { input.focus(); }
-            const len = input.value?.length ?? 0;
-            try { input.setSelectionRange(len, len); } catch {}
-            return;
-          }
-          if (retries > 0) {
-            requestAnimationFrame(() => tryFocus(retries - 1));
-          }
-        };
+                      const tryFocus = (retries = 6) => {
+                        const row = document.querySelector(`[data-story-id="${id}"]`);
+                        const input = row?.querySelector('input[aria-label="Заголовок истории"]');
+                        if (input) {
+                          try { row?.scrollIntoView({ behavior: 'auto', block: 'center' }); } catch {}
+                          try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+                          const len = input.value?.length ?? 0;
+                          try { input.setSelectionRange(len, len); } catch {}
+                          return;
+                        }
+                        if (retries > 0) {
+                          requestAnimationFrame(() => tryFocus(retries - 1));
+                        }
+                      };
 
-        // первая попытка сразу (тот же жест), затем — ретрай через rAF
-        tryFocus();
-      }
-    : undefined
-}
-
+                      // первая попытка сразу (тот же жест), затем — ретрай через rAF
+                      tryFocus();
+                    }
+                  : undefined
+              }
               secondaryCtaLabel={
                 showArchive ? "К историям" : archiveStories.length > 0 ? "Открыть архив" : undefined
               }
