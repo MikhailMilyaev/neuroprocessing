@@ -1,5 +1,27 @@
+/* ДЕСКТОП — оставляем как было */
 .container {
-    max-width: 385px;
-    margin: 165px auto 0 auto;
-    text-align: center;
+  max-width: 385px;
+  margin: 165px auto 0 auto;
+  text-align: center;
+}
+
+/* МОБИЛА — мягкое центрирование, без растягивания контента */
+@media (max-width: 700px) {
+  :root {
+    --sat: env(safe-area-inset-top);
+    --sar: env(safe-area-inset-right);
+    --sab: env(safe-area-inset-bottom);
+    --sal: env(safe-area-inset-left);
+  }
+
+  .container {
+    margin: 0 auto;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* визуально по центру */
+    padding: calc(12px + var(--sat, 0px)) calc(16px + var(--sar, 0px))
+             calc(16px + var(--sab, 0px)) calc(16px + var(--sal, 0px));
+    box-sizing: border-box;
+  }
 }

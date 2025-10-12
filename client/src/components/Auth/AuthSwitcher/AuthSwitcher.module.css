@@ -1,17 +1,27 @@
+/* Та же ширина, что у кнопки и инпутов */
 .authSwitcher {
-    width: 100%; 
-    padding: 13px 11px;
-    border-radius: 11px;
-    display: block;
-    box-sizing: border-box;
-    font-size: 18px;
-    color: black;
-    text-decoration: none;
-    transition: opacity 0.3s ease;
-    background-color: #AFF4C6;
+  display: block;
+  width: 100%;
+  max-width: 385px;
+  margin: 6px auto 0 auto;
+  padding: 13px 11px;
+  border-radius: 11px;
+  box-sizing: border-box;
+  font-size: 18px;
+  color: black;
+  text-decoration: none;
+  transition: opacity 0.3s ease, transform .02s ease;
+  background-color: #AFF4C6;
+  text-align: center;
 }
 
+/* убрали медиа-правило, чтобы ширина не отличалась на ПК */
+
 .authSwitcher:hover {
-    cursor: pointer;
-    opacity: 0.7;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.authSwitcher:active {
+  transform: translateY(1px);
 }

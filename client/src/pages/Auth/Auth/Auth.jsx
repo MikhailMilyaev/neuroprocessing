@@ -31,6 +31,7 @@ const Auth = observer(() => {
   const [errorKey, setErrorKey] = useState(0)
   const [messageType, setMessageType] = useState('error')
 
+  // сообщение об успешной верификации
   useEffect(() => {
     const sp = new URLSearchParams(location.search)
     if (isLogin && sp.get('verified') === '1') {
@@ -40,6 +41,18 @@ const Auth = observer(() => {
       setErrorKey(prev => prev + 1)
     }
   }, [isLogin, location.search])
+
+  // ГЛОБАЛЬНО отключаем скролл на экране авторизации (ПК и мобила)
+  useEffect(() => {
+    const prevHtml = document.documentElement.style.overflow
+    const prevBody = document.body.style.overflow
+    document.documentElement.style.overflow = 'hidden'
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.documentElement.style.overflow = prevHtml
+      document.body.style.overflow = prevBody
+    }
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -102,6 +115,7 @@ const Auth = observer(() => {
     }
   }
 
+  // сброс локал. стейта при переключении маршрута
   useEffect(() => {
     setWasSubmitted(false)
     setName('')
@@ -116,7 +130,7 @@ const Auth = observer(() => {
       <Brand />
 
       {isLogin ? (
-        <form>
+        <form onSubmit={handleSubmit}>
           <FormInput
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -128,12 +142,15 @@ const Auth = observer(() => {
             onChange={(e) => setPassword(e.target.value)}
             type='password'
             placeholder='Пароль'
-            containerStyle={{ marginBottom: 8 }}    
+            containerStyle={{ marginBottom: 8 }}
           />
           <RecoveryButton />
+          <SubmitButton onSubmit={handleSubmit} isLoading={isLoading}>
+            Войти
+          </SubmitButton>
         </form>
       ) : (
-        <form>
+        <form onSubmit={handleSubmit}>
           <FormInput
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -151,7 +168,7 @@ const Auth = observer(() => {
             onChange={(e) => setPhone(e.target.value)}
             type='tel'
             autoComplete='tel'
-            placeholder='Телефон (РФ: 8XXXXXXXXXX)'   
+            placeholder='Телефон (РФ: 8XXXXXXXXXX)'
           />
           <FormInput
             value={password}
@@ -164,21 +181,26 @@ const Auth = observer(() => {
             onChange={(e) => setConfirmedPassword(e.target.value)}
             type='password'
             placeholder='Подтвердите пароль'
-            containerStyle={{ marginBottom: 16 }}  
+            containerStyle={{ marginBottom: 16 }}
           />
+          <SubmitButton onSubmit={handleSubmit} isLoading={isLoading}>
+            Создать аккаунт
+          </SubmitButton>
         </form>
       )}
-
-      <SubmitButton onSubmit={handleSubmit} isLoading={isLoading}>
-        {isLogin ? 'Войти' : 'Создать аккаунт'}
-      </SubmitButton>
 
       <AuthSwitcher to={isRegistration ? LOGIN_ROUTE : REGISTRATION_ROUTE}>
         {isRegistration ? 'Войти' : 'Создать аккаунт'}
       </AuthSwitcher>
 
       {wasSubmitted && errorMessage && (
-        <Toast message={errorMessage} type={messageType} duration={3000} version={errorKey} placement="top"/>
+        <Toast
+          message={errorMessage}
+          type={messageType}
+          duration={3000}
+          version={errorKey}
+          placement="top"
+        />
       )}
     </div>
   )

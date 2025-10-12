@@ -1,23 +1,31 @@
+/* Одинаковая ширина на всех устройствах, как у инпутов */
 .submitButton {
   width: 100%;
-  padding: 13px 11px;               
-  border-radius: 11px;              
-  margin-bottom: 11px;
+  max-width: 385px;
+  margin: 12px auto;
+  padding: 13px 14px;
+  border-radius: 11px;
   display: flex;
-  align-items: center;      
+  align-items: center;
   justify-content: center;
   gap: 11px;
   font-size: 18px;
-  line-height: 1;            
+  line-height: 1;
   border: none;
   color: #fff;
   background-color: #000;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.3s ease, transform .02s ease;
 }
+
+/* убрали медиа-правило, чтобы не сжималась на десктопе */
 
 .submitButton:hover {
   cursor: pointer;
-  opacity: 0.7;
+  opacity: 0.8;
+}
+
+.submitButton:active {
+  transform: translateY(1px);
 }
 
 .submitButton:disabled {
@@ -26,7 +34,4 @@
 }
 
 .btnText { display: inline-flex; }
-
-.btnSpinner {
-  flex: 0 0 auto;
-}
+.btnSpinner { flex: 0 0 auto; }
