@@ -14,7 +14,7 @@ router.get('/check', authMiddleware, userController.check);
 router.post('/token/refresh', enforceOrigin, refreshLimiter, [v.deviceId], validate, userController.refresh);
 router.post('/logout', enforceOrigin, userController.logout);
 router.post('/logout-all', enforceOrigin, authMiddleware, userController.logoutAll);
-
+router.get('/me', authMiddleware, userController.me);
 router.get('/verify', emailFlowLimiter, userController.verifyEmail);
 router.post('/resend-verification', emailFlowLimiter, userController.resendVerification);
 router.get('/verify-status', emailFlowLimiter, [v.verifyEmailQuery], validate, userController.verifyStatus);

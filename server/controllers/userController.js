@@ -7,6 +7,7 @@ const { User, RefreshToken, IdentityLink } = require('../models/models');
 const { encryptLink, KEY_VERSION, decryptLink } = require('../utils/cryptoIdentity');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../smtp');
 const { v4: uuidv4 } = require('uuid');
+const { TRIAL_DAYS, addDays } = require('../config/trial');
 
 function normalizeRuPhone(raw) {
   const digits = String(raw || '').replace(/\D/g, '');
@@ -181,6 +182,11 @@ class userController {
       verificationResendCount: 1,
       verificationResendResetAt: new Date(now.getTime() + VERIFY_DAILY_WINDOW_HOURS * 3600 * 1000),
     })
+
+    user.trialStartedAt = now;
+    user.trialEndsAt = addDays(now, TRIAL_DAYS);
+    user.subscriptionStatus = 'trial';
+    await user.save();
 
     const actorId = uuidv4()
     const cipher_blob = encryptLink({ actor_id: actorId })
@@ -678,6 +684,35 @@ class userController {
     const [count] = await RefreshToken.update({ revokedAt: new Date() }, { where });
     return res.json({ ok: true, count });
   }
+  async me(req, res) {
+  const uid = req.user?.id;
+  if (!uid) return res.status(401).json({ message: 'Не авторизован.' });
+
+  const user = await User.findByPk(uid, {
+    attributes: [
+      'id','name','email','role',
+      'trialStartedAt','trialEndsAt','subscriptionStatus','subscriptionEndsAt',
+      'phone','phoneVerified','isVerified','createdAt'
+    ]
+  });
+
+  if (!user) return res.status(404).json({ message: 'Не найден.' });
+
+  // actorId вытаскиваем из IdentityLink (по желанию)
+  let actorId = null;
+  const link = await IdentityLink.findOne({ where: { user_id: user.id }, attributes: ['cipher_blob'] });
+  if (link) {
+    try { actorId = decryptLink(link.cipher_blob)?.actor_id || null; } catch {}
+  }
+
+  return res.json({
+    user,
+    actorId,
+    serverNow: new Date().toISOString(),
+  });
+}
+
+
 }
 
 module.exports = new userController();

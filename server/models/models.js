@@ -24,6 +24,15 @@ const User = sequelize.define('user', {
   resetLastSentAt: { type: DataTypes.DATE, allowNull: true },
   resetResendCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
   resetResendResetAt: { type: DataTypes.DATE, allowNull: true },
+   subscriptionEndsAt: { type: DataTypes.DATE, allowNull: true },
+
+  trialStartedAt: { type: DataTypes.DATE, allowNull: true },
+  trialEndsAt:    { type: DataTypes.DATE, allowNull: true },
+  subscriptionStatus: {
+    type: DataTypes.ENUM('trial', 'active', 'expired'),
+    allowNull: false,
+    defaultValue: 'trial',
+  },
 });
 
 const IdentityLink = sequelize.define('identity_link', {
