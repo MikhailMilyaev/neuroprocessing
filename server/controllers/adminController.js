@@ -1,3 +1,4 @@
+// server/controllers/adminController.js
 const { Op } = require('sequelize');
 const { User, IdentityLink, Story } = require('../models/models');
 const { decryptLink } = require('../utils/cryptoIdentity');
@@ -12,6 +13,8 @@ const pickUser = (u) => ({
   subscriptionStatus: u.subscriptionStatus,
   trialEndsAt: u.trialEndsAt,
   subscriptionEndsAt: u.subscriptionEndsAt,
+  role: u.role,            // добавили
+  isVerified: u.isVerified // добавили
 });
 
 function addDays(date, days) {
@@ -21,67 +24,31 @@ function addDays(date, days) {
 
 class AdminController {
   // GET /api/admin/users?query=&limit=50&offset=0
-  // Теперь по умолчанию возвращает ТОЛЬКО тех, у кого есть доступ:
-  // - isVerified = true
-  // - role != 'ADMIN'
-  // - (active && (subscriptionEndsAt is null || > now)) || (trial && trialEndsAt > now)
+  // >>> Возвращаем ВСЕХ пользователей (без фильтра по подписке/триалу).
+  // Поиск работает по email/name/phone.
   async listUsers(req, res) {
     const { query = '', limit = 50, offset = 0 } = req.query;
 
-    const now = new Date();
-
-    // Базовый фильтр "имеют доступ"
-    const accessWhere = {
-      isVerified: true,
-      role: { [Op.ne]: 'ADMIN' },
-      [Op.or]: [
-        {
-          // Активная подписка: либо бессрочная (NULL), либо ещё не истекла
-          [Op.and]: [
-            { subscriptionStatus: 'active' },
-            {
-              [Op.or]: [
-                { subscriptionEndsAt: { [Op.is]: null } },
-                { subscriptionEndsAt: { [Op.gt]: now } },
-              ],
-            },
+    // Поисковый фильтр (без фильтра по доступу)
+    const searchClause = query
+      ? {
+          [Op.or]: [
+            { email: { [Op.iLike]: `%${query}%` } },
+            { name:  { [Op.iLike]: `%${query}%` } },
+            { phone: { [Op.iLike]: `%${query}%` } },
           ],
-        },
-        {
-          // Ещё действующий триал
-          [Op.and]: [
-            { subscriptionStatus: 'trial' },
-            { trialEndsAt: { [Op.gt]: now } },
-          ],
-        },
-      ],
-    };
-
-    // Поиск
-    let searchClause = {};
-    if (query) {
-      searchClause = {
-        [Op.or]: [
-          { email: { [Op.iLike]: `%${query}%` } },
-          { name:  { [Op.iLike]: `%${query}%` } },
-          { phone: { [Op.iLike]: `%${query}%` } },
-        ],
-      };
-    }
-
-    const where = query
-      ? { [Op.and]: [accessWhere, searchClause] }
-      : accessWhere;
+        }
+      : {};
 
     const { rows, count } = await User.findAndCountAll({
-      where,
+      where: searchClause,
       order: [['createdAt', 'DESC']],
       limit: Math.min(Number(limit) || 50, 200),
       offset: Number(offset) || 0,
       attributes: [
-        'id','name','email','phone','phoneVerified','createdAt',
-        'subscriptionStatus','trialEndsAt','subscriptionEndsAt',
-        'role','isVerified',
+        'id', 'name', 'email', 'phone', 'phoneVerified', 'createdAt',
+        'subscriptionStatus', 'trialEndsAt', 'subscriptionEndsAt',
+        'role', 'isVerified',
       ],
     });
 
@@ -89,14 +56,21 @@ class AdminController {
     const withCounts = [];
     for (const u of rows) {
       let actorId = null;
-      const link = await IdentityLink.findOne({ where: { user_id: u.id }, attributes: ['cipher_blob'] });
+      const link = await IdentityLink.findOne({
+        where: { user_id: u.id },
+        attributes: ['cipher_blob'],
+      });
       if (link) {
-        try { actorId = decryptLink(link.cipher_blob)?.actor_id || null; } catch {}
+        try {
+          actorId = decryptLink(link.cipher_blob)?.actor_id || null;
+        } catch {}
       }
+
       let storyCount = 0;
       if (actorId) {
         storyCount = await Story.count({ where: { actor_id: actorId } });
       }
+
       withCounts.push({ ...pickUser(u), storyCount });
     }
 
@@ -113,9 +87,12 @@ class AdminController {
     if (!user) return res.status(404).json({ message: 'not found' });
 
     const now = new Date();
-    const base = (user.subscriptionStatus === 'active' && user.subscriptionEndsAt && now < user.subscriptionEndsAt)
-      ? new Date(user.subscriptionEndsAt)
-      : now;
+    const base =
+      user.subscriptionStatus === 'active' &&
+      user.subscriptionEndsAt &&
+      now < user.subscriptionEndsAt
+        ? new Date(user.subscriptionEndsAt)
+        : now;
 
     user.subscriptionStatus = 'active';
     user.subscriptionEndsAt = addDays(base, days);
