@@ -13,7 +13,6 @@ const router = require('./routes/index');
 const errorHandler = require('./middleware/ErrorHandlingMiddleware');
 const { verifyTransporter } = require('./smtp');
 const { cleanupRefreshTokens } = require('./jobs/cleanup');
-
 const { createHub } = require('./lib/wsHub');
 
 const PORT = process.env.PORT || 5000;
@@ -62,18 +61,21 @@ app.get('/healthz', (req, res) => res.status(200).json({ ok: true }));
 
 app.use(cookieParser());
 app.use('/api', router);
-
 app.use(errorHandler);
 
 const server = http.createServer(app);
-const hub = createHub(server);
+const hub = createHub(server);           
 app.locals.hub = hub;
+
+let cleanupTimer = null;
+let shuttingDown = false;
 
 (async () => {
   try {
     await sequelize.authenticate();
 
-    setInterval(cleanupRefreshTokens, 24 * 60 * 60 * 1000);
+    cleanupTimer = setInterval(cleanupRefreshTokens, 24 * 60 * 60 * 1000);
+    cleanupTimer.unref?.();
     cleanupRefreshTokens();
 
     server.listen(PORT, '0.0.0.0', async () => {
@@ -86,3 +88,53 @@ app.locals.hub = hub;
     process.exit(1);
   }
 })();
+
+async function gracefulShutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[shutdown] received ${signal}, closing...`);
+
+  const closeHttp = new Promise((resolve) => {
+    server.close(() => {
+      console.log('[shutdown] http server closed');
+      resolve();
+    });
+    setTimeout(resolve, 5000).unref?.();
+  });
+
+  const closeWs = (async () => {
+    try {
+      await hub?.shutdown?.();
+      console.log('[shutdown] ws server closed');
+    } catch (e) {
+    }
+  })();
+
+  try { cleanupTimer && clearInterval(cleanupTimer); } catch {}
+
+  const closeDb = (async () => {
+    try {
+      await sequelize.close();
+      console.log('[shutdown] db pool closed');
+    } catch (e) {}
+  })();
+
+  await Promise.race([
+    Promise.all([closeHttp, closeWs, closeDb]),
+    new Promise(r => setTimeout(r, 7000)),  
+  ]);
+
+  process.exit(0);
+}
+
+['SIGINT', 'SIGTERM'].forEach(sig => {
+  process.on(sig, () => gracefulShutdown(sig));
+});
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err);
+  gracefulShutdown('uncaughtException');
+});
+process.on('unhandledRejection', (err) => {
+  console.error('[unhandledRejection]', err);
+  gracefulShutdown('unhandledRejection');
+});

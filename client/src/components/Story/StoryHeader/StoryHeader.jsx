@@ -20,7 +20,6 @@ const StoryHeader = ({
 }) => {
   const hasRound = (reevalRound ?? 0) > 0;
 
-  // меряем высоту хедера — нужно: (1) отступ под ним, (2) позиция меню
   const headerRef = useRef(null);
   useEffect(() => {
     const el = headerRef.current;
@@ -89,12 +88,12 @@ const StoryHeader = ({
   onPointerDown={(e) => {
     e.preventDefault();
     e.stopPropagation();
-    onAddBelief?.('pointer'); // <-- ВАЖНО: сообщаем, что это pointer-жест
+    onAddBelief?.('pointer');  
   }}
   onClick={(e) => {
     e.preventDefault();
     e.stopPropagation();
-    onAddBelief?.('click'); // запасной вариант для десктопа
+    onAddBelief?.('click');  
   }}
   aria-label="Добавить идею"
 >

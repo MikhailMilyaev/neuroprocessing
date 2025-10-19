@@ -1,9 +1,0 @@
-@import "./breakpoints.css";
-
-a { text-decoration: none; }
-a:hover, a:active, a:focus { text-decoration: none; }
-
-.container {
-  width: min(100% - 24px, 1120px);
-  margin-inline: auto;
-}

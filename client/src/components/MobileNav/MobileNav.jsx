@@ -2,24 +2,26 @@ import { NavLink } from 'react-router-dom';
 import styles from './MobileNav.module.css';
 import {
   STORIES_ROUTE,
-  IDEAS_ROUTE,
+  IDEA_DRAFTS_ROUTE,
   EDUCATION_ROUTE,
-  SETTINGS_ROUTE,          // <-- добавили
+  SETTINGS_ROUTE,
+  PRACTICES_ROUTE,
 } from '../../utils/consts';
 import {
-  IoBookOutline,
   IoBulbOutline,
   IoListOutline,
   IoSchoolOutline,
   IoSettingsOutline,
+  IoConstructOutline,
 } from 'react-icons/io5';
 
 export default function MobileNav() {
   const items = [
     { to: STORIES_ROUTE,     label: 'Истории',   Icon: IoListOutline },
-    { to: IDEAS_ROUTE,       label: 'Идеи',      Icon: IoBulbOutline },
+    { to: IDEA_DRAFTS_ROUTE,       label: 'Идеи',      Icon: IoBulbOutline },
+    { to: PRACTICES_ROUTE,   label: 'Практики',  Icon: IoConstructOutline }, 
     { to: EDUCATION_ROUTE,   label: 'Обучение',  Icon: IoSchoolOutline },
-    { to: SETTINGS_ROUTE,    label: 'Настройки', Icon: IoSettingsOutline }, // <-- сюда
+    { to: SETTINGS_ROUTE,    label: 'Настройки', Icon: IoSettingsOutline },
   ];
 
   return (

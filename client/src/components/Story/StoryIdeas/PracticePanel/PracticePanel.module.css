@@ -6,15 +6,15 @@
   position: relative;
   margin-top: 8px;
   background: transparent;
-  overflow: hidden;           
-  border-radius: 16px;        
+  overflow: hidden;
+  border-radius: 16px;
 }
 
 .list {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 2px 2px  0;
+  padding: 2px 2px 0;
   margin: 0;
   list-style: none;
   max-height: inherit;
@@ -50,31 +50,52 @@
   font-size: 20px;
   font-weight: 500;
   line-height: 1.2;
-  white-space: nowrap;       
+  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;    
+  text-overflow: ellipsis;
   flex: 1 1 auto;
-  min-width: 0;               
+  min-width: 0;
 }
 
-.openBtn {
+.actions {
+  display: inline-flex;
+  gap: 8px;
   flex: 0 0 auto;
-  padding: 6px 30px;
+}
+
+/* Обучение — нейтральная кнопка */
+.educationBtn {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #111;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background .15s ease, opacity .15s ease, box-shadow .15s ease;
+}
+.educationBtn:hover { background: #f9fafb; }
+
+/* Запустить — акцентная кнопка */
+.runBtn {
+  padding: 6px 14px;
   border-radius: 999px;
   border: none;
-  background: #6F6F6F;
+  background: #14AE5C;
   color: #fff;
-  font-weight: 500;
+  font-weight: 600;
   font-size: 14px;
   cursor: pointer;
   transition: opacity .15s ease, box-shadow .15s ease;
 }
+.runBtn:hover { opacity: .9; }
 
-.openBtn:hover { opacity: .9; }
-
-.openBtn:focus-visible {
-  outline: 2px solid #111;
-  outline-offset: 2px;
+.runBtnDisabled,
+.runBtn:disabled {
+  background: #9ca3af;
+  cursor: default;
+  opacity: .9;
 }
 
 /* Мобилка: вписываем панель практик в те же 10px */
@@ -82,11 +103,10 @@
   .vwrap {
     margin-left: 0;
     margin-right: 0;
-    border-radius: 12px; /* можно оставить мягкое скругление, без рамок */
+    border-radius: 12px;
   }
 
   .list {
-    /* тонкий, но видимый скролл; остаётся как у текста */
     scrollbar-width: thin;
     scrollbar-color: rgba(0,0,0,.28) transparent;
   }

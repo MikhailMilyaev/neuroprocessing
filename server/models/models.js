@@ -9,7 +9,7 @@ const User = sequelize.define('user', {
   prevPasswordHash: { type: DataTypes.STRING, allowNull: true },
   role: { type: DataTypes.STRING, defaultValue: 'USER' },
 
-  phone: { type: DataTypes.STRING(16), allowNull: false },           
+  phone: { type: DataTypes.STRING(16), allowNull: false },
   phoneVerified: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
 
   isVerified: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
@@ -18,21 +18,11 @@ const User = sequelize.define('user', {
   verificationLastSentAt: { type: DataTypes.DATE, allowNull: true },
   verificationResendCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
   verificationResendResetAt: { type: DataTypes.DATE, allowNull: true },
-
   passwordResetToken: { type: DataTypes.STRING, allowNull: true },
   passwordResetExpires: { type: DataTypes.DATE, allowNull: true },
   resetLastSentAt: { type: DataTypes.DATE, allowNull: true },
   resetResendCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
   resetResendResetAt: { type: DataTypes.DATE, allowNull: true },
-   subscriptionEndsAt: { type: DataTypes.DATE, allowNull: true },
-
-  trialStartedAt: { type: DataTypes.DATE, allowNull: true },
-  trialEndsAt:    { type: DataTypes.DATE, allowNull: true },
-  subscriptionStatus: {
-    type: DataTypes.ENUM('trial', 'active', 'expired'),
-    allowNull: false,
-    defaultValue: 'trial',
-  },
 });
 
 const IdentityLink = sequelize.define('identity_link', {
@@ -50,9 +40,7 @@ IdentityLink.belongsTo(User, { foreignKey: 'user_id', onDelete: 'CASCADE' });
 
 const Story = sequelize.define('story', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-
   actor_id: { type: DataTypes.UUID, allowNull: false },
-
   slug: { type: DataTypes.STRING(255), allowNull: false },
   title: { type: DataTypes.STRING(200), allowNull: false, defaultValue: '' },
   content: { type: DataTypes.TEXT, allowNull: false, defaultValue: '' },
@@ -79,7 +67,7 @@ const Story = sequelize.define('story', {
   ],
 });
 
-const Idea = sequelize.define('idea', {
+const StoryIdea = sequelize.define('story_idea', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   storyId: { type: DataTypes.INTEGER, allowNull: false },
   text: { type: DataTypes.TEXT, allowNull: false, defaultValue: '' },
@@ -87,7 +75,18 @@ const Idea = sequelize.define('idea', {
   introducedRound: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0, field: 'introduced_round' },
   sortOrder: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0, field: 'sort_order' },
 }, {
+  tableName: 'story_ideas',
   indexes: [{ fields: ['storyId'] }, { fields: ['storyId', 'sort_order'] }],
+});
+
+const IdeaDraft = sequelize.define('idea_draft', {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  actor_id: { type: DataTypes.UUID, allowNull: false },
+  text: { type: DataTypes.TEXT, allowNull: false, defaultValue: '' },
+  sortOrder: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0, field: 'sort_order' },
+}, {
+  tableName: 'idea_drafts',
+  indexes: [{ fields: ['actor_id'] }, { fields: ['actor_id', 'sort_order'] }],
 });
 
 const Reeval = sequelize.define('reeval', {
@@ -101,21 +100,10 @@ const Reeval = sequelize.define('reeval', {
 const ReevalItem = sequelize.define('reeval_item', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   reevalId: { type: DataTypes.INTEGER, allowNull: false, field: 'reeval_id' },
-  ideaId: { type: DataTypes.INTEGER, allowNull: false, field: 'idea_id' },
+  ideaId: { type: DataTypes.INTEGER, allowNull: false, field: 'idea_id' }, // FK на StoryIdea.id
   score: { type: DataTypes.INTEGER, allowNull: true, validate: { min: 0, max: 10 } },
 }, {
   indexes: [{ fields: ['reeval_id'] }, { fields: ['idea_id'] }],
-});
-
-const InboxIdea = sequelize.define('inbox_idea', {
-  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-
-  actor_id: { type: DataTypes.UUID, allowNull: false },
-
-  text: { type: DataTypes.TEXT, allowNull: false, defaultValue: '' },
-  sortOrder: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0, field: 'sort_order' },
-}, {
-  indexes: [{ fields: ['actor_id'] }, { fields: ['actor_id', 'sort_order'] }],
 });
 
 const RefreshToken = sequelize.define('refresh_token', {
@@ -126,7 +114,7 @@ const RefreshToken = sequelize.define('refresh_token', {
   revokedAt: { type: DataTypes.DATE, allowNull: true, field: 'revoked_at' },
   userAgent: { type: DataTypes.STRING, allowNull: true, field: 'user_agent' },
   ip: { type: DataTypes.STRING, allowNull: true },
-  deviceId:  { type: DataTypes.STRING, allowNull: true, field: 'device_id' },
+  deviceId: { type: DataTypes.STRING, allowNull: true, field: 'device_id' },
 }, {
   indexes: [
     { fields: ['user_id'] },
@@ -138,8 +126,8 @@ const RefreshToken = sequelize.define('refresh_token', {
 RefreshToken.belongsTo(User, { as: 'user', foreignKey: 'user_id' });
 User.hasMany(RefreshToken, { as: 'rtokens', foreignKey: 'user_id', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
-Story.hasMany(Idea, { as: 'ideas', foreignKey: 'storyId', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
-Idea.belongsTo(Story, { as: 'story', foreignKey: 'storyId' });
+Story.hasMany(StoryIdea, { as: 'ideas', foreignKey: 'storyId', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+StoryIdea.belongsTo(Story, { as: 'story', foreignKey: 'storyId' });
 
 Story.hasMany(Reeval, { as: 'reevals', foreignKey: 'storyId', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 Reeval.belongsTo(Story, { as: 'story', foreignKey: 'storyId' });
@@ -147,8 +135,8 @@ Reeval.belongsTo(Story, { as: 'story', foreignKey: 'storyId' });
 Reeval.hasMany(ReevalItem, { as: 'items', foreignKey: 'reevalId', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 ReevalItem.belongsTo(Reeval, { as: 'reeval', foreignKey: 'reevalId' });
 
-Idea.hasMany(ReevalItem, { as: 'history', foreignKey: 'ideaId', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
-ReevalItem.belongsTo(Idea, { as: 'idea', foreignKey: 'ideaId' });
+StoryIdea.hasMany(ReevalItem, { as: 'history', foreignKey: 'ideaId', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+ReevalItem.belongsTo(StoryIdea, { as: 'idea', foreignKey: 'ideaId' });
 
 async function bumpStoryUpdated(storyId) {
   await Story.update(
@@ -156,8 +144,17 @@ async function bumpStoryUpdated(storyId) {
     { where: { id: storyId } }
   );
 }
-Idea.addHook('afterCreate', async (idea) => { await bumpStoryUpdated(idea.storyId); });
-Idea.addHook('afterUpdate', async (idea) => { await bumpStoryUpdated(idea.storyId); });
-Idea.addHook('afterDestroy', async (idea) => { await bumpStoryUpdated(idea.storyId); });
+StoryIdea.addHook('afterCreate', async (idea) => { await bumpStoryUpdated(idea.storyId); });
+StoryIdea.addHook('afterUpdate', async (idea) => { await bumpStoryUpdated(idea.storyId); });
+StoryIdea.addHook('afterDestroy', async (idea) => { await bumpStoryUpdated(idea.storyId); });
 
-module.exports = { User, IdentityLink, Story, Idea, Reeval, ReevalItem, InboxIdea, RefreshToken };
+module.exports = {
+  User,
+  IdentityLink,
+  Story,
+  StoryIdea,
+  IdeaDraft,
+  Reeval,
+  ReevalItem,
+  RefreshToken,
+};

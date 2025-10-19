@@ -1,29 +1,30 @@
-// BackBtn.jsx
 import { FaArrowLeftLong } from "react-icons/fa6";
 import { useLocation, useNavigate } from "react-router-dom";
 import classes from "./BackBtn.module.css";
 import {
   STORIES_ROUTE,
   EDUCATION_ROUTE,
-  PRACTICE_BASE,
-  IDEAS_ROUTE,
+  IDEA_DRAFTS_ROUTE,
 } from "../../utils/consts";
 
 const BackBtn = ({
   className = "",
   variant = "fixed",
   onClick,
-  to,               
-  preferFallback = false,  
+  to,                
+  preferFallback = false,
 }) => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
   const smartFallback = (() => {
-    if (pathname.startsWith(`${PRACTICE_BASE}/`)) return EDUCATION_ROUTE;  
-    if (pathname.startsWith("/story/"))          return STORIES_ROUTE;    
-    if (pathname.startsWith(EDUCATION_ROUTE))    return STORIES_ROUTE;     
-    if (pathname.startsWith(IDEAS_ROUTE))        return STORIES_ROUTE;     
+    if (pathname.startsWith('/practices/'))     return EDUCATION_ROUTE;
+
+    if (pathname.startsWith("/story/"))         return STORIES_ROUTE;
+    if (pathname.startsWith(EDUCATION_ROUTE))   return STORIES_ROUTE;
+    if (pathname.startsWith(IDEA_DRAFTS_ROUTE))       return STORIES_ROUTE;
+
+    return STORIES_ROUTE;
   })();
 
   const fallback = to || smartFallback;

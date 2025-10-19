@@ -2,10 +2,10 @@ import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import classes from './Education.module.css';
 import BackBtn from '../../components/BackBtn/BackBtn';
-import { EDUCATION_BASICS_PATH, EDUCATION_THEORY_PATH } from '../../utils/consts';
+import { ARTICLE_META } from './articles';
 
 export default function Education() {
-  // Мобилка: блокируем скролл документа (страница не скроллится вовсе)
+  // Мобилка: блокируем скролл документа (страница не скроллится)
   useEffect(() => {
     if (!window.matchMedia('(max-width:700px)').matches) return;
     const prevHtml = document.documentElement.style.overflow;
@@ -20,27 +20,22 @@ export default function Education() {
 
   return (
     <div className={classes.index}>
-      {/* Десктоп: кнопка «назад» (на мобилке скрыта через CSS) */}
+      {/* Десктоп: кнопка «назад» */}
       <BackBtn className={classes.backDesktop} />
 
-      {/* Моб: фикс-хедер слева */}
+      {/* Моб: фиксированный заголовок */}
       <div className={classes.mHeader}>
         <h1>Обучение</h1>
       </div>
 
-      {/* Карточка «NEUROPROCESSING — основы» */}
-      <Link to={EDUCATION_BASICS_PATH} className={classes.cardLink}>
-        <div className={classes.hero}>
-          <h2 className={classes.heroTitle}>NEUROPROCESSING — основы</h2>
-          <div className={classes.heroHint}>Открыть</div>
-        </div>
-      </Link>
-      <Link to={EDUCATION_THEORY_PATH} className={classes.cardLink}>
-        <div className={classes.hero}>
-          <h2 className={classes.heroTitle}>NEUROPROCESSING — подробная теория</h2>
-          <div className={classes.heroHint}>Открыть</div>
-        </div>
-      </Link>
+      {ARTICLE_META.map((art) => (
+        <Link key={art.slug} to={`/education/${art.slug}`} className={classes.cardLink}>
+          <div className={classes.hero}>
+            <h2 className={classes.heroTitle}>{art.title}</h2>
+            <div className={classes.heroHint}>Открыть</div>
+          </div>
+        </Link>
+      ))}
     </div>
   );
 }

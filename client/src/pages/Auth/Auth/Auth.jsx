@@ -10,7 +10,7 @@ import { registration, login } from '../../../http/userApi'
 import classes from './Auth.module.css'
 import { useContext, useState, useEffect } from 'react'
 import { validateLogin, validateRegistration } from '../../../components/Auth/authValidator'
-import { Context }  from '../../../context'
+import { Context }  from '../../../utils/context'
 import { observer } from 'mobx-react-lite'
 
 const Auth = observer(() => {

@@ -3,11 +3,6 @@ export const PRACTICES = [
     slug: 'good-bad',
     title: 'Хорошо — Плохо',
     description: 'Совсем скоро..',
-  },
-  {
-    slug: 'importance-comparing',     
-    title: 'Сравнение важностей',
-    description: 'Совсем скоро...'
   }
 ];
 

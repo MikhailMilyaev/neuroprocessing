@@ -13,12 +13,20 @@ export const RESET_SUCCESS_ROUTE = '/reset-success';
 
 export const STORIES_ROUTE = '/stories';
 export const STORY_ROUTE = '/story';
-export const IDEAS_ROUTE = '/ideas';
-export const EDUCATION_ROUTE = '/education';
+export const IDEA_DRAFTS_ROUTE = '/idea-drafts';
+
+export const EDUCATION_ROUTE = '/education';  
+export const educationPath = (slug) => `${EDUCATION_ROUTE}/${slug}`; 
+
+export const EDUCATION_SLUGS = {
+  BASICS: 'basics',
+  ADVANCED: 'advanced',
+  GOOD_BAD: 'good-bad',
+};
+
+export const PRACTICES_ROUTE = '/practices';
+export const PRACTICE_RUN_ROUTE = `${PRACTICES_ROUTE}/:practiceSlug/:ideaSlug`;
+
+export const practicePath = (slug) => `${EDUCATION_ROUTE}/${slug}`;
 
 export const NOTFOUND_ROUTE = '/404';
-
-export const EDUCATION_BASICS_PATH = `${EDUCATION_ROUTE}/basics`;
-export const EDUCATION_THEORY_PATH = `${EDUCATION_ROUTE}/theory`;
-export const PRACTICE_BASE = `${EDUCATION_ROUTE}/practice`;
-export const practicePath = (slug) => `${PRACTICE_BASE}/${slug}`;

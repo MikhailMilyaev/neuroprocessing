@@ -277,10 +277,11 @@ const handleTextKeyDown = (e) => {
       </div>
 
       {isOpen && (
-        <div className={classes.practiceSlot} ref={practiceSlotRef}>
-          <PracticePanel practices={practices} />
-        </div>
-      )}
+  <div className={classes.practiceSlot} ref={practiceSlotRef}>
+    {/* 🔹 сюда добавили ideaText */}
+    <PracticePanel practices={practices} ideaText={text} />
+  </div>
+)}
     </div>
   );
 }

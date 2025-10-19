@@ -3,17 +3,19 @@ const router = Router();
 
 const user = require('./userRouter');
 const story = require('./storyRouter');
-const inboxIdeaRouter = require('./inboxIdeaRouter');
-const idea = require('./ideaRouter');
+const ideaDraftRouter = require('./ideaDraftRouter');    
+const storyIdeaRouter = require('./storyIdeaRouter');    
 const admin = require('./adminRouter');
 
 const authMiddleware = require('../middleware/authMiddleware');
-const requireAccess = require('../middleware/requireAccess');
+const adminOnly = require('../middleware/adminOnly');
 
 router.use('/user', user);
 
-router.use('/story',      authMiddleware, requireAccess(), story);
-router.use('/idea',       authMiddleware, requireAccess(), idea);
-router.use('/fast-idea',  authMiddleware, requireAccess(), inboxIdeaRouter);
-router.use('/admin', admin);
+router.use('/story',        authMiddleware, story);
+router.use('/story-ideas',  authMiddleware, storyIdeaRouter);  
+router.use('/idea-drafts',  authMiddleware, ideaDraftRouter); 
+
+router.use('/admin', authMiddleware, adminOnly(), admin);
+
 module.exports = router;

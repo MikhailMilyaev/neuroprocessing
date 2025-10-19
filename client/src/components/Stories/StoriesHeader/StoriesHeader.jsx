@@ -5,15 +5,18 @@ import {
   IoSearchOutline,
   IoBulbOutline,
   IoBookOutline,
+  IoSchoolOutline,
   IoSettingsOutline
 } from "react-icons/io5";
+
+import { PRACTICES_ROUTE, IDEA_DRAFTS_ROUTE, EDUCATION_ROUTE } from "../../../utils/consts";
 
 import Tabs from "./Tabs/Tabs";
 import SearchStory from "./SearchStory/SearchStory";
 import SettingsModal from "./SettingsModal/SettingsModal";
 
 import classes from "./StoriesHeader.module.css";
-import { Context } from "../../../context";
+import { Context } from "../../../utils/context";
 
 export default function StoriesHeader({
   showArchive = false,
@@ -38,7 +41,6 @@ export default function StoriesHeader({
     if (!hasAnyStories && searchOpen) setSearchOpen(false);
   }, [hasAnyStories, searchOpen]);
 
-  // авто-фокус при открытии поиска (особенно для iOS)
   useEffect(() => {
     if (!searchOpen) return;
     const el = mobileSearchRef.current;
@@ -80,7 +82,7 @@ export default function StoriesHeader({
             <div className={classes.toolbar} role="toolbar" aria-label="Действия">
               <div className={classes.onlyDesktop}>
                 <Link
-                  to="/ideas"
+                  to={IDEA_DRAFTS_ROUTE}
                   className={classes.tbtn}
                   aria-label="Идеи на обработку"
                   draggable={false}
@@ -90,7 +92,17 @@ export default function StoriesHeader({
                 </Link>
 
                 <Link
-                  to="/education"
+                  to={PRACTICES_ROUTE}
+                    className={classes.tbtn}
+                    aria-label="Практики"
+                    draggable={false}
+                    onDragStart={(e) => e.preventDefault()}
+                  >
+                    <IoSchoolOutline className={classes.icon} />
+                  </Link>
+
+                <Link
+                  to={EDUCATION_ROUTE}
                   className={classes.tbtn}
                   aria-label="Обучение"
                   draggable={false}

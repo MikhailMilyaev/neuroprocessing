@@ -1,6 +1,5 @@
 :root{
-  /* Высота мобильного хедера (визуальная), используется чтобы опустить карточку ниже него */
-  --edu-header-h: 44px;
+  --edu-header-h: 44px; /* высота моб. хедера */
 }
 
 .index {
@@ -8,10 +7,7 @@
   margin: 20px auto 120px;
 }
 
-/* Прячем раздел «Практики» везде */
-.sectionTitle, .grid { display: none !important; }
-
-/* ВАЖНО: не растягиваем ссылку на всю высоту контейнера */
+/* карточка */
 .cardLink {
   display: block;
   color: inherit;
@@ -24,25 +20,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #ffffff; /* на десктопе остаётся белой */
+  background: #fff;
   border-radius: 16px;
   padding: 25px 20px;
   box-shadow: 0 1px 2px rgba(0,0,0,.05);
   transition: transform .15s ease, box-shadow .2s ease;
 }
 
-.heroTitle { 
-  font-size: 22px; 
-  font-weight: 500; 
-  margin: 0; 
-}
-.heroHint { 
-  color: #6f6f6f; 
-  font-weight: 500; 
-  white-space: nowrap; 
-}
+.heroTitle { font-size: 22px; font-weight: 500; margin: 0; }
+.heroHint { color: #6f6f6f; font-weight: 500; white-space: nowrap; }
 
-/* Ховер-анимация только на устройствах с курсором */
 @media (hover: hover) and (pointer: fine) {
   .hero:hover, .cardLink:focus-visible .hero {
     transform: translateY(-2px) scale(1.01);
@@ -50,33 +37,30 @@
   }
 }
 
-/* ——— десктоп: BackBtn показываем ——— */
+.cardLink + .cardLink { margin-top: 20px; }
+
 .backDesktop { display: inline-block; }
 
-/* ——— мобильный хедер (фикс сверху) ——— */
 .mHeader { display: none; }
 
-/* ===== МОБИЛЬНАЯ ВЕРСИЯ ===== */
+/* ===== МОБИЛЬНАЯ ===== */
 @media (max-width:700px){
-  /* страница-экран: фиксируем между верхом и нижней навигацией */
   .index{
     position: fixed;
-    left: 0; right: 0;
-    top: 0;
-    bottom: 0;                       /* навбар перекроет низ, дадим внутренний отступ */
+    left: 0; right: 0; top: 0; bottom: 0;
     width: 100%;
     margin: 0;
     padding: 0 12px calc(96px + env(safe-area-inset-bottom, 0px));
     background: #f5f5f5;
-    overflow: hidden;                /* не скроллится вовсе */
-    z-index: 60;                     /* ниже MobileNav (у него 61) */
+    overflow: hidden;
+    z-index: 60;
   }
 
-  /* BackBtn прячем на мобилке */
   .backDesktop { display: none !important; }
 
   .mHeader{
-    display: block;
+    display: flex;
+    align-items: center;
     position: fixed;
     left: 0; right: 0;
     top: env(safe-area-inset-top, 0px);
@@ -84,46 +68,23 @@
     background: #f5f5f5;
     height: var(--edu-header-h);
     box-shadow: 0 1px 0 rgba(0,0,0,.08);
-    display: flex;
-    align-items: center;
   }
   .mHeader h1{
     margin: 0;
     font-size: 20px;
-    font-weight: 500;      /* обычный шрифт */
-    text-align: left;      /* слева */
+    font-weight: 500;
+    text-align: left;
     padding: 0 12px;
   }
 
-  /* ✅ Только первая карточка опускается под фикс-хедер */
   .cardLink:first-of-type .hero {
     margin-top: calc(env(safe-area-inset-top, 0px) + var(--edu-header-h) + 8px);
   }
-
-  /* Остальные карточки без дополнительного отступа сверху */
-  .hero { 
-    margin-top: 0; 
-    padding: 18px 16px; /* чуть компактнее на мобилке */
-  }
-
-  .heroTitle { 
-    font-size: 20px; 
-    font-weight: 500; 
-    margin: 0; 
-  }
-
-  /* Межкарточный зазор на мобилке */
-  .cardLink + .cardLink {
-    margin-top: 8px;
-  }
+  .hero { margin-top: 0; padding: 18px 16px; }
+  .heroTitle { font-size: 20px; }
+  .cardLink + .cardLink { margin-top: 8px; }
 }
 
-/* Отступы между карточками на десктопе */
-.cardLink + .cardLink {
-  margin-top: 20px;
-}
-
-/* Тёмная тема — без изменения цвета карточки на десктопе */
 @media (prefers-color-scheme: dark){
   .mHeader{ background:#0b0f14; box-shadow: 0 1px 0 rgba(255,255,255,.08); }
   .heroHint{ color:#9aa3ad; }

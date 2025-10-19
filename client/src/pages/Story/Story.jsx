@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchStoryBySlug, fetchStory, updateStory, reevaluateStory, beginRereview } from '../../http/storyApi';
-import { listIdeas, createIdea, updateIdea, deleteIdea, reorderIdeas } from '../../http/ideaApi';
+import { listStoryIdeas, createStoryIdea, updateStoryIdea, deleteStoryIdea, reorderStoryIdeas } from '../../http/storyIdeasApi';
 import { ns } from '../../utils/ns';
 import { subscribe, getActorChannel, startRealtime } from '../../utils/realtime';
 import { genOpId, markSentOp, isOwnOp } from '../../utils/opId';
@@ -183,19 +183,19 @@ export default function Story() {
   const sendCreateIdea = async (storyId, payload) => {
     const opId = genOpId();
     markSentOp(opId);
-    return createIdea(storyId, payload, { opId });
+    return createStoryIdea(storyId, payload, { opId });
   };
 
   const sendIdeaUpdate = async (iid, payload) => {
     const opId = genOpId();
     markSentOp(opId);
-    return updateIdea(iid, payload, { opId });
+    return updateStoryIdea(iid, payload, { opId });
   };
 
   const sendReorderIdeas = async (storyId, order) => {
     const opId = genOpId();
     markSentOp(opId);
-    return reorderIdeas(storyId, order, { opId });
+    return reorderStoryIdeas(storyId, order, { opId });
   };
 
   const sendReevaluate = async (storyId) => {
@@ -333,7 +333,7 @@ export default function Story() {
           }
         }
 
-        const ideasRaw = await listIdeas(id).catch(() => []);
+        const ideasRaw = await listStoryIdeas(id).catch(() => []);
         if (cancelled) return;
 
         let beliefs = mapIdeasToBeliefs(ideasRaw);
@@ -1124,7 +1124,7 @@ const focusBeliefInput = (bid) => {
       }
 
       if (deleteAfterCreateRef.current.has(tempId)) {
-        try { await deleteIdea(created.id); } catch {}
+        try { await deleteStoryIdea(created.id); } catch {}
         deleteAfterCreateRef.current.delete(tempId);
       }
 
@@ -1313,7 +1313,7 @@ const focusBeliefInput = (bid) => {
     markStoryDirty(id);
 
     if (bid > 0) {
-      try { await deleteIdea(bid); } catch {}
+      try { await deleteStoryIdea(bid); } catch {}
     } else {
       if (creatingIdeaRef.current.has(bid)) {
         deleteAfterCreateRef.current.add(bid);

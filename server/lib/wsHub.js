@@ -6,6 +6,7 @@ function createHub(httpServer, opts = {}) {
   const PING_PAYLOAD = opts.pingPayload ?? 'hb';
 
   const wss = new WebSocket.Server({ server: httpServer, path: '/ws' });
+  let closed = false;
 
   const rooms = new Map();
 
@@ -58,7 +59,6 @@ function createHub(httpServer, opts = {}) {
       } catch {}
     }
   }, HEARTBEAT_INTERVAL_MS);
-
   heartbeatTimer.unref?.();
 
   wss.on('close', () => {
@@ -125,14 +125,42 @@ function createHub(httpServer, opts = {}) {
         const low = p.toLowerCase();
         if (low.startsWith('bearer ')) return p.slice(7).trim();
         if (p.startsWith('access.'))   return p.slice(7).trim();
-        if (p.split('.').length === 3) return p; 
+        if (p.split('.').length === 3) return p;  
       }
     }
-
     return '';
   }
 
-  return { publish };
+  async function shutdown() {
+    if (closed) return;
+    closed = true;
+
+    try {
+      wss.clients.forEach(ws => {
+        try { ws.close(1001, 'server shutdown'); } catch {}
+      });
+    } catch {}
+
+    return new Promise((resolve) => {
+      try {
+        wss.close(() => {
+          clearInterval(heartbeatTimer);
+          resolve();
+        });
+
+        setTimeout(() => {
+          try { wss._server?.close?.(); } catch {}
+          clearInterval(heartbeatTimer);
+          resolve();
+        }, 3000).unref?.();
+      } catch {
+        clearInterval(heartbeatTimer);
+        resolve();
+      }
+    });
+  }
+
+  return { publish, shutdown };
 }
 
 module.exports = { createHub };

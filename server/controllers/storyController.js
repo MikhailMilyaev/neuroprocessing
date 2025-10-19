@@ -1,4 +1,4 @@
-const { Story, Idea, Reeval, ReevalItem } = require('../models/models'); // убрал IdentityLink
+const { Story, StoryIdea, Reeval, ReevalItem } = require('../models/models');
 const sequelize = require('../db');
 const { Op } = require('sequelize');
 const { slugify, draftSlug } = require('../utils/slug');
@@ -60,7 +60,6 @@ class StoryController {
               updatedAt: story.updatedAt,
             }
           });
-          // сама история — начальное состояние (патчем)
           hub.publish(`story:${story.id}`, {
             type: 'story.updated',
             storyId: Number(story.id),
@@ -187,7 +186,7 @@ class StoryController {
       const story = await Story.findOne({ where: { id, actor_id } });
       if (!story) return res.status(404).json({ message: 'История не найдена' });
 
-      const ideas = await Idea.findAll({
+      const ideas = await StoryIdea.findAll({
         where: { storyId: id },
         order: [['sortOrder', 'DESC'], ['id', 'DESC']],
       });
@@ -331,7 +330,6 @@ class StoryController {
       const count = await Story.destroy({ where: { id, actor_id } });
       if (!count) return res.status(404).json({ message: 'История не найдена' });
 
-      // 🔔 realtime: удаление из индекса + уведомим комнату истории
       try {
         const hub  = req.app?.locals?.hub;
         const opId = req.opId || null;
@@ -375,7 +373,6 @@ class StoryController {
 
       const updated = rows[0];
 
-      // 🔔 realtime
       try {
         const hub  = req.app?.locals?.hub;
         const opId = req.opId || null;
@@ -452,7 +449,7 @@ class StoryController {
       const story = await Story.findOne({ where: { id, actor_id }, transaction: t });
       if (!story) { await t.rollback(); return res.status(404).json({ message: 'История не найдена' }); }
 
-      const ideas = await Idea.findAll({
+      const ideas = await StoryIdea.findAll({
         where: { storyId: id },
         order: [['sortOrder', 'ASC']],
         transaction: t
@@ -471,20 +468,18 @@ class StoryController {
 
       if (active.length) {
         const ids = active.map(b => b.id);
-        await Idea.update({ score: null }, { where: { id: ids }, transaction: t });
+        await StoryIdea.update({ score: null }, { where: { id: ids }, transaction: t });
       }
 
       await story.update({ reevalCount: nextRound, baselineContent: story.content }, { transaction: t });
 
       await t.commit();
 
-      // 🔔 realtime: сообщим о завершении раунда + обновим метаданные истории
       try {
         const hub  = req.app?.locals?.hub;
         const opId = req.opId || null;
 
         if (hub) {
-          // событие о рефреше раунда
           hub.publish(`story:${id}`, {
             type: 'reeval.completed',
             storyId: Number(id),
@@ -492,8 +487,7 @@ class StoryController {
             opId
           });
 
-          // патч самой истории
-          const fresh = await Story.findByPk(id); // чтобы взять обновлённые updatedAt/reevalCount/baselineContent
+          const fresh = await Story.findByPk(id);
           hub.publish(`story:${id}`, {
             type: 'story.updated',
             storyId: Number(id),
@@ -506,7 +500,6 @@ class StoryController {
             }
           });
 
-          // индекс историй обновится по updatedAt
           hub.publish(`actor:${actor_id}`, {
             type: 'stories.index.patch',
             storyId: Number(id),
@@ -533,7 +526,7 @@ class StoryController {
       if (!story) { await t.rollback(); return res.status(404).json({ message: 'История не найдена' }); }
       if (!story.archive) { await t.rollback(); return res.status(400).json({ message: 'История не в архиве' }); }
 
-      const ideas = await Idea.findAll({
+      const ideas = await StoryIdea.findAll({
         where: { storyId: id },
         order: [['sortOrder', 'ASC']],
         transaction: t
@@ -549,12 +542,11 @@ class StoryController {
         );
       }
 
-      await Idea.update({ score: null }, { where: { storyId: id }, transaction: t });
+      await StoryIdea.update({ score: null }, { where: { storyId: id }, transaction: t });
       await story.update({ reevalCount: nextRound, baselineContent: story.content }, { transaction: t });
 
       await t.commit();
 
-      // 🔔 realtime
       try {
         const hub  = req.app?.locals?.hub;
         const opId = req.opId || null;

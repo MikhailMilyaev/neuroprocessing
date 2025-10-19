@@ -48,8 +48,8 @@ export const updateStory = async (id, patch, { opId } = {}) => {
     patch,
     opId ? { headers: { 'x-op-id': opId } } : undefined
   );
-   return data;
- };
+  return data;
+};
 
 export const setStoryStop = async (id, stopContentY) => {
   const { data } = await $authHost.put(`/story/${id}/stop`, { stopContentY });
@@ -67,8 +67,8 @@ export const reevaluateStory = async (id, { opId } = {}) => {
     undefined,
     opId ? { headers: { 'x-op-id': opId } } : undefined
   );
-   return data;
- };
+  return data;
+};
 
 export const beginRereview = async (id) => {
   const { data } = await $authHost.post(`/story/${id}/rereview-start`);

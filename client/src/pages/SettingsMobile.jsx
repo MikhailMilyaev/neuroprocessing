@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef } from "react";
-import { Context } from "../context";
+import { Context } from "../utils/context";
 import SettingsList from "../components/Settings/SettingsList";
 import styles from "./SettingsMobile.module.css";
 import { useState } from "react";
