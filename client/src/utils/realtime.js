@@ -1,13 +1,14 @@
+// src/utils/realtime.js
 import { jwtDecode } from 'jwt-decode';
 import { ACCESS_KEY } from '../http';
 
-const WS_PATH = '/ws';  
+const WS_PATH = '/ws';
 const RECONNECT_BASE_MS = 500;
-const RECONNECT_MAX_MS  = 8000;
+const RECONNECT_MAX_MS = 8000;
 
 let sock = null;
-let desiredSubs = new Set();    
-let handlers = new Map();      
+let desiredSubs = new Set();   // набор желаемых подписок ('actor:<id>', 'story:<id>')
+let handlers = new Map();      // Map<channel, Set<fn>>
 let reconnectTimer = null;
 let started = false;
 let reconnectAttempts = 0;
@@ -29,13 +30,14 @@ function openSocket() {
 
   try {
     sock = new WebSocket(url);
-  } catch (e) {
+  } catch {
     scheduleReconnect();
     return;
   }
 
   sock.onopen = () => {
     reconnectAttempts = 0;
+    // восстановим подписки
     for (const ch of desiredSubs) {
       if (ch.startsWith('actor:')) {
         send({ type: 'subscribe.actor' });
@@ -50,12 +52,15 @@ function openSocket() {
     let msg;
     try { msg = JSON.parse(ev.data); } catch { return; }
 
+    // точечная рассылка по story:<id>
     if (typeof msg?.storyId !== 'undefined') {
       const ch = `story:${Number(msg.storyId)}`;
       dispatch(ch, msg);
     }
 
-    if (msg?.type === 'stories.index.patch' || msg?.type?.startsWith('inbox.')) {
+    // широковещалка по actor:<actorId>
+    const t = msg?.type || '';
+    if (t === 'stories.index.patch' || t.startsWith('inbox.') || t.startsWith('practice_runs.')) {
       const actorCh = getActorChannel();
       if (actorCh) dispatch(actorCh, msg);
     }
@@ -66,6 +71,7 @@ function openSocket() {
   };
 
   sock.onerror = () => {
+    // намеренно тихо
   };
 }
 
@@ -78,10 +84,7 @@ function send(obj) {
 function scheduleReconnect() {
   if (reconnectTimer) return;
   reconnectAttempts += 1;
-  const delay = Math.min(
-    RECONNECT_BASE_MS * (2 ** (reconnectAttempts - 1)),
-    RECONNECT_MAX_MS
-  );
+  const delay = Math.min(RECONNECT_BASE_MS * (2 ** (reconnectAttempts - 1)), RECONNECT_MAX_MS);
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
     openSocket();
@@ -92,6 +95,7 @@ export function startRealtime() {
   if (started) return;
   started = true;
 
+  // если токен обновили в другой вкладке — пересоздаём сокет
   window.addEventListener('storage', (e) => {
     if (e.key === ACCESS_KEY) {
       try { sock?.close(); } catch {}
@@ -117,6 +121,7 @@ export function subscribe(channel, fn) {
     }
   }
 
+  // возвращаем отписку
   return () => {
     const set = handlers.get(channel);
     if (set) {

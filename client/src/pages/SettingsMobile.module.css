@@ -18,18 +18,15 @@
   .title { color: #e5e7eb; }
 }
 
-/* ===== Мобилка (<700px): как в Stories ===== */
+/* ===== Мобилка (<700px): как в Stories) ===== */
 @media (max-width:700px) {
-  /* Экран фиксирован между safe-top и нижней навигацией.
-     ВАЖНО: z-index ниже nav (у nav z-index:61), чтобы nav был сверху. */
   .viewport{
     position: fixed;
     left: 0; right: 0;
     top: env(safe-area-inset-top, 0px);
     bottom: calc(var(--bottom-nav-h, 64px));
-    /* если var не задана — всё равно останется место под навбар за счёт nav высоты */
     background: #f5f5f5;
-    z-index: 60;                 /* <-- чтобы не перекрывать MobileNav */
+    z-index: 60;                 /* ниже MobileNav */
     display: flex;
     flex-direction: column;
     overflow: hidden;            /* страница не скроллится */
@@ -53,52 +50,20 @@
   }
 
   .content{
-    /* скролл только здесь при переполнении */
     flex: 1 1 auto;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
-   padding: 10px 12px 12px; /* без компенсации высоты хедера */
+    padding: 10px 12px 12px;
     background: #f5f5f5;
   }
 
   @media (prefers-color-scheme: dark) {
     .viewport, .header, .content { background:#0b0f14; }
     .header { box-shadow: 0 1px 0 rgba(255,255,255,.08); }
-    .trialCard{ background:#0f141a; color:#e5e7eb; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
-  .trialText{ color:#9aa4af; }
   }
 }
 
 /* iOS PWA: без safe-top смещения у sticky-хедера */
 :global(.pwa-standalone) .header { top: 0 !important; }
 :global(.pwa-standalone) .viewport { top: 0 !important; }
-
-
-.trialCard{
-  background: #fff;
-  color: #0b1f16;
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: 0 6px 20px rgba(16,24,40,.08);
-  margin: 6px 0 12px;
-}
-.trialTitle{ font-weight: 700; margin-bottom: 4px; }
-.trialText{ color:#37424a; }
-
-.subCard{
-  background: #fff;
-  color: #0b1f16;
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: 0 6px 20px rgba(16,24,40,.08);
-  margin: 6px 0 12px;
-  border: 1px solid rgba(0,0,0,.06);
-}
-.subTitle{ font-weight: 700; margin-bottom: 4px; color:#22c55e; }
-.subText{ color:#37424a; }
-
-@media (prefers-color-scheme: dark){
-  .subCard{ background:#0f141a; color:#e5e7eb; box-shadow: 0 6px 20px rgba(0,0,0,.35); border-color: rgba(255,255,255,.08); }
-  .subText{ color:#9aa4af; }
-}

@@ -5,25 +5,32 @@ import {
   STORIES_ROUTE,
   EDUCATION_ROUTE,
   IDEA_DRAFTS_ROUTE,
+  PRACTICES_ROUTE,
 } from "../../utils/consts";
 
 const BackBtn = ({
   className = "",
   variant = "fixed",
   onClick,
-  to,                
+  to,
   preferFallback = false,
 }) => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
+  // /practices/:practiceSlug/:ideaSlug → это запуск практики
+  const isPracticeRun = /^\/practices\/[^/]+\/.+/.test(pathname);
+  const isPracticesList = pathname === PRACTICES_ROUTE || pathname === "/practices";
+
   const smartFallback = (() => {
-    if (pathname.startsWith('/practices/'))     return EDUCATION_ROUTE;
+    if (isPracticeRun)          return PRACTICES_ROUTE; // из запуска → в список практик
+    if (isPracticesList)        return STORIES_ROUTE;   // из списка → в истории
 
-    if (pathname.startsWith("/story/"))         return STORIES_ROUTE;
-    if (pathname.startsWith(EDUCATION_ROUTE))   return STORIES_ROUTE;
-    if (pathname.startsWith(IDEA_DRAFTS_ROUTE))       return STORIES_ROUTE;
+    if (pathname.startsWith("/story/"))       return STORIES_ROUTE;
+    if (pathname.startsWith(EDUCATION_ROUTE)) return STORIES_ROUTE;
+    if (pathname.startsWith(IDEA_DRAFTS_ROUTE)) return STORIES_ROUTE;
 
+    // дефолт
     return STORIES_ROUTE;
   })();
 

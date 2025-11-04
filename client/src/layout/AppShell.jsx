@@ -4,7 +4,7 @@ import styles from './Shell.module.css';
 import MobileNav from '../components/MobileNav/MobileNav';
 import {
   LOGIN_ROUTE, REGISTRATION_ROUTE, RESET_ROUTE,
-  educationPath, EDUCATION_SLUGS,
+  educationPath, EDUCATION_SLUGS,PRACTICES_ROUTE,
 } from '../utils/consts';
 import useIOSNavPin from '../hooks/useIOSNavPin';
 
@@ -30,7 +30,10 @@ export default function AppShell() {
   const hideOnStoryMobile    = isMobile && pathname.startsWith('/story/');
   const hideOnBasicsMobile   = isMobile && pathname.startsWith(educationPath(EDUCATION_SLUGS.BASICS));
   const hideOnAdvancedMobile = isMobile && pathname.startsWith(educationPath(EDUCATION_SLUGS.ADVANCED));
-  const hideNav = baseHide || hideOnStoryMobile || hideOnBasicsMobile || hideOnAdvancedMobile;
+  const hideOnPracticeMobile = isMobile &&
+    pathname.startsWith(`${PRACTICES_ROUTE}/`);  
+
+  const hideNav = baseHide || hideOnStoryMobile || hideOnBasicsMobile || hideOnAdvancedMobile || hideOnPracticeMobile;
 
   useIOSNavPin();
 
