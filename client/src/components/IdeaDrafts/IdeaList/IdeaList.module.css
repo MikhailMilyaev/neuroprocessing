@@ -1,9 +1,7 @@
-/* Акцент как в другом экране */
-:root { --active-underline: #A0E7B8; }
+:root { --active-underline: #A0E7B8; --hover-bg: #f0f1f3; --ring: rgba(20,174,92,.35); }
 
 .list { margin-top: 4px;  display: grid; gap: 10px; }
 
-/* ряд похож на твою «beliefWrap»: сетка + ровные отступы */
 .row {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -11,12 +9,8 @@
   align-items: center;
   padding: 6px 0;
 }
+.selecting .row { grid-template-columns: auto 1fr auto; }
 
-.selecting .row {
-  grid-template-columns: auto 1fr auto;
-}
-
-/* поле ввода как «beliefInput» */
 .input {
   width: 100%;
   border: none;
@@ -27,70 +21,44 @@
   background: transparent;
   transition: border-color .15s ease, color .15s ease, background-color .25s ease;
 }
-
-/* активная линия */
-.input:focus,
-.input:focus-visible,
-.row:focus-within .input {
-  border-bottom-color: var(--active-underline);
-}
-
-/* в режиме выбора акцент гасим */
+.input:focus, .input:focus-visible, .row:focus-within .input { border-bottom-color: var(--active-underline); }
 .selecting .input,
 .selecting .row:focus-within .input,
 .selecting .input:focus,
-.selecting .input:focus-visible {
-  border-bottom-color: #C8C8C8 !important;
-}
+.selecting .input:focus-visible { border-bottom-color: #C8C8C8 !important; }
 
-/* кнопка «⋯» — круглая, крупная зона, как iconBtn */
+/* троеточие: квадрат со скруглением, серый hover, без постоянной заливки */
 .moreBtn {
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   border: none;
-  background: #f3f4f6;
+  background: transparent;
   cursor: pointer;
   font-size: 22px;
   line-height: 1;
   display: inline-grid;
   place-items: center;
-  transition: background .15s ease, transform .06s ease, opacity .15s ease;
+  color: #111827;
+  transition: background .18s ease, transform .06s ease, opacity .15s ease;
 }
-.moreBtn:hover { background: #e5e7eb; }
+.moreBtn:hover { background: var(--hover-bg); }
 .moreBtn:active { transform: translateY(1px); }
+.moreBtn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 .moreBtn:disabled { opacity: .35; cursor: default; }
 
-/* чекбокс как в «beliefs» */
-.checkWrap {
-  position: relative;
-  width: 22px; height: 22px;
-  display: inline-grid;
-  place-items: center;
-}
-.checkbox {
-  appearance: none;
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  cursor: pointer;
-  opacity: 0;
-}
+/* чекбокс */
+.checkWrap { position: relative; width: 22px; height: 22px; display: inline-grid; place-items: center; }
+.checkbox { appearance: none; position: absolute; inset: 0; margin: 0; cursor: pointer; opacity: 0; }
 .fakeBox {
-  width: 18px; height: 18px;
-  border-radius: 6px;
-  border: 1px solid rgba(0,0,0,.18);
-  background: #fff;
+  width: 18px; height: 18px; border-radius: 6px;
+  border: 1px solid rgba(0,0,0,.18); background: #fff;
   box-shadow: 0 1px 0 rgba(0,0,0,.03) inset;
   transition: background-color .12s ease, border-color .12s ease, box-shadow .12s ease;
 }
-.checkbox:checked + .fakeBox {
-  background: #14AE5C;
-  border-color: #14AE5C;
-  box-shadow: 0 0 0 3px rgba(20,174,92,.25);
-}
+.checkbox:checked + .fakeBox { background: #14AE5C; border-color: #14AE5C; box-shadow: 0 0 0 3px rgba(20,174,92,.25); }
 
-/* Моб-правки: прямое подчёркивание без скруглений, как в IdeaItem */
+/* моб-правки */
 @media (max-width: 900px) {
   .list { margin-top: 2px; }
   .input {

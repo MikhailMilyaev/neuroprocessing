@@ -1,0 +1,96 @@
+:root { --hover-bg:#f0f1f3; --ring: rgba(20,174,92,.35); }
+
+.overlay{
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.15);
+  display: grid; place-items: center;
+  z-index: 1000;
+}
+.modal{
+  width: min(720px, 92vw);
+  max-height: 80vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.15);
+  -webkit-appearance: none; appearance: none;
+}
+
+.header{
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.title{
+  font-weight: 600;
+  font-size: 17px;
+  color: #111827;
+}
+.iconBtn{
+  width: 36px; height: 36px;
+  border: none; border-radius: 10px;
+  background: transparent; cursor: pointer;
+  display: grid; place-items: center;
+  transition: background .18s ease, transform .06s ease;
+  font-size: 18px; line-height: 1;
+  color: #111827;
+  -webkit-appearance: none; appearance: none;
+  text-decoration: none;
+}
+.iconBtn:hover{ background: var(--hover-bg); }
+.iconBtn:active{ transform: translateY(1px); }
+.iconBtn:focus-visible{ outline: none; box-shadow: 0 0 0 3px var(--ring); }
+
+.section{ margin-top: 10px; }
+.sectionTitle{ font-size: 13px; color: #6b7280; margin-bottom: 6px; }
+.list{ display: grid; gap: 8px; }
+
+.storyBtn{
+  text-align: left;
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 10px;
+  background: #fff;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: background .15s ease, transform .06s ease;
+  color: #111827;
+  -webkit-appearance: none; appearance: none;
+  text-decoration: none;
+  font-size: 16px;
+}
+.storyBtn:hover{ background:#f9fafb; }
+.storyBtn:active{ transform: translateY(1px); }
+
+.dim{ color:#9ca3af; font-size:14px; padding:6px 0; }
+.noArchiveNote{ color:#6b7280; font-size:14px; margin-top:10px; }
+
+/* footer теперь не флекс-ряд, чтобы кнопка могла быть на всю ширину */
+.footer{
+  margin-top: 14px;
+}
+
+/* зелёная кнопка: обычный шрифт и на всю ширину */
+.primaryBtn{
+  width: 100%;
+  display: block;
+  border: none; border-radius: 12px;
+  background: #14AE5C; color:#fff;
+  padding: 12px 16px; cursor: pointer;
+  transition: opacity .18s ease, transform .06s ease;
+  font-size: 15px; font-weight: 400; /* обычный */
+  -webkit-appearance: none; appearance: none;
+  white-space: nowrap;
+}
+.primaryBtn:hover{ opacity:.95; }
+.primaryBtn:active{ transform: translateY(1px); }
+.primaryBtn:focus-visible{ outline: none; box-shadow: 0 0 0 3px var(--ring); }
+
+/* мобильные укрупнения текста в карточках; кнопку оставляем компактной */
+@media (max-width:700px){
+  .title{ font-size: 18px; }
+  .storyBtn{ font-size: 17px; padding: 13px 16px; }
+  .primaryBtn{ font-size: 15px; padding: 12px 16px; }
+}

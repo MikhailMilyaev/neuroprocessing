@@ -1,0 +1,139 @@
+.row {
+  position: relative;
+  overflow: hidden;
+  margin: 0;
+  background: transparent;
+  touch-action: pan-y;
+}
+
+.card {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  padding: 16px 64px 16px 14px;
+  background-color: var(--card, #fff);
+  border: none;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.12s ease;
+  cursor: pointer;
+}
+
+.cardSelected {
+  outline: 2px solid rgba(0, 0, 0, 0.08);
+  background: var(--card, #fff);
+  position: relative;
+  z-index: 1001;
+  pointer-events: none;
+}
+
+.titleTop {
+  display: block;
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 1.25;
+  margin-bottom: 2px;
+}
+
+.subtitleIdea {
+  display: block;
+  font-size: 14px;
+  line-height: 1.25;
+  color: var(--muted, #6b7280);
+  max-width: calc(100% - 24px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.placeholderText {
+  color: var(--muted, #9aa0a6);
+}
+
+.timeRight {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: var(--muted, #9aa0a6);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.timeHidden {
+  display: none !important;
+}
+
+/* ⋮ кнопка */
+.kebabBtn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+  cursor: pointer;
+}
+
+.kebabIcon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.kebabBtn:hover,
+.kebabBtn:active {
+  background: transparent !important;
+}
+
+.card:hover .kebabBtn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.card:hover .timeRight {
+  display: none;
+}
+
+.kebabPinned {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* hover подсветка (ПК) */
+@media (hover:hover) and (pointer:fine) {
+  .card:hover {
+    background-color: var(--hover-bg, #f0f1f3);
+  }
+}
+
+/* мобилка */
+@media (max-width:700px) and (hover:none) and (pointer:coarse) {
+  .card,
+  .titleTop,
+  .subtitleIdea,
+  .timeRight {
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    -webkit-touch-callout: none !important;
+  }
+
+  .kebabBtn {
+    display: none;
+  }
+
+  /* ⬇️ фикс: не скрываем время при долгом тапе / активном состоянии */
+  .card:hover .timeRight,
+  .card:active .timeRight {
+    display: inline !important;
+  }
+}

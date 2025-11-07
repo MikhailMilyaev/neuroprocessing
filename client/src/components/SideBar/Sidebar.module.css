@@ -1,0 +1,347 @@
+:root {
+  --sidebar-bg: #fff;
+  --border: #e6e6e8;
+  --text: #111213;
+  --muted: #8b8d94;
+  --btn: 40px;
+  --radius: 10px;
+  --hover-bg: #f0f1f3;
+
+  /* базовые вертикальные отступы для шапки сайдбара */
+  --sb-pad-mobile: 10px;
+  --sb-pad-desktop: 12px;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  box-sizing: border-box;
+  will-change: clip-path;
+  transition: clip-path 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
+  overflow: hidden;
+}
+
+.collapsed {
+  clip-path: inset(0 100% 0 0);
+  pointer-events: none;
+}
+
+/* ===== Header ===== */
+.headerSticky {
+  flex-shrink: 0;
+  background: var(--sidebar-bg);
+  z-index: 2;
+  padding-inline: 12px;
+  padding-block: calc(var(--sb-pad-mobile) / 2) calc(var(--sb-pad-mobile) / 2);
+}
+
+@media (min-width: 701px) {
+  .headerSticky {
+    padding-inline: 12px;
+    padding-block: calc(var(--sb-pad-desktop) / 2)
+      calc(var(--sb-pad-desktop) / 2);
+  }
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 0;
+  margin-bottom: 10px;
+}
+
+/* safe-area только для мобильных устройств */
+@media (max-width: 700px) and (hover: none) and (pointer: coarse) {
+  .headerSticky {
+    padding-top: calc(
+      env(safe-area-inset-top, 0px) + (var(--sb-pad-mobile) / 2)
+    );
+  }
+}
+
+.title {
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 14px;
+}
+
+.iconBtn {
+  width: var(--btn);
+  height: var(--btn);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius);
+  color: var(--text);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.18s ease, opacity 0.15s ease, transform 0.06s ease;
+}
+.iconBtn:hover {
+  background: var(--hover-bg);
+}
+.iconBtn:active {
+  opacity: 0.9;
+  transform: translateY(1px);
+}
+.iconBtn svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* ===== Scroll area ===== */
+.midScrollArea {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #bbb transparent;
+}
+.midScrollArea::-webkit-scrollbar {
+  width: 6px;
+}
+.midScrollArea::-webkit-scrollbar-thumb {
+  background-color: #999;
+  border-radius: 3px;
+}
+.midScrollArea::-webkit-scrollbar-thumb:hover {
+  background-color: #666;
+}
+.scrollContent {
+  padding: 2px 12px 14px 12px;
+}
+
+/* ===== Nav ===== */
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.navSection {
+  width: 100%;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--text);
+  border: 1px solid transparent;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+.navItem:hover {
+  background: #f3f4f5;
+}
+.active {
+  background: #eef1f3;
+  border-color: #e6e6e8;
+}
+.aiEntry {
+  text-align: left;
+}
+
+.navIcon {
+  width: 20px;
+  height: 20px;
+  color: var(--muted);
+  display: block;
+  flex: 0 0 20px;
+  align-self: center;
+  transition: color 0.15s ease;
+}
+
+/* 🔹 все иконки (кроме лампочки) — зелёные при активной вкладке */
+.active .navIcon {
+  color: #22c55e;
+}
+
+.navText {
+  font-size: 14px;
+  color: var(--text);
+}
+
+/* ====== Лампочка (Идеи) — остаётся прежней ====== */
+.lampIcon {
+  position: relative;
+  top: -1px;
+  filter: grayscale(1) brightness(0.9);
+  opacity: 0.95;
+  transition: filter 0.15s ease, opacity 0.15s ease, top 0.1s ease;
+}
+.active .lampIcon {
+  filter: none;
+  opacity: 1;
+  color: inherit; /* не даём зелёный цвет */
+}
+
+/* ====== Иконка Практик (FaPlay) ====== */
+.practiceIcon {
+  width: 18px;
+  height: 18px;
+  color: #9ca3af;
+  transition: color 0.15s ease, transform 0.1s ease;
+}
+.navItem:hover .practiceIcon {
+  color: #6b7280;
+}
+.active .practiceIcon {
+  color: #22c55e;
+  transform: scale(1.05);
+}
+/* активная остаётся зелёной даже при hover/focus */
+.navItem.active .practiceIcon,
+.navItem.active:hover .practiceIcon,
+.navItem.active:focus-visible .practiceIcon {
+  color: #22c55e;
+  transform: scale(1.05);
+}
+
+/* ===== Sublist ===== */
+.sublist {
+  margin: 4px 0 10px 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.subItem {
+  margin: 0;
+  width: 100%;
+}
+.subLink {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 32px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--text);
+  border: 1px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  overflow: hidden;
+}
+.subLink:hover {
+  background: #f6f7f8;
+  border-color: #ececed;
+}
+.subActive {
+  background: #eef1f3;
+  border-color: #e6e6e8;
+}
+.subText {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 15px;
+  line-height: 1.25;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.subText.placeholder {
+  color: var(--muted);
+}
+.subEmpty {
+  color: var(--muted);
+  font-size: 14px;
+  padding: 6px 10px;
+}
+
+/* ===== Footer ===== */
+.footerSticky {
+  flex-shrink: 0;
+  background: var(--sidebar-bg);
+  z-index: 2;
+  padding: 0 12px 10px 12px;
+  margin-top: auto;
+}
+.footerRow {
+  padding-top: 10px;
+  padding-bottom: 0;
+  display: flex;
+  align-items: stretch;
+}
+@media (max-width: 700px) and (hover: none) and (pointer: coarse) {
+  .footerRow {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+.userCard {
+  width: 100%;
+  height: var(--btn);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  padding: 0 6px;
+  transition: background 0.15s ease;
+  text-align: left;
+}
+.userCard:hover {
+  background: var(--hover-bg);
+}
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #22c55e;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: white;
+  flex: 0 0 28px;
+  font-size: 14px;
+}
+.userName {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===== Mobile ===== */
+@media (max-width: 700px) {
+  .sidebar {
+    width: 100%;
+    height: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+  }
+  .headerSticky,
+  .footerSticky {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .scrollContent {
+    padding: 2px 16px 14px 16px;
+  }
+}

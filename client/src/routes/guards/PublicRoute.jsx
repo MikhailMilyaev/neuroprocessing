@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { STORIES_ROUTE, ADMIN_ROUTE } from '../../utils/consts';
+import { STORIES_ROUTE } from '../../utils/consts';
 import { jwtDecode } from 'jwt-decode';
 
 export default function PublicRoute({ children }) {
@@ -25,5 +25,5 @@ export default function PublicRoute({ children }) {
 
   if (st.loading) return null;
   if (!st.authed) return children;
-  return <Navigate to={st.role === 'ADMIN' ? ADMIN_ROUTE : STORIES_ROUTE} replace />;
+  return <Navigate to={STORIES_ROUTE} replace />;
 }

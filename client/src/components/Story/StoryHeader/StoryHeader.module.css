@@ -1,204 +1,101 @@
 :root{
-  --header-btn: 36px;
-  --header-icon: 24px;
-  --story-header-h: 56px; /* выставляется из JS */
+  --ring: rgba(20,174,92,.35);
+  --hover-bg: #f0f1f3;
+  --fg-icon: #111827;
+
+  --hdr-pad-mobile: 10px;
+  --hdr-pad-desktop: 12px;
 }
 
-.header {
-  background-color: #E6E6E6;
-  padding: 4px 10px;
-  border-radius: 15px;
-  margin: 20px auto 15px auto;
-  max-width: 800px;
-  display: flex;
-  align-items: center;
+/* === каркас === */
+.header{
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  width: 100%;
+  display: flex; align-items: center; justify-content: space-between;
   gap: 12px;
-  min-height: calc(var(--header-btn) + 3px);
+  background: var(--bg);
 }
 
-.titleInput {
-  flex: 1;
-  border: none;
-  background: transparent;
-  font-size: 18px;
-  outline: none;
+/* было «только сверху», теперь делим пополам */
+.headerPaddedMobile{
+  padding-inline: 12px;
+  padding-block: calc(var(--hdr-pad-mobile) / 2) calc(var(--hdr-pad-mobile) / 2);
+}
+@media (min-width:701px){
+  .headerPaddedMobile{
+    padding-inline: 16px;
+    padding-block: calc(var(--hdr-pad-desktop) / 2) calc(var(--hdr-pad-desktop) / 2);
+  }
 }
 
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 12px; /* побольше зазор */
-  margin-left: auto;
-}
-
-.iconBtn {
-  width: var(--header-btn);
-  height: var(--header-btn);
-  aspect-ratio: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  padding: 0;
-  margin: 0;
-  border: 0;
-  border-radius: 999px;
-
-  appearance: none;
-  -webkit-appearance: none;
-  -webkit-tap-highlight-color: transparent;
-
-  color: #111;
-  cursor: pointer;
-  line-height: 0;
-  transition: background-color .15s ease, opacity .15s ease, color .15s ease, transform .08s ease;
-}
-.iconBtn:not(:disabled):hover { background: #D9D9D9; }
-.iconBtn:active { transform: translateY(1px); }
-.iconBtn:disabled { opacity: .35; cursor: default; }
-.iconBtn > svg { width: var(--header-icon); height: var(--header-icon); display:block; pointer-events:none; }
-
-.lampBtn > svg { filter: grayscale(1) brightness(.7); transition: filter .15s ease; }
-.lampBtn:hover > svg, .lampBtn:active > svg { filter: none; }
-.menuBtn { color: #6b7280; }
-.menuBtn:hover, .menuBtnActive { color: #000; }
-
-.reevalPill {
-  margin-left: auto;
-  margin-right: 8px;
-  background: #cde7ff;
-  color: #0b3a64;
-  padding: 8px 14px;
-  border-radius: 14px;
-  font-size: 15px;
-  line-height: 1;
-  user-select: none;
-  white-space: nowrap;
-  border: none;
-}
-
-.reviewPill { background: #FEF3C7; color: #78350F; }
-
-.titleInputDesktop { display: block; }
-.titleButtonMobile {
-  display: none;
-  flex: 1; min-width: 0;
-  border: none; background: transparent;
-  font-size: 18px; text-align: left;
-  padding: 8px 0; color: #111;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-
-/* Кнопка "Назад" на десктопе скрыта */
-.backBtn{
-  display:none;
-  align-items:center;
-  gap:6px;
-  border:0;
-  background:transparent;
-  font-size:16px;
-  color:#0a84ff;
-  padding:6px 8px;
-  border-radius:10px;
-}
-.backBtn:active{ background: rgba(10,132,255,.12); }
-.backChevron{
-  display:inline-block;
-  font-weight:600;
-  font-size:22px;
-  line-height:1;
-  transform: translateY(-1px);
-}
-
-/* ===== Мобилка / PWA ===== */
-@media (max-width:900px){
-  .titleInputDesktop { display: none; }
-
+/* мобилка: учитываем safe-area для верхнего паддинга */
+@media (max-width:700px) and (hover:none) and (pointer:coarse){
   .header{
-    /* фиксируем наверху и учитываем safe area — работает и в Safari, и в iOS-PWA */
-    position: fixed;
-    left: 0; right: 0; top: 0;
-    z-index: 2000;
-
-    /* фон и «стекло» */
-    background: #f5f5f5;
-    backdrop-filter: saturate(150%) blur(10px);
-
-    /* внутренние отступы: сверху добавляем вырез под «чёлку» */
-    padding: calc(8px + env(safe-area-inset-top, 0px)) 10px 8px;
-
-    margin: 0;
-    border-radius: 0;
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    align-items: center;
-    box-shadow: 0 1px 0 rgba(0,0,0,.08);
-    gap: 12px;
+    top: env(safe-area-inset-top, 0px);
   }
-  .reevalPill {
-  display: inline-flex;
-  align-items: center;          /* выравнивает текст по вертикали */
-  justify-content: center;      /* по центру по горизонтали */
-  padding: 6px 12px;            /* немного симметричнее */
-  font-size: 14px;
-  line-height: 1;               /* чтобы текст не тянул высоту */
-  border-radius: 12px;
-  margin-left: 6px;             /* отступ от стрелки */
-  background: #cde7ff;
-  color: #0b3a64;
-  height: 32px;                 /* фиксируем высоту под кнопки */
-  box-sizing: border-box;
+  .headerPaddedMobile{
+    padding-top: calc(env(safe-area-inset-top, 0px) + (var(--hdr-pad-mobile) / 2));
+  }
+
+  /* убираем «залипший» hover/active */
+  .burger:hover,
+  .burger:active,
+  .tbtn:hover,
+  .tbtn:active{
+    background: transparent !important;
+  }
 }
 
-  .actions{ margin-left: auto; gap: 12px; }
+.left{ flex: 1 1 auto; display: flex; align-items: center; min-width: 0; gap: 8px; }
+.right{ flex: 0 0 auto; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 
-  .backBtn{ display:inline-flex; }
-  .actions{ gap: 12px; }
-  .iconBtn{ width:34px; height:34px; }
+.burger,
+.tbtn{
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 40px; width: 40px; min-width: 40px;
+  border: none; background: transparent; color: var(--text);
+  border-radius: 10px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: background .18s ease, transform .06s ease, opacity .2s ease;
+}
+.burger:hover, .tbtn:hover{ background: var(--hover-bg); }
+.burger:active, .tbtn:active{ transform: translateY(1px); }
+.burger:focus-visible, .tbtn:focus-visible{ outline: none; box-shadow: 0 0 0 3px var(--ring); }
+
+.burgerIcon, .icon{ width: 22px; height: 22px; color: var(--fg-icon); display: block; }
+
+.titleInput{
+  flex: 1 1 auto; min-width: 0; width: 100%;
+  background: transparent; border: none; outline: none;
+  font-size: 18px; font-weight: 400; line-height: 1.2;
+  color: var(--text);
+  padding: 0 4px;
+  white-space: normal; overflow: visible; text-overflow: clip;
+}
+@media (max-width:700px) and (hover:none) and (pointer:coarse){
+  .titleInput{ display: none; }
 }
 
-/* ===== Мобилка: выравниваем паддинги с хедером (10px) ===== */
-@media (max-width: 900px) {
-  /* такой же общий «поле» по краям, как у header */
-  .wrapper {
-    max-width: 100%;
-    padding: 0 10px; /* совпадает с .header padding L/R */
-  }
+.toolbar{ display: flex; align-items: center; gap: 10px; }
 
-  /* сам редактор: фон не меняем, рамок/тени нет */
-  .stage {
-    background: transparent;
-    border-radius: 0;
-    box-shadow: none;
+.lampBtn, .menuBtn{ background: transparent; opacity: .9; }
+.lampBtn:hover, .menuBtn:hover{ background: var(--hover-bg); opacity: 1; }
+.lampBtn .icon{ filter: grayscale(1) brightness(.9); }
+.lampBtn:hover .icon{ filter: none; }
+.menuBtnActive{ background: var(--hover-bg); box-shadow: 0 0 0 2px rgba(0,0,0,.04) inset; }
 
-    /* отступы текста от краёв контейнера: слева/справа тоже 10px */
-    padding: 12px 10px 16px;
+/* прячем бургер только на десктопе при открытом сайдбаре */
+@media (min-width:701px){
+  .sidebarOpen .burger{ width:0; min-width:0; margin:0; opacity:0; pointer-events:none; }
+}
 
-    min-height: 200px;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+@media (max-width:380px){
+  .tbtn{ width: 34px; min-width: 34px; height: 34px; border-radius: 9px; }
+  .icon{ width: 17px; height: 17px; }
+  .burger{ width: 34px; min-width: 34px; height: 34px; border-radius: 9px; }
+}
 
-    /* тонкий, но видимый скролл */
-    scrollbar-width: thin;
-    scrollbar-color: rgba(0,0,0,.28) transparent;
-  }
-  .stage::-webkit-scrollbar { width: 6px; }
-  .stage::-webkit-scrollbar-track { background: transparent; }
-  .stage::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,.28); border-radius: 3px; }
-  .stage::-webkit-scrollbar-thumb:hover { background-color: rgba(0,0,0,.38); }
-
-  /* текст как в заметках: без лишних внутренних паддингов у самого editable */
-  .editable {
-    font-size: 17px;
-    line-height: 26px;
-    padding: 0;
-    color: #222;
-  }
-  .editable[data-empty="true"]::before {
-    left: 1px;
-    color: #888;
-  }
-
-  /* полностью прячем гутер на мобилке */
-  .gutter { display: none !important; }
+@media (prefers-reduced-motion:reduce){
+  .tbtn, .burger, .toolbar{ transition: none !important; }
 }

@@ -8,96 +8,35 @@
 .stage {
   position: relative;
   overflow-y: auto;
-  overflow-x: hidden; 
+  overflow-x: hidden;
   min-height: 120px;
   background: transparent;
-  scrollbar-width: thin;
-  scrollbar-color: #bbb transparent;
+
+  /* тонкий скролл на переменных темы */
+  scrollbar-width: thin;                                 /* Firefox */
+  scrollbar-color: var(--scrollbar-thumb) transparent;   /* Firefox */
 }
-.stage::-webkit-scrollbar { width: 8px; }
+.stage::-webkit-scrollbar { width: var(--scrollbar-w); } /* Chrome/Safari/Edge */
 .stage::-webkit-scrollbar-track { background: transparent; }
-.stage::-webkit-scrollbar-thumb { background-color: #999; border-radius: 3px; }
-.stage::-webkit-scrollbar-thumb:hover { background-color: #666; }
+.stage::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+.stage::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+.stage::-webkit-scrollbar-button { width:0; height:0; display:none; }
+.stage::-webkit-scrollbar-corner { background: transparent; }
 
-.scrollOverlay {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  pointer-events: none;
+/* десктопный «уголок» для ресайза */
+.stageResizable {
+  resize: vertical;
+  cursor: ns-resize;
 }
 
-.gutter {
-  position: absolute;
-  top: 0;
-  left: -35px;
-  width: 28px;
-  height: 100%;
-  z-index: 3;
-}
-.gutterInner { position: absolute; inset: 0; }
-
-.gutterBtn {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%) translateY(-50%);
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  border: 2px solid #cfd4dc;
-  background: transparent;
-  cursor: pointer;
-  transition:
-    border-color .15s ease,
-    box-shadow .15s ease,
-    transform .05s ease,
-    opacity .12s ease;
-  opacity: 1;
-  pointer-events: auto;
-}
-.gutterBtn:hover { border-color: #98a2b3; box-shadow: 0 2px 6px rgba(16,24,40,.12); }
-.gutterBtn:active { transform: translateX(-50%) translateY(-50%) scale(.96); }
-
-.gutterBtnActive { box-shadow: 0 2px 6px rgba(16,24,40,.14); border-color:#98a2b3; }
-.gutterBtn[aria-pressed="true"] .radioDot { background: #22c55e; }
-
-.radioDot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: transparent;
-  transition: background-color .12s ease;
-}
-
-.highlights {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-}
-.highlightRect {
-  position: absolute;
-  background: rgba(253, 230, 138, 0.55);
-  border-radius: 4px;
-}
-
-.editable[data-empty="true"]::before { white-space: pre-wrap; }
-
-.underlines {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-}
-.underline {
-  position: absolute;
-  background: #22c55e;
-  height: 2px;
-  border-radius: 1px;
-}
-
+/* Контент */
 .editable {
   position: relative;
-  z-index: 2;
   outline: none;
   white-space: pre-wrap;
   word-break: break-word;
@@ -105,123 +44,77 @@
   padding: 0;
   font-size: 18px;
   line-height: 28px;
-  color: #111827;
+  color: var(--text);
 }
 
+/* плейсхолдер */
 .editable[data-empty="true"]::before {
   content: attr(data-placeholder);
-  color: #757575;
+  color: color-mix(in oklab, var(--text) 40%, transparent);
   pointer-events: none;
   position: absolute;
   left: 0;
   top: 0;
+  white-space: pre-wrap;
 }
 
-.selBubble {
-  position: absolute;
-  transform: translate(-50%, -100%);
-  max-width: calc(100% - 8px);
-  z-index: 5;
-  pointer-events: none;
-}
-.selBubbleBelow { transform: translate(-50%, 0); }
-
-.selBubbleBtn {
-  border: none;
-  background: #fff;
-  border-radius: 12px;
-  width: 40px;
-  height: 40px;
+/* ===== Мобильный drag-handle ===== */
+.mobileHandle {
+  position: sticky;
+  bottom: 0; /* всегда внизу видимой области stage */
+  left: 0;
+  right: 0;
+  height: 22px;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,.15);
-  cursor: pointer;
-  pointer-events: auto;
+  background: linear-gradient(to bottom, transparent, color-mix(in oklab, var(--bg) 85%, transparent) 35%, var(--bg) 100%);
+  touch-action: none; /* чтобы тянуть без скролла */
 }
-.selIdeaIcon {
-  width: 24px;
-  height: 24px;
-  filter: grayscale(1) brightness(.7);
-  transition: filter .15s ease, transform .08s ease;
-}
-.selBubbleBtn:hover .selIdeaIcon,
-.selBubbleBtn:active .selIdeaIcon,
-.selBubbleBtn:focus-visible .selIdeaIcon {
-  filter: none;
-  transform: translateY(-0.5px);
-}
-
-.gutterBtn[aria-pressed="true"]::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 10px;
-  height: 10px;
+.mobileHandleBar {
+  width: 48px;
+  height: 5px;
   border-radius: 999px;
-  background: #22c55e;
+  background: color-mix(in oklab, var(--text) 20%, transparent);
+  margin-bottom: 6px;
 }
 
-.gutterBtn.gutterEdgeTop {
-  top: 0;
-  bottom: auto;
-  transform: translateX(-50%) translateY(0);
-}
-
-.gutterBtn.gutterEdgeBottom {
-  top: auto;
-  bottom: 0;
-  transform: translateX(-50%) translateY(0);
-}
-
-/* ===== МОБИЛЬНЫЙ АДАПТИВ БЕЗ РАМКИ/ФОНА ===== */
+/* Мобильный */
 @media (max-width: 900px) {
   .wrapper {
     max-width: 100%;
-    padding: 0 8px;              /* умеренные поля экрана */
+    padding: 0 8px;
   }
 
   .stage {
-    background: transparent;      /* фон оставляем как был */
-    border-radius: 0;             /* без рамок/скруглений */
-    box-shadow: none;             /* без тени */
-    padding: 12px 8px 16px;      /* реальные отступы текста от краёв */
-    min-height: 200px;
-    -webkit-overflow-scrolling: touch; /* плавный скролл на iOS */
-
-    /* тонкий, но видимый скролл */
-    scrollbar-width: thin;
-    scrollbar-color: rgba(0,0,0,.28) transparent;
-  }
-
-  .stage::-webkit-scrollbar {
-    width: 6px;                   /* узкий скроллбар */
-  }
-  .stage::-webkit-scrollbar-track {
     background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 12px 8px 0; /* снизу убрал паддинг, его займёт handle */
+    min-height: 200px;
+    -webkit-overflow-scrolling: touch;
+
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--text) 25%, transparent) transparent;
   }
+  .stage::-webkit-scrollbar { width: 6px; }
   .stage::-webkit-scrollbar-thumb {
-    background-color: rgba(0,0,0,.28);
+    background-color: color-mix(in oklab, var(--text) 25%, transparent);
     border-radius: 3px;
   }
   .stage::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(0,0,0,.38);
+    background-color: color-mix(in oklab, var(--text) 35%, transparent);
   }
 
   .editable {
-    font-size: 17px;              /* читабельно как в заметках */
+    font-size: 17px;
     line-height: 26px;
-    padding: 0;                   /* паддинги уже у .stage */
-    color: #222;
+    padding: 0;
+    color: var(--text);
   }
 
   .editable[data-empty="true"]::before {
-    left: 1px;                    /* лёгкий визуальный отступ плейсхолдера */
-    color: #888;
+    left: 1px;
+    color: color-mix(in oklab, var(--text) 45%, transparent);
   }
-
-  /* гутер целиком убираем на мобилках */
-  .gutter { display: none !important; }
 }

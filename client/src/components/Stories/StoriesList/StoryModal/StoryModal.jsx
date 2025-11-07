@@ -1,84 +1,353 @@
 import { createPortal } from "react-dom";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import classes from "./StoryModal.module.css";
-import { MdDeleteOutline } from "react-icons/md";
+import { MdDeleteOutline, MdEdit } from "react-icons/md";
 
-const StoryModal = ({ open, variant = "desktop", position, onClose, onDelete }) => {
-  const dialogRef = useRef(null);
+/** Desktop: обычный поповер; Mobile: блюр + «карточка-призрак».
+ *  На телефоне:
+ *   - обычный long-press: поповер + призрак; по "Изменить" прячем поповер и редактируем призрак.
+ *   - создание: forceMobileEdit=true — сразу редактируем призрак (поповер не показываем).
+ */
+const StoryModal = ({
+  open,
+  position,
+  onClose,
+  onDelete,
+  onEdit,                 // ПК
+  mobile = false,
+  anchorRect = null,      // DOMRect карточки (может быть null при создании)
+  overlayMeta = null,     // { title, time, isPlaceholder }
+  onMobileEditSubmit,     // (nextTitle: string) => void|Promise
+  selectedId,             // id карточки (может быть null при создании)
+  forceMobileEdit = false // НОВОЕ: сразу редактирование без поповера
+}) => {
+  const popRef = useRef(null);
+  const ghostRef = useRef(null);
+  const inputRef = useRef(null);
 
+  const [pos, setPos] = useState({ x: -9999, y: -9999 });
+  const [ready, setReady] = useState(false);
+
+  // мобильное редактирование (или создание)
+  const [mobileEditing, setMobileEditing] = useState(false);
+  const [editValue, setEditValue] = useState("");
+
+  const closeSafely = () => {
+    try { window.__storiesSuppressTapUntil = performance.now() + 700; } catch {}
+    requestAnimationFrame(() => onClose?.());
+  };
+
+  // Закрытие по тапу вне
   useEffect(() => {
-    const el = dialogRef.current;
-    if (!el) return;
-    if (open) el.showModal();
-    else el.close();
-  }, [open]);
-
-  useEffect(() => {
-    const el = dialogRef.current;
-    if (!el) return;
-
-    const handleClickOutside = (e) => {
-      if (e.target === el) onClose?.();
+    if (!open) return;
+    const onDown = (e) => {
+      const pop = popRef.current;
+      const ghost = ghostRef.current;
+      const t = e.target;
+      const inPop = pop && pop.contains(t);
+      const inGhost = mobile && ghost && ghost.contains(t);
+      if (!inPop && !inGhost) {
+        if (mobile && mobileEditing) {
+          const val = (editValue || "").trim();
+          if (val) onMobileEditSubmit?.(val);
+        }
+        closeSafely();
+      }
     };
-    const handleEscape = (e) => {
-      if (e.key === "Escape") onClose?.();
-    };
-
-    if (open) {
-      el.addEventListener("click", handleClickOutside);
-      window.addEventListener("keydown", handleEscape);
-    }
+    document.addEventListener("mousedown", onDown, true);
+    document.addEventListener("touchstart", onDown, true);
     return () => {
-      el.removeEventListener("click", handleClickOutside);
-      window.removeEventListener("keydown", handleEscape);
+      document.removeEventListener("mousedown", onDown, true);
+      document.removeEventListener("touchstart", onDown, true);
     };
-  }, [open, onClose]);
+  }, [open, mobile, mobileEditing, editValue, onMobileEditSubmit]);
+
+  // Лочим фон под блюром
+  useEffect(() => {
+    if (!open || !mobile) return;
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOv = html.style.overflow;
+    const prevBodyOv = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    html.classList.add("stories-modal-lock");
+    html.classList.add(classes.noSelect);
+    body.classList.add(classes.noSelect);
+    return () => {
+      setTimeout(() => html.classList.remove("stories-modal-lock"), 120);
+      html.style.overflow = prevHtmlOv;
+      body.style.overflow = prevBodyOv;
+      html.classList.remove(classes.noSelect);
+      body.classList.remove(classes.noSelect);
+    };
+  }, [open, mobile]);
 
   useEffect(() => {
-    if (variant !== "desktop") return;
-    const el = dialogRef.current;
-    if (!el || !open) return;
+  if (!mobile || !open) return;
 
-    let x = position?.x ?? 0;
-    let y = position?.y ?? 0;
+  const onForce = () => {
+    const el = inputRef.current;
+    if (!el) return;
+    // Небольшая задержка — чтобы инпут точно был в DOM и видим
+    setTimeout(() => {
+      try { el.focus({ preventScroll: true }); } catch { el.focus(); }
+      try { el.click(); } catch {}
+      try {
+        const len = el.value?.length ?? 0;
+        el.setSelectionRange(len, len);
+      } catch {}
+      try { document.dispatchEvent(new Event("stories:mobile-input-focused")); } catch {}
+    }, 30);
+  };
 
-    el.style.left = `${x}px`;
-    el.style.top = `${y}px`;
+  document.addEventListener("stories:force-focus-create", onForce);
+  return () => document.removeEventListener("stories:force-focus-create", onForce);
+}, [mobile, open]);
 
+
+  // позиционирование поповера (ПК/обычный моб)
+  useEffect(() => {
+    if (!open) return;
+    setReady(false);
+    const el = popRef.current;
+    if (!el) return;
     const pad = 8;
-    const rect = el.getBoundingClientRect();
 
-    if (x + rect.width > window.innerWidth - pad) x = window.innerWidth - rect.width - pad;
-    if (y + rect.height > window.innerHeight - pad) y = window.innerHeight - rect.height - pad;
-    if (x < pad) x = pad;
-    if (y < pad) y = pad;
+    if (!mobile) {
+      let x = position?.x ?? pad;
+      let y = position?.y ?? pad;
+      el.style.left = `${x}px`;
+      el.style.top = `${y}px`;
+      requestAnimationFrame(() => {
+        const r = el.getBoundingClientRect();
+        if (x + r.width > window.innerWidth - pad) x = window.innerWidth - r.width - pad;
+        if (y + r.height > window.innerHeight - pad) y = window.innerHeight - r.height - pad;
+        if (x < pad) x = pad;
+        if (y < pad) y = pad;
+        setPos({ x, y });
+        setReady(true);
+      });
+      return;
+    }
 
-    el.style.left = `${x}px`;
-    el.style.top = `${y}px`;
-  }, [open, position, variant]);
+    // Mobile (когда НЕ forceMobileEdit): позиция относительно anchorRect
+    if (!forceMobileEdit) {
+      const a = anchorRect;
+      if (!a) return;
+      let x = Math.min(a.left + a.width - 260, window.innerWidth - 260 - pad);
+      if (x < pad) x = pad;
+      el.style.left = `${x}px`;
+      el.style.top = `-9999px`;
 
-  return createPortal(
-    <dialog
-      ref={dialogRef}
-      className={`${classes.dialog} ${variant === "mobile" ? classes.mobile : classes.desktop}`}
+      requestAnimationFrame(() => {
+        const r = el.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - (a.top + a.height);
+        const spaceAbove = a.top;
+        let y;
+        if (spaceBelow < r.height + 12 && spaceAbove >= r.height + 12) {
+          y = Math.max(a.top - r.height - 12, pad);
+        } else {
+          y = Math.min(a.top + a.height + 12, window.innerHeight - r.height - pad);
+        }
+        setPos({ x, y });
+        setReady(true);
+      });
+    } else {
+      // forceMobileEdit: поповер не нужен, но чтобы не мигал — помечаем ready
+      setReady(true);
+    }
+  }, [open, mobile, position, anchorRect, forceMobileEdit]);
+
+  // динамический top для призрака (в режиме редактирования/создания)
+  const computeEditTop = () => {
+    const vvTop = (window.visualViewport && Number.isFinite(window.visualViewport.offsetTop))
+      ? window.visualViewport.offsetTop
+      : 0;
+    return Math.max(16, vvTop + 48);
+  };
+  const [editTop, setEditTop] = useState(computeEditTop());
+
+  useEffect(() => {
+    if (!open || !mobile || !mobileEditing) return;
+    setEditTop(computeEditTop());
+    const onVV = () => setEditTop(computeEditTop());
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", onVV);
+      window.visualViewport.addEventListener("scroll", onVV);
+    }
+    const t = setTimeout(() => setEditTop(computeEditTop()), 60);
+    return () => {
+      clearTimeout(t);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", onVV);
+        window.visualViewport.removeEventListener("scroll", onVV);
+      }
+    };
+  }, [open, mobile, mobileEditing]);
+
+  // при входе в режим редактирования/создания
+  useEffect(() => {
+    if (!mobile || !open) return;
+    if (forceMobileEdit) setMobileEditing(true);
+  }, [mobile, open, forceMobileEdit]);
+
+  // Фокус инпута в мобильном редактировании
+  useEffect(() => {
+    if (!mobile || !open || !mobileEditing) return;
+    setEditValue(overlayMeta?.isPlaceholder ? "" : (overlayMeta?.title || ""));
+    const focusSoon = () => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const el = inputRef.current;
+          if (!el) return;
+          try { el.focus({ preventScroll: true }); } catch { el.focus(); }
+          try { el.click(); } catch {}
+          const len = el.value?.length ?? 0;
+          try { el.setSelectionRange(len, len); } catch {}
+          try { document.dispatchEvent(new Event("stories:mobile-input-focused")); } catch {}
+          setTimeout(() => {
+            if (document.activeElement !== el) {
+              try { el.focus({ preventScroll: true }); } catch { el.focus(); }
+              try { el.click(); } catch {}
+            }
+          }, 60);
+        });
+      });
+    };
+    focusSoon();
+    if ("visualViewport" in window && window.visualViewport) {
+      const once = () => { setTimeout(focusSoon, 30); window.visualViewport.removeEventListener("resize", once); };
+      window.visualViewport.addEventListener("resize", once, { once: true });
+    }
+  }, [mobile, open, mobileEditing, overlayMeta]);
+
+  if (!open) return null;
+
+  const onClickEditDesktop = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    onEdit?.(); // ПК
+  };
+
+  const onClickEditMobile = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (!mobile) return;
+    setMobileEditing(true);
+  };
+
+  const onSubmitMobile = () => {
+    const val = (editValue || "").trim();
+    if (val) onMobileEditSubmit?.(val);
+    closeSafely();
+  };
+
+  const onCancelMobile = () => {
+    const val = (editValue || "").trim();
+    if (val) onMobileEditSubmit?.(val);
+    closeSafely();
+  };
+
+  const content = (
+    <div
+      ref={popRef}
+      className={`${classes.pop} ${mobile ? classes.popMobile : ""} ${ready ? classes.ready : classes.hidden}`}
+      style={{ left: `${pos.x}px`, top: `${pos.y}px` }}
+      role="menu"
       onContextMenu={(e) => e.preventDefault()}
     >
-      {variant === "mobile" ? (
-        <div className={classes.sheet} role="menu">
-          <button className={`${classes.item} ${classes.itemDanger}`} onClick={onDelete} role="menuitem">
-            <MdDeleteOutline className={`${classes.icon} ${classes.iconDanger}`} />
-            <span className={classes.labelDanger}>Удалить</span>
-          </button>
-        </div>
-      ) : (
-        <div className={classes.menu} role="menu">
-          <button className={classes.item} onClick={onDelete} role="menuitem">
-            <MdDeleteOutline className={classes.icon} />
-            <span className={classes.label}>Удалить</span>
-          </button>
-        </div>
+      <button
+        className={classes.item}
+        onClick={mobile ? onClickEditMobile : onClickEditDesktop}
+        role="menuitem"
+      >
+        <MdEdit className={classes.icon} />
+        <span className={classes.label}>Изменить</span>
+      </button>
+      <div className={classes.sep} />
+      <button
+        className={classes.item}
+        onClick={(e)=>{e.preventDefault(); e.stopPropagation(); onDelete?.();}}
+        role="menuitem"
+      >
+        <MdDeleteOutline className={classes.iconDanger} />
+        <span className={classes.labelDanger}>Удалить</span>
+      </button>
+    </div>
+  );
+
+  const ghostStyle = mobileEditing
+    ? { left: undefined, top: `${Math.round(editTop)}px`, width: undefined, height: undefined }
+    : anchorRect
+      ? {
+          left: `${Math.max(0, anchorRect.left)}px`,
+          top: `${Math.max(0, anchorRect.top)}px`,
+          width: `${anchorRect.width}px`,
+          height: `${anchorRect.height}px`,
+        }
+      : undefined;
+
+  return createPortal(
+    <>
+      {mobile && (
+        <>
+          {/* Блюр: тап = сохранить (если редактируем) и закрыть */}
+          <div
+            className={classes.backdrop}
+            aria-hidden
+            onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onCancelMobile(); }}
+          />
+          {/* Призрак */}
+          <div
+            ref={ghostRef}
+            className={`${classes.selectedGhost} ${mobileEditing ? classes.ghostEditing : ""}`}
+            style={ghostStyle}
+            aria-hidden={false}
+            // ВАЖНО: не глушим события, когда уже редактируем — иначе iOS не поднимает клавиатуру
+            onTouchStart={(e) => { if (!mobileEditing) { e.preventDefault(); e.stopPropagation(); } }}
+            onMouseDown={(e) => { if (!mobileEditing) { e.preventDefault(); e.stopPropagation(); } }}
+            onClick={(e) => { if (!mobileEditing) { e.preventDefault(); e.stopPropagation(); } }}
+          >
+            {!mobileEditing ? (
+              <>
+                <span
+                  className={`${classes.ghostTitle} ${overlayMeta?.isPlaceholder ? classes.ghostTitlePlaceholder : ""}`}
+                  title={overlayMeta?.title || ""}
+                >
+                  {overlayMeta?.title || ""}
+                </span>
+                {!!(overlayMeta?.time) && (
+                  <span className={classes.ghostTime}>{overlayMeta.time}</span>
+                )}
+              </>
+            ) : (
+              <div className={classes.editWrap}>
+                <input
+                  ref={inputRef}
+                  className={classes.editInput}
+                  type="text"
+                  inputMode="text"
+                  autoCapitalize="sentences"
+                  autoCorrect="on"
+                  enterKeyHint="done"
+                  placeholder="Сформулируйте проблему"
+                  value={editValue}
+                  onChange={(e)=>setEditValue(e.target.value)}
+                  onKeyDown={(e)=>{ if (e.key === "Enter") { e.preventDefault(); onSubmitMobile(); } }}
+                  onBlur={onSubmitMobile}
+                  aria-label="Редактирование заголовка истории"
+                  autoFocus
+                />
+              </div>
+            )}
+          </div>
+        </>
       )}
-    </dialog>,
+
+      {/* На мобилке контент-поповер скрываем если уже редактируем или в force-создании */}
+      {(!mobile || (!mobileEditing && !forceMobileEdit)) && content}
+    </>,
     document.getElementById("storyModal")
   );
 };

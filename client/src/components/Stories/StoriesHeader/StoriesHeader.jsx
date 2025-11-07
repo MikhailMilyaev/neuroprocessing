@@ -1,200 +1,129 @@
-import { useRef, useState, useContext, useEffect } from "react";
-import { Link } from "react-router-dom";
-import {
-  IoAdd,
-  IoSearchOutline,
-  IoBulbOutline,
-  IoBookOutline,
-  IoSchoolOutline,
-  IoSettingsOutline
-} from "react-icons/io5";
-
-import { PRACTICES_ROUTE, IDEA_DRAFTS_ROUTE, EDUCATION_ROUTE } from "../../../utils/consts";
-
+import { useEffect, useRef, useCallback } from "react";
+import { IoMenuOutline } from "react-icons/io5";
+import { PiNotePencil } from "react-icons/pi";
 import Tabs from "./Tabs/Tabs";
-import SearchStory from "./SearchStory/SearchStory";
-import SettingsModal from "./SettingsModal/SettingsModal";
-
 import classes from "./StoriesHeader.module.css";
-import { Context } from "../../../utils/context";
 
 export default function StoriesHeader({
   showArchive = false,
   onToggleArchive = () => {},
-  hasAnyStories = true,
-  searchInput = "",
-  setSearchInput = () => {},
   onAddStory = () => {},
-  showReminders,
-  onToggleReminders,
+  onOpenSidebar = () => {},
+  isSidebarOpen = false,
 }) {
-  const { user } = useContext(Context);
+  const isMobile =
+    typeof window !== "undefined" &&
+    window.matchMedia("(max-width:700px)").matches &&
+    window.matchMedia("(hover: none)").matches &&
+    window.matchMedia("(pointer: coarse)").matches;
 
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [profilePos, setProfilePos] = useState({ x: 0, y: 0 });
-  const settingsBtnRef = useRef(null);
+  // === iOS keyboard keeper (глобальный для хедера) ===
+  const keeperRef = useRef(null);
 
-  const [searchOpen, setSearchOpen] = useState(false);
-  const mobileSearchRef = useRef(null);
-
-  useEffect(() => {
-    if (!hasAnyStories && searchOpen) setSearchOpen(false);
-  }, [hasAnyStories, searchOpen]);
-
-  useEffect(() => {
-    if (!searchOpen) return;
-    const el = mobileSearchRef.current;
+  const removeKeeper = useCallback(() => {
+    const el = keeperRef.current;
+    keeperRef.current = null;
     if (!el) return;
-    requestAnimationFrame(() => {
-      try {
-        el.focus({ preventScroll: true });
-        const len = (el.value || "").length;
-        el.setSelectionRange(len, len);
-      } catch {}
-    });
-  }, [searchOpen]);
+    try { el.remove(); } catch {}
+  }, []);
 
-  const openProfile = () => {
-    const rect = settingsBtnRef.current?.getBoundingClientRect?.();
-    if (rect) setProfilePos({ x: rect.right + 20, y: rect.top });
-    setProfileOpen(true);
+  useEffect(() => {
+    const onFocused = () => removeKeeper();
+    document.addEventListener("stories:mobile-input-focused", onFocused);
+    return () => document.removeEventListener("stories:mobile-input-focused", onFocused);
+  }, [removeKeeper]);
+
+  const armKeyboardKeeper = useCallback(() => {
+    if (!isMobile) return;
+    if (document.getElementById("stories-keyboard-keeper")) return;
+
+    try {
+      const el = document.createElement("input");
+      el.type = "text";
+      el.id = "stories-keyboard-keeper";
+      el.setAttribute("aria-hidden", "true");
+      el.style.position = "fixed";
+      el.style.top = "calc(env(safe-area-inset-top, 0px) + 6px)";
+      el.style.left = "6px";
+      el.style.width = "1px";
+      el.style.height = "1px";
+      el.style.opacity = "0.01";
+      el.style.background = "transparent";
+      el.style.border = "none";
+      el.style.padding = "0";
+      el.style.margin = "0";
+      el.style.zIndex = "2147483647";
+      el.style.webkitUserSelect = "text";
+
+      document.body.appendChild(el);
+      el.focus();
+      try { el.setSelectionRange(1, 1); } catch {}
+      try { el.click(); } catch {}
+
+      keeperRef.current = el;
+    } catch {}
+  }, [isMobile]);
+
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      if (isMobile) armKeyboardKeeper();
+      const p = onAddStory("", { inline: isMobile });
+      if (p?.then) { try { await p; } catch {} }
+      setTimeout(removeKeeper, 2000);
+    } catch (err) {
+      console.error("Create story failed:", err);
+      removeKeeper();
+    }
   };
-  const handleLogout = () => { user.logout(); setProfileOpen(false); };
-  const handleHelp   = () => window.open("https://t.me/pinky589", "_blank");
+
+  const burgerProps = {};
+  if (!isMobile) {
+    burgerProps["aria-hidden"] = isSidebarOpen;
+    burgerProps["disabled"] = isSidebarOpen;
+    burgerProps["tabIndex"] = isSidebarOpen ? -1 : 0;
+  }
 
   return (
-    <div className={`${classes.header} ${classes.headerPaddedMobile} ${searchOpen ? classes.searchMode : ""}`}>
-      {!searchOpen && (
-        <>
-          <div className={classes.left}>
-            <Tabs showArchive={showArchive} onToggleArchive={onToggleArchive} />
-          </div>
+    <div className={`${classes.header} ${classes.headerPaddedMobile} ${isSidebarOpen ? classes.sidebarOpen : ""}`}>
+      <div className={classes.left}>
+        <button
+          type="button"
+          className={classes.burger}
+          onClick={(e) => {
+            onOpenSidebar?.();
+            if (isMobile) try { e.currentTarget.blur(); } catch {}
+          }}
+          onTouchEnd={(e) => { if (isMobile) try { e.currentTarget.blur(); } catch {} }}
+          onMouseLeave={(e) => { if (isMobile) try { e.currentTarget.blur(); } catch {} }}
+          aria-label="Открыть меню"
+          title="Меню"
+          {...burgerProps}
+        >
+          <IoMenuOutline className={classes.burgerIcon} />
+        </button>
 
-          <div className={classes.center}>
-            {hasAnyStories && (
-              <div className={`${classes.searchWrap} ${classes.onlyDesktopFlex}`}>
-                <SearchStory value={searchInput} onChangeText={setSearchInput} />
-              </div>
-            )}
-          </div>
+        <div className={classes.tabsWrap}>
+          <Tabs showArchive={showArchive} onToggleArchive={onToggleArchive} />
+        </div>
+      </div>
 
-          <div className={classes.right}>
-            <div className={classes.toolbar} role="toolbar" aria-label="Действия">
-              <div className={classes.onlyDesktop}>
-                <Link
-                  to={IDEA_DRAFTS_ROUTE}
-                  className={classes.tbtn}
-                  aria-label="Идеи на обработку"
-                  draggable={false}
-                  onDragStart={(e) => e.preventDefault()}
-                >
-                  <IoBulbOutline className={classes.icon} />
-                </Link>
-
-                <Link
-                  to={PRACTICES_ROUTE}
-                    className={classes.tbtn}
-                    aria-label="Практики"
-                    draggable={false}
-                    onDragStart={(e) => e.preventDefault()}
-                  >
-                    <IoSchoolOutline className={classes.icon} />
-                  </Link>
-
-                <Link
-                  to={EDUCATION_ROUTE}
-                  className={classes.tbtn}
-                  aria-label="Обучение"
-                  draggable={false}
-                  onDragStart={(e) => e.preventDefault()}
-                >
-                  <IoBookOutline className={classes.icon} />
-                </Link>
-              </div>
-
-              <div className={classes.onlyMobileInline}>
-                {hasAnyStories && (
-                  <button
-                    type="button"
-                    className={classes.tbtn}
-                    aria-label="Поиск"
-                    onClick={() => setSearchOpen(true)}
-                  >
-                    <IoSearchOutline className={classes.icon} />
-                  </button>
-                )}
-              </div>
-              
-
-              <button
-   type="button"
-   className={`${classes.tbtn} ${classes.primary}`}
-   onClick={(e) => {
-   e.preventDefault();
-   e.stopPropagation();
-   const isMobile =
-     window.matchMedia('(max-width:700px)').matches &&
-     window.matchMedia('(hover: none)').matches &&
-     window.matchMedia('(pointer: coarse)').matches;
-   onAddStory('', { inline: isMobile }); // десктоп → без inline
- }}
-   aria-label="Добавить историю"
- >
-                <IoAdd className={classes.icon} />
-                <span className={classes.primaryLabel}>Добавить</span>
-              </button>
-
-              <div className={classes.onlyDesktop}>
-                <button
-                  ref={settingsBtnRef}
-                  type="button"
-                  className={classes.tbtn}
-                  onClick={openProfile}
-                  aria-label="Настройки"
-                >
-                  <IoSettingsOutline className={classes.icon} />
-                </button>
-              </div>
-            </div>
-
-            <SettingsModal
-              open={profileOpen}
-              onClose={() => setProfileOpen(false)}
-              position={profilePos}
-              onLogout={handleLogout}
-              onHelp={handleHelp}
-              showArchive={showArchive}
-              onToggleArchive={onToggleArchive}
-              showReminders={showReminders}
-              onToggleReminders={onToggleReminders}
-            />
-          </div>
-        </>
-      )}
-
-      {searchOpen && (
-        <div className={classes.searchInline}>
-          <div className={classes.searchRowInput}>
-            <SearchStory
-              value={searchInput}
-              onChangeText={setSearchInput}
-              inputRef={mobileSearchRef}
-              autoFocus
-            />
-          </div>
+      <div className={classes.right}>
+        <div className={classes.toolbar} role="toolbar" aria-label="Действия">
           <button
             type="button"
-            className={classes.cancelBtn}
-            onClick={() => {
-              setSearchOpen(false);
-              setSearchInput('');
-              try { mobileSearchRef.current?.blur(); } catch {}
-            }}
+            className={`${classes.tbtn} ${classes.tbtnBlack}`}
+            onClick={handleAdd}
+            onContextMenu={(e)=>e.preventDefault()}
+            aria-label="Добавить историю"
+            title="Добавить историю"
           >
-            Отменить
+            <PiNotePencil className={classes.icon} />
           </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

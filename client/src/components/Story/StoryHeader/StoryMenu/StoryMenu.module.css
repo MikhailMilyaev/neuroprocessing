@@ -8,7 +8,6 @@
 }
 .menuDialog::backdrop { background: transparent; }
 
-/* Само меню — всегда абсолют к диалогу. Ширина — как в JSX (MENU_W). */
 .menu {
   position: absolute;
   width: 243px;
@@ -44,7 +43,6 @@
 .icon { font-size: 20px; flex-shrink: 0; color: #fff; }
 .label { flex: 1; }
 
-/* тумблеры */
 .switch {
   position: relative;
   display: inline-block;
@@ -74,70 +72,16 @@
 .switch input:checked + .slider { background-color: #22c55e; }
 .switch input:checked + .slider:before { transform: translateX(16px); }
 
-/* ——— панель частот ——— */
-.freqPanel {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height .25s ease, opacity .2s ease, padding .2s ease, margin .2s ease;
-  opacity: 0;
-  background: transparent;
-  border-radius: 12px;
-  margin-top: 2px;
-  padding: 0 8px;
-}
-.freqPanel.open {
-  max-height: 360px;
-  opacity: 1;
-  padding: 8px;
-}
-
-.submenuTitle {
-  font-size: 12px; opacity: .9;
-  margin: 2px 0 8px 6px; background: transparent;
-}
-
-.submenuOption {
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 8px; border-radius: 8px; cursor: pointer;
-  font-size: 15px; transition: background .15s ease;
-  user-select: none; background: transparent;
-}
-.submenuOption:hover,
-.submenuOption:has(input:focus-visible) { background: rgba(255,255,255,0.16); }
-.submenuOption span { background: transparent; }
-
-.submenuOption input[type="radio"] {
-  -webkit-appearance: none; appearance: none;
-  width: 20px; height: 20px; border-radius: 50%;
-  border: 2px solid rgba(255,255,255,.6);
-  background: transparent; cursor: pointer; outline: none; flex-shrink: 0;
-  position: relative; display: inline-block; vertical-align: middle; line-height: 1; box-sizing: border-box;
-}
-.submenuOption input[type="radio"]::before {
-  content: ""; position: absolute; left: 50%; top: 50%;
-  width: 10px; height: 10px; border-radius: 50%;
-  background: #22c55e; transform: translate(-50%, -50%) scale(0);
-  transition: transform .12s ease-in-out;
-}
-.submenuOption input[type="radio"]:checked::before {
-  transform: translate(-50%, -50%) scale(1);
-}
-
-/* ===== Мобилка: полноэкранный backdrop, координаты задаются ИЗ JS ===== */
 @media (max-width:900px){
   .menuDialog{
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,.18);   /* кликабельная свободная зона */
+    background: rgba(0,0,0,.18);
     pointer-events: auto;
   }
   .menuDialog::backdrop{ background: transparent; }
 
   .menu{
-    /* здесь намеренно НЕТ left/right/top — их ставит JSX через style */
-    /* ширина и ограничение уже заданы выше */
     transform: translateZ(0);
   }
-
-  .freqPanel.open { max-height: 420px; }
 }

@@ -1,30 +1,30 @@
 // src/pages/Practices/Practices.jsx
-import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { listRuns, createRunIfNeeded, deleteRun } from "../../http/practiceRunsApi";
 import { PRACTICES_ROUTE } from "../../utils/consts";
 
 import PracticesList from "../../components/Practices/PracticesList/PracticesList";
-import AddIdeaModal from "../../components/Practices/AddIdeaModal/AddIdeaModal";
-import RunActionsModal from "../../components/Practices/RunActionsModal/RunActionsModal";
-
+import AddIdeaModal from "../../components/Practices/PracticesHeader/AddIdeaModal/AddIdeaModal";
+import PracticesHeader from "../../components/Practices/PracticesHeader/PracticesHeader";
+import EmptyState from "../../components/Practices/EmptyState/EmptyState";
 import styles from "./Practices.module.css";
-import BackBtn from "../../components/BackBtn/BackBtn";
 
-// realtime
 import { startRealtime, subscribe, getActorChannel } from "../../utils/realtime";
 
 export default function Practices() {
   const navigate = useNavigate();
+  const { onOpenSidebar, isSidebarOpen } =
+    (typeof useOutletContext === "function" ? (useOutletContext() || {}) : {}) ||
+    { onOpenSidebar: () => {}, isSidebarOpen: false };
 
   const [runs, setRuns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
-
   const [addOpen, setAddOpen] = useState(false);
-  const [actionsFor, setActionsFor] = useState(null);
 
   const hasRuns = useMemo(() => runs.length > 0, [runs]);
+  const isEmpty = useMemo(() => !loading && !hasRuns, [loading, hasRuns]);
 
   const headerRef = useRef(null);
   useEffect(() => {
@@ -46,6 +46,7 @@ export default function Practices() {
     };
   }, []);
 
+  // мобилка: фикс скролла под нижнюю навигацию (как в Stories)
   useEffect(() => {
     if (!window.matchMedia("(max-width:700px)").matches) return;
     const prevHtml = document.documentElement.style.overflow;
@@ -65,7 +66,7 @@ export default function Practices() {
       const data = await listRuns();
       setRuns(Array.isArray(data) ? data : []);
     } catch (e) {
-      setErr(e.message || "Не удалось загрузить практики");
+      setErr(e?.message || "Не удалось загрузить практики");
     } finally {
       setLoading(false);
     }
@@ -73,22 +74,19 @@ export default function Practices() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  // 🔌 Realtime: обновляем список на событиях practice_runs.*
+  // realtime: обновление списка по событиям
   useEffect(() => {
     startRealtime();
     const ch = getActorChannel();
     if (!ch) return;
-
     let timer = null;
     const onMsg = (msg) => {
       const t = msg?.type || "";
       if (t.startsWith("practice_runs.")) {
-        // небольшой дебаунс, чтобы не спамить API при пачке событий
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => { refresh(); }, 150);
       }
     };
-
     const unsub = subscribe(ch, onMsg);
     return () => {
       unsub?.();
@@ -96,85 +94,77 @@ export default function Practices() {
     };
   }, [refresh]);
 
-  const handleCreateRun = useCallback(async (ideaText) => {
-    try {
-      const run = await createRunIfNeeded("good-bad", ideaText);
-      await refresh();
-      navigate(`${PRACTICES_ROUTE}/${run.practiceSlug}/${run.ideaSlug}`);
-    } catch (e) {
-      setErr(e.message || "Не удалось создать запуск");
-    }
-  }, [navigate, refresh]);
+  const handleCreateRun = useCallback(
+    async (ideaText) => {
+      try {
+        const run = await createRunIfNeeded("good-bad", ideaText);
+        await refresh();
+        navigate(`${PRACTICES_ROUTE}/${run.practiceSlug}/${run.ideaSlug}`);
+      } catch (e) {
+        setErr(e?.message || "Не удалось создать запуск");
+      }
+    },
+    [navigate, refresh]
+  );
 
-  const handleDeleteRun = useCallback(async () => {
-    if (!actionsFor) return;
-    try {
-      await deleteRun(actionsFor.id);
-      setActionsFor(null);
-      await refresh();
-    } catch (e) {
-      setErr(e.message || "Не удалось удалить");
-    }
-  }, [actionsFor, refresh]);
+  // удаление запуска (без промежуточной модалки)
+  const handleDeleteRun = useCallback(
+    async (id /*, rect */) => {
+      try {
+        await deleteRun(id);
+        await refresh();
+      } catch (e) {
+        setErr(e?.message || "Не удалось удалить");
+      }
+    },
+    [refresh]
+  );
 
   return (
-    <>
-      <BackBtn preferFallback />
-      <div className={styles.viewport}>
-        <header ref={headerRef} className={styles.header}>
-          <div className={styles.wrap}>
-            <div className={styles.headerBar}>
-              <h1 className={styles.title}>Практики</h1>
-              <button
-                type="button"
-                className={styles.addBtn}
-                onClick={() => setAddOpen(true)}
-                disabled={loading}
-              >
-                Добавить
-              </button>
-            </div>
-            {err && (
-              <div style={{ color: "#b91c1c", fontSize: 13, padding: "4px 0" }}>
-                {err}
-              </div>
-            )}
-          </div>
-        </header>
+    <div className={styles.viewport}>
+      <header ref={headerRef} className={styles.headerSticky} data-lock-scroll="true">
+        <PracticesHeader
+          onAdd={() => setAddOpen(true)}
+          onOpenSidebar={onOpenSidebar}
+          isSidebarOpen={isSidebarOpen}
+        />
+        {err && <div className={styles.errline}>{err}</div>}
+      </header>
 
-        <main className={styles.content}>
-          <div className={styles.wrap}>
-            {loading ? (
-              <div className={styles.empty}><p>Загрузка…</p></div>
-            ) : !hasRuns ? (
-              <div className={styles.empty}>
-                <p>Запусков пока нет. Откройте любую идею и нажмите «Запустить».</p>
-              </div>
-            ) : (
-              <PracticesList
-                runs={runs}
-                onOpen={(r) => navigate(`${PRACTICES_ROUTE}/${r.practiceSlug}/${r.ideaSlug}`)}
-                onOpenActions={(r) => setActionsFor(r)}
+      <main className={`${styles.content} ${isEmpty ? styles.contentEmpty : ""}`}>
+        <div className={`${styles.wrap} ${isEmpty ? styles.wrapEmpty : ""}`}>
+          {loading ? (
+            <div className={styles.empty}><p>Загрузка…</p></div>
+          ) : !hasRuns ? (
+            <div className={styles.emptyContainer}>
+              <EmptyState
+                title="Пока нет запущенных практик"
+                subtitle="Создайте первую практику — выберите шаблон и начните."
+                ctaLabel="Добавить практику"
+                onCtaClick={() => setAddOpen(true)}
               />
-            )}
+            </div>
+          ) : (
+            <PracticesList
+              runs={runs}
+              onOpenRun={(r) =>
+                navigate(`${PRACTICES_ROUTE}/${r.practiceSlug}/${r.ideaSlug}`)
+              }
+              onDeleteRun={handleDeleteRun}
+              onAdd={() => setAddOpen(true)}
+            />
+          )}
 
-            <div className={styles.bottomPad} />
-          </div>
-        </main>
+          {/* ⬇️ подкладку рендерим ТОЛЬКО если есть список, чтобы не плодить скролл на пустом состоянии */}
+          {hasRuns && <div className={styles.bottomPad} />}
+        </div>
+      </main>
 
-        <AddIdeaModal
-          open={addOpen}
-          onClose={() => setAddOpen(false)}
-          onSubmit={handleCreateRun}
-        />
-
-        <RunActionsModal
-          open={!!actionsFor}
-          run={actionsFor}
-          onClose={() => setActionsFor(null)}
-          onDelete={handleDeleteRun}
-        />
-      </div>
-    </>
+      <AddIdeaModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onSubmit={handleCreateRun}
+      />
+    </div>
   );
 }

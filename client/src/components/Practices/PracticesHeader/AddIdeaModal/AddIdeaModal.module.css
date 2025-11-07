@@ -1,0 +1,112 @@
+:root { --hover-bg:#f0f1f3; --ring: rgba(20,174,92,.35); }
+
+/* ===== Оверлей ===== */
+.overlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  touch-action: none;
+}
+
+/* ===== Коробка ===== */
+.modal{
+  width: min(420px, 92vw);
+  background: #fff;
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.15);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* ===== Шапка ===== */
+.header{
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.title{
+  font-weight: 600;
+  font-size: 17px;
+  color: #111827;
+}
+
+/* ===== Крестик ===== */
+.iconBtn{
+  width: 36px; height: 36px;
+  border: none; border-radius: 10px;
+  background: transparent; cursor: pointer;
+  display: grid; place-items: center;
+  transition: background .18s ease, transform .06s ease;
+  font-size: 18px; line-height: 1;
+  color: #111827;
+  -webkit-appearance: none; appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.iconBtn:hover{ background: var(--hover-bg); }
+.iconBtn:active{ transform: translateY(1px); }
+.iconBtn:focus{ outline: none; }
+.iconBtn:focus-visible{ box-shadow: 0 0 0 3px var(--ring); }
+
+/* ===== Поле ===== */
+.input{
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 10px;
+  background: #fff;
+  padding: 12px 14px;
+  font-size: 16px;
+  color: #111827;
+  margin-top: 2px;
+  -webkit-appearance: none; appearance: none;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.input::placeholder{ color:#9aa0a6; }
+.input:focus{
+  border-color: #14AE5C;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* ===== Подвал ===== */
+.footer{ margin-top: 12px; }
+
+/* ===== Кнопка ===== */
+.primaryBtn{
+  width: 100%;
+  display: block;
+  border: none; border-radius: 12px;
+  background: #14AE5C; color:#fff;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: opacity .18s ease, transform .06s ease;
+  font-size: 15px;
+  font-weight: 500;
+  -webkit-appearance: none; appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.primaryBtn:hover{ opacity:.95; }
+.primaryBtn:active{ transform: translateY(1px); }
+.primaryBtn:focus{ outline:none; }
+.primaryBtn:focus-visible{ box-shadow: 0 0 0 3px var(--ring); }
+
+/* ===== Мобилка ===== */
+@media (max-width:700px){
+  .overlay{
+    align-items: flex-start;            /* прижимаем вверх */
+    justify-content: center;
+    padding-top: calc(env(safe-area-inset-top, 10px) + 10px);
+  }
+  .modal{
+    width: min(520px, 94vw);
+    max-height: 90vh;
+  }
+  .title{ font-size: 18px; }
+}

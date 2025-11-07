@@ -175,7 +175,6 @@
   }
 }
 
-/* Мобилка: карточки занимают всю ширину внутри 10px полей списка */
 @media (max-width: 900px) {
   .beliefWrap {
     max-width: 100%;
@@ -183,7 +182,6 @@
     margin-right: 0;
   }
 
-  /* слот практик также не выходит за поля */
   .practiceSlot {
     margin-left: 0;
     margin-right: 0;
@@ -192,17 +190,16 @@
 
 @media (max-width: 900px) {
   .beliefInput {
-    border-bottom: 2px solid #C8C8C8; /* та же толщина, но без округления */
+    border-bottom: 2px solid #C8C8C8;  
     border-radius: 0 !important;
     -webkit-border-radius: 0 !important;
     background-clip: padding-box;
     -webkit-appearance: none;
     appearance: none;
     transform: none !important;
-    -webkit-mask-image: none !important; /* убираем скругление на iOS */
+    -webkit-mask-image: none !important;  
   }
 
-  /* при фокусе — тоже прямая линия, без изгибов */
   .beliefWrap.active .beliefInput {
     border-bottom-color: #A0E7B8;
     border-radius: 0 !important;

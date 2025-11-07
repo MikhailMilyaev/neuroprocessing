@@ -1,128 +1,80 @@
-/* ========= ДЕСКТОП / ОБЩЕЕ — как у тебя на сервере ========= */
-/* На десктопе ничего не фиксируем: страница скроллится целиком,
-   хедер не липкий, контейнер 1000px по центру. */
-
 .storiesViewport {
-  position: static;
-  max-width: 1000px;
-  margin: 20px auto 0;
-  background: #f5f5f5;
-  overflow: visible;           /* скроллит сама страница */
+  position: relative;
+  width: 100%;
+  background: var(--bg);
 }
 
 .headerSticky {
-  position: static;            /* НЕ липкий на десктопе */
-  background: transparent;
-  z-index: auto;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--bg);
 }
 
 .scrollArea {
-  position: static;            /* список в обычном потоке */
-  overflow: visible;
-  padding: 0;
+  position: relative;
   background: transparent;
 }
 
-/* Вспомогательные стили (как были) */
-.revealBanner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  margin: 8px 0 12px;
-  border-radius: 12px;
-  background: #fff8e1;
-  border: 1px solid #ffe29a;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
-}
-.revealText { flex: 1 1 auto; font-size: 14px; line-height: 1.35; color: #5a4400; }
-.revealActions { display: flex; gap: 8px; }
-.revealBtn {
-  appearance: none;
-  border: none;
-  border-radius: 10px;
-  padding: 8px 12px;
-  font-size: 14px;
-  cursor: pointer;
-  background: #111827;
-  color: white;
-  transition: transform .08s ease, opacity .2s ease;
-}
-.revealBtn:hover { transform: translateY(-1px); }
-.revealBtn:active { transform: translateY(0); opacity: .9; }
-.revealBtnSecondary {
-  appearance: none;
-  border: 1px solid rgba(0,0,0,0.08);
-  border-radius: 10px;
-  padding: 8px 12px;
-  font-size: 14px;
-  cursor: pointer;
-  background: white;
-  color: #111827;
-  transition: transform .08s ease, opacity .2s ease;
-}
-.revealBtnSecondary:hover { transform: translateY(-1px); }
-.revealBtnSecondary:active { transform: translateY(0); opacity: .9; }
-
-.flashHighlight {
-  position: relative;
-  animation: flashPulse 1600ms ease-out 1;
-  box-shadow: 0 0 0 0 rgba(17, 24, 39, 0.08), 0 0 0 0 rgba(255, 199, 0, 0.75);
-  outline: 2px solid rgba(255,199,0,0.55);
-  border-radius: 14px;
-}
-@keyframes flashPulse {
-  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(17,24,39,0.08), 0 0 0 0 rgba(255,199,0,0.75); }
-  20% { transform: scale(1.01); box-shadow: 0 8px 24px 0 rgba(17,24,39,0.12), 0 0 0 6px rgba(255,199,0,0.45); }
-  60% { transform: scale(1.005); box-shadow: 0 6px 18px 0 rgba(17,24,39,0.10), 0 0 0 2px rgba(255,199,0,0.25); }
-  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(17,24,39,0,0.0); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .flashHighlight { animation: none; outline: 2px solid rgba(255,199,0,0.45); }
+@media (min-width: 701px) {
+  .contentInner { max-width: 1000px; margin: 0 auto; padding: 0 16px; }
 }
 
-/* ========= МОБИЛКА (<700px + тач): наши фиксы ========= */
-/* На телефонах/планшетах: экран фиксируется между верхом и нижней навигацией,
-   скролл только у списка, шапка липкая. */
 @media (max-width: 700px) and (hover: none) and (pointer: coarse) {
   .storiesViewport {
     position: fixed;
-    left: 0;
-    right: 0;
-    top: env(safe-area-inset-top, 0px);
+    left: 0; right: 0;
+    top: 0;                                
     bottom: var(--bottom-nav-h, 56px);
-    margin: 0;
-    background: #f5f5f5;
-    overflow: hidden;             /* контейнер не скроллится */
+    background: var(--bg);
+    overflow: hidden;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: none;
     width: 100vw;
-    max-width: none;
-    padding-bottom: 8px;          /* чуть воздуха снизу */
+    padding-bottom: 8px;
   }
 
   .headerSticky {
     position: sticky;
-    top: env(safe-area-inset-top, 0px);
+    top: 0;
     z-index: 50;
-    background: #f5f5f5;
-    overscroll-behavior: contain; /* свайпы по шапке не скроллят страницу */
+    background: var(--bg);
   }
 
   .scrollArea {
     position: absolute;
-    left: 0;
-    right: 0;
-    top: var(--stories-header-h, 120px); /* JS пишет точную высоту */
-    bottom: 0;                            /* снизу ограничены навбаром */
-    overflow: auto;                       /* скролл только тут */
+    left: 0; right: 0;
+    top: var(--stories-header-h, 120px);
+    bottom: 0;
+    overflow: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
-    background: #f5f5f5;
-    padding: 0;
+    background: var(--bg);
+
+    scrollbar-width: thin !important;                  
+  }
+
+  .scrollArea::-webkit-scrollbar {
+    width: 6px !important;
+    height: 6px !important;
+    display: block !important;                         
+  }
+  .scrollArea::-webkit-scrollbar-track {
+    background: var(--scrollbar-track, transparent) !important;
+  }
+  .scrollArea::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb, #bbb) !important;
+    border-radius: 3px !important;
+  }
+  .scrollArea::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover, #a8a8a8) !important;
   }
 }
 
-/* ========= iOS PWA-оверрайды ========= */
-:global(.pwa-standalone) .headerSticky { top: 0 !important; }
-:global(.pwa-standalone) .storiesViewport { top: 0 !important; }
+.flashHighlight {
+  animation: flashBg 2s ease;
+}
+@keyframes flashBg {
+  0%   { box-shadow: 0 0 0 3px rgba(18,183,106,.35) inset; }
+  100% { box-shadow: none; }
+}

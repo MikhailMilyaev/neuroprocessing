@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useNavigate, useLocation, useOutletContext } from 'react-router-dom';
 import classes from './IdeaDrafts.module.css';
-import BackBtn from '../../components/BackBtn/BackBtn';
 import { subscribe, getActorChannel, startRealtime } from '../../utils/realtime';
 import Toast from '../../components/Toast/Toast';
 
@@ -15,33 +14,85 @@ import {
 } from '../../http/ideaDraftsApi';
 
 import { fetchStories } from '../../http/storyApi';
-import { STORY_ROUTE } from '../../utils/consts';
+import { STORY_ROUTE, STORIES_ROUTE } from '../../utils/consts';
 
 import EmptyIdeasState from '../../components/IdeaDrafts/EmptyIdeasState/EmptyIdeasState';
-import IdeasHeader from '../../components/IdeaDrafts/IdeasHeader/IdeasHeader';
 import IdeaList from '../../components/IdeaDrafts/IdeaList/IdeaList';
 import { flushSync } from 'react-dom';
 
 import { genOpId, markSentOp, isOwnOp } from '../../utils/opId';
+import IdeasHeader from '../../components/IdeaDrafts/IdeasHeader/IdeasHeader';
+import IdeaMoveModal from '../../components/IdeaDrafts/IdeaMoveModal/IdeaMoveModal';
 
 const CHAR_LIMIT = 80;
+
+function useBottomNavHeightVar(varName = '--bottom-nav-h') {
+  useEffect(() => {
+    const setH = () => {
+      const nav = document.querySelector('nav[aria-label="Основная навигация"]');
+      const h = nav ? nav.getBoundingClientRect().height : 0;
+      document.documentElement.style.setProperty(varName, `${h}px`);
+    };
+    setH();
+    const ro = ('ResizeObserver' in window) ? new ResizeObserver(setH) : null;
+    const nav = document.querySelector('nav[aria-label="Основная навигация"]');
+    nav && ro?.observe(nav);
+    window.addEventListener('resize', setH);
+    window.addEventListener('orientationchange', setH);
+    return () => {
+      window.removeEventListener('resize', setH);
+      window.removeEventListener('orientationchange', setH);
+      ro?.disconnect();
+    };
+  }, [varName]);
+}
+
+function useHeaderHeightVar(headerRef, varName = '--ideas-header-h') {
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const setH = () => {
+      const h = el.getBoundingClientRect().height;
+      document.documentElement.style.setProperty(varName, `${h}px`);
+    };
+    setH();
+    const ro = ('ResizeObserver' in window) ? new ResizeObserver(setH) : null;
+    ro?.observe(el);
+    window.addEventListener('resize', setH);
+    window.addEventListener('orientationchange', setH);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', setH);
+      window.removeEventListener('orientationchange', setH);
+    };
+  }, [headerRef, varName]);
+}
 
 export default function Ideas() {
   const [toast, setToast] = useState({ msg: '', ver: 0 });
   const navigate = useNavigate();
-const showToast = (msg) => setToast(({ ver }) => ({ msg, ver: ver + 1 }));
+  const location = useLocation();
+
+  const { onOpenSidebar, isSidebarOpen } = useOutletContext?.() || { onOpenSidebar: () => {}, isSidebarOpen: false };
+
+  const backTarget = location.state?.from || STORIES_ROUTE;
+
+  const showToast = (msg) => setToast(({ ver }) => ({ msg, ver: ver + 1 }));
   const [items, setItems] = useState([]);
   const [stories, setStories] = useState({ active: [], archive: [] });
   const [loading, setLoading] = useState(true);
 
   const [menuFor, setMenuFor] = useState(null);
-  const [searchStory, setSearchStory] = useState('');
+  const [searchStory, setSearchStory] = useState(''); // можно выпилить позже, сейчас не используется в модалке
 
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
 
-  const inputRefs = useRef(new Map());
+  const headerRef = useRef(null);
+  useBottomNavHeightVar('--bottom-nav-h');
+  useHeaderHeightVar(headerRef, '--ideas-header-h');
 
+  const inputRefs = useRef(new Map());
   const creatingRef = useRef(new Map());
   const seqRef = useRef(0);
 
@@ -113,11 +164,9 @@ const showToast = (msg) => setToast(({ ver }) => ({ msg, ver: ver + 1 }));
     const tryFocus = (left) => {
       const el = inputRefs.current.get(uiKey);
       if (el) {
-        try {
-          el.focus();
-          const len = el.value?.length ?? 0;
-          el.setSelectionRange?.(len, len);
-        } catch {}
+        try { el.focus({ preventScroll: true }); } catch { try { el.focus(); } catch {} }
+        const len = el.value?.length ?? 0;
+        try { el.setSelectionRange(len, len); } catch {}
       } else if (left > 0) {
         setTimeout(() => tryFocus(left - 1), 30);
       }
@@ -133,9 +182,9 @@ const showToast = (msg) => setToast(({ ver }) => ({ msg, ver: ver + 1 }));
       setItems(prev => [{ id: tempId, uiKey, text: '', sortOrder }, ...prev]);
     });
 
-   focusByUiKey(uiKey, 1);
-   setTimeout(() => focusByUiKey(uiKey), 0);
- };
+    focusByUiKey(uiKey, 1);
+    setTimeout(() => focusByUiKey(uiKey), 0);
+  };
 
   const handleChange = async (id, uiKey, text) => {
     const limited = String(text || '').slice(0, CHAR_LIMIT);
@@ -172,7 +221,6 @@ const showToast = (msg) => setToast(({ ver }) => ({ msg, ver: ver + 1 }));
       try { await withOp(deleteIdeaDraft, id); } catch {}
     }
     creatingRef.current.delete(uiKey);
-    // Локально удаляем сразу — UI отзывчивый. Сокет-сообщение с нашим opId мы игнорируем.
     setItems(prev => prev.filter(i => i.uiKey !== uiKey));
   };
 
@@ -180,24 +228,23 @@ const showToast = (msg) => setToast(({ ver }) => ({ msg, ver: ver + 1 }));
   const closeMenu = () => setMenuFor(null);
 
   const moveTo = async (storyId) => {
-  const id = menuFor;
-  if (!id || id === 'bulk') return;
-  closeMenu();
-  await withOp(moveIdeaDraft, id, storyId);
-  setItems(prev => prev.filter(i => i.id !== id));
-  showToast('Идея перемещена');
-};
+    const id = menuFor;
+    if (!id || id === 'bulk') return;
+    closeMenu();
+    await withOp(moveIdeaDraft, id, storyId);
+    setItems(prev => prev.filter(i => i.id !== id));
+    showToast('Идея перемещена');
+  };
 
-const createStory = async () => {
-  const id = menuFor;
-  if (!id || id === 'bulk') return;
-  closeMenu();
-  const { storyId, slug } = await withOp(createStoryFromIdeaDraft, id);
-  // удалим из списка локально, если ещё есть
-  setItems(prev => prev.filter(i => i.id !== id));
-  showToast('Создана новая история с идеей');
-  navigate(`${STORY_ROUTE}/${slug || storyId}`);
-};
+  const createStory = async () => {
+    const id = menuFor;
+    if (!id || id === 'bulk') return;
+    closeMenu();
+    const { storyId, slug } = await withOp(createStoryFromIdeaDraft, id);
+    setItems(prev => prev.filter(i => i.id !== id));
+    showToast('Создана новая история с идеей');
+    navigate(`${STORY_ROUTE}/${slug || storyId}`);
+  };
 
   const toggleSelectMode = () => {
     setSelectMode(v => !v);
@@ -218,57 +265,48 @@ const createStory = async () => {
     setMenuFor('bulk');
   };
 
-const moveSelectedTo = async (storyId) => {
-  const ids = [...selectedIds];
-  if (ids.length === 0) return;
-  setMenuFor(null);
+  const moveSelectedTo = async (storyId) => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    setMenuFor(null);
 
-  await Promise.allSettled(ids.map(id => withOp(moveIdeaDraft, id, storyId)));
+    await Promise.allSettled(ids.map(id => withOp(moveIdeaDraft, id, storyId)));
 
-  setItems(prev => prev.filter(i => !selectedIds.has(i.id)));
-  setSelectedIds(new Set());
-  setSelectMode(false);
-  showToast(ids.length === 1 ? 'Идея перемещена' : `Перемещено идей: ${ids.length}`);
-};
+    setItems(prev => prev.filter(i => !selectedIds.has(i.id)));
+    setSelectedIds(new Set());
+    setSelectMode(false);
+    showToast(ids.length === 1 ? 'Идея перемещена' : `Перемещено идей: ${ids.length}`);
+  };
 
+  const createStoryFromSelected = async () => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    setMenuFor(null);
 
-const createStoryFromSelected = async () => {
-  const ids = [...selectedIds];
-  if (ids.length === 0) return;
-  setMenuFor(null);
+    const firstId = ids[0];
+    const tail = ids.slice(1);
 
-  const firstId = ids[0];
-  const tail = ids.slice(1);
+    const { storyId, slug } = await withOp(
+      (first, rest, opts) => createStoryFromIdeaDraft(first, { additionalIds: rest }, opts),
+      firstId,
+      tail
+    );
 
-  const { storyId, slug } = await withOp(
-    (first, rest, opts) => createStoryFromIdeaDraft(first, { additionalIds: rest }, opts),
-    firstId,
-    tail
-  );
+    setItems(prev => prev.filter(i => !selectedIds.has(i.id)));
+    setSelectedIds(new Set());
+    setSelectMode(false);
 
-  setItems(prev => prev.filter(i => !selectedIds.has(i.id)));
-  setSelectedIds(new Set());
-  setSelectMode(false);
+    showToast(ids.length === 1
+      ? 'Создана новая история с идеей'
+      : `Создана история и перемещено идей: ${ids.length}`);
 
-  showToast(ids.length === 1
-    ? 'Создана новая история с идеей'
-    : `Создана история и перемещено идей: ${ids.length}`);
+    navigate(`${STORY_ROUTE}/${slug || storyId}`);
+  };
 
-  navigate(`${STORY_ROUTE}/${slug || storyId}`);
-};
+  const filteredActive = useMemo(() => stories.active, [stories.active]);
+  const filteredArchive = useMemo(() => stories.archive, [stories.archive]);
 
-
-  const filteredActive = useMemo(() => {
-    const q = searchStory.trim().toLowerCase();
-    if (!q) return stories.active;
-    return stories.active.filter(s => (s.title || '').toLowerCase().includes(q));
-  }, [stories.active, searchStory]);
-
-  const filteredArchive = useMemo(() => {
-    const q = searchStory.trim().toLowerCase();
-    if (!q) return stories.archive;
-    return stories.archive.filter(s => (s.title || '').toLowerCase().includes(q));
-  }, [stories.archive, searchStory]);
+  const handleLamp = useCallback(() => addQuick(), []);
 
   if (loading) {
     return (
@@ -280,21 +318,21 @@ const createStoryFromSelected = async () => {
 
   return (
     <>
-      {/* Десктоп: BackBtn есть; на мобилке спрячем через CSS */}
-      <BackBtn className={classes.backDesktop} />
       <Toast message={toast.msg} version={toast.ver} placement="bottom" />
 
       <div className={classes.viewport}>
-        {/* Мобильный фикс-хедер: слева «Выбор», по центру заголовок, справа круглый + */}
-        <IdeasHeader
-          title="Идеи на обработку"
-          selectMode={selectMode}
-          selectedCount={selectedIds.size}
-          onToggleSelectMode={toggleSelectMode}
-          onPrimaryClick={selectMode ? openBulkMenu : addQuick}
-        />
+        <div ref={headerRef} className={classes.headerSticky} data-lock-scroll="true">
+          <IdeasHeader
+            selectMode={selectMode}
+            selectedCount={selectedIds.size}
+            onToggleSelectMode={toggleSelectMode}
+            onLampClick={handleLamp}      
+            onMoveClick={openBulkMenu}    
+            onOpenSidebar={onOpenSidebar}
+            isSidebarOpen={isSidebarOpen}
+          />
+        </div>
 
-        {/* Скроллится только список */}
         <div className={classes.scrollArea} role="region" aria-label="Список идей">
           <div className={classes.container}>
             {items.length === 0 ? (
@@ -315,70 +353,14 @@ const createStoryFromSelected = async () => {
         </div>
       </div>
 
-      {menuFor && (
-        <div className={classes.menuOverlay} onClick={() => { setMenuFor(null); }}>
-          <div className={classes.menu} onClick={(e) => e.stopPropagation()}>
-            <div className={classes.menuTitle}>
-              {menuFor === 'bulk'
-                ? `Переместить выбранные идеи (${selectedIds.size})`
-                : 'Переместить в историю'}
-            </div>
-
-            <input
-              className={classes.search}
-              placeholder="Поиск истории"
-              value={searchStory}
-              onChange={(e) => setSearchStory(e.target.value)}
-            />
-
-            <div className={classes.section}>
-              <div className={classes.sectionTitle}>Активные</div>
-              <div className={classes.storyList}>
-                {filteredActive.map(s => (
-                  <button
-                    key={s.id}
-                    className={classes.storyBtn}
-                    onClick={() => (menuFor === 'bulk' ? moveSelectedTo(s.id) : moveTo(s.id))}
-                  >
-                    {s.title || '(без названия)'}
-                  </button>
-                ))}
-                {filteredActive.length === 0 && <div className={classes.dim}>Не найдено</div>}
-              </div>
-            </div>
-
-            <div className={classes.section}>
-              <div className={classes.sectionTitle}>Архив</div>
-              <div className={classes.storyList}>
-                {filteredArchive.map(s => (
-                  <button
-                    key={s.id}
-                    className={classes.storyBtn}
-                    onClick={() => (menuFor === 'bulk' ? moveSelectedTo(s.id) : moveTo(s.id))}
-                  >
-                    {s.title || '(без названия)'}
-                  </button>
-                ))}
-                {filteredArchive.length === 0 && <div className={classes.dim}>Не найдено</div>}
-              </div>
-            </div>
-
-            <div className={classes.hr} />
-
-            {menuFor === 'bulk' ? (
-              <button className={classes.createBtn} onClick={createStoryFromSelected}>
-                Создать новую историю из выбранных
-              </button>
-            ) : (
-              <button className={classes.createBtn} onClick={createStory}>
-                Создать новую историю с этой идеей
-              </button>
-            )}
-
-            <button className={classes.cancelBtn} onClick={() => setMenuFor(null)}>Отмена</button>
-          </div>
-        </div>
-      )}
+      <IdeaMoveModal
+        open={!!menuFor}
+        onClose={() => setMenuFor(null)}
+        onMoveTo={(storyId) => (menuFor === 'bulk' ? moveSelectedTo(storyId) : moveTo(storyId))}
+        onCreateStory={menuFor === 'bulk' ? createStoryFromSelected : createStory}
+        activeStories={filteredActive}
+        archivedStories={filteredArchive}
+      />
     </>
   );
 }

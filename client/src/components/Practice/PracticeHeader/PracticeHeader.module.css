@@ -1,0 +1,99 @@
+:root{
+  --hover-bg: var(--hover-bg, #f0f1f3);
+  --ring: rgba(20,174,92,.35);
+  --hdr-pad-x: 12px;
+  --hdr-pad-y: 10px;          /* базовый вертикальный паддинг */
+  --hdr-font: 16px;
+  --hdr-sub-fs: 14px;
+}
+
+.header{
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 6px;
+
+  background: var(--bg, #fff);
+  /* как у списка практик: edge-to-edge */
+  padding-inline: max(12px, var(--hdr-pad-x));
+  padding-block: calc(var(--hdr-pad-y) / 2) calc(var(--hdr-pad-y) / 2);
+  /* без линии/тени снизу */
+}
+
+.left,.right{ display:flex; align-items:center; gap:6px; }
+
+.center{
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.title{
+  font-size: var(--hdr-font);
+  font-weight: 600;
+  color: var(--text, #111827);
+  line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.subtitle{
+  font-size: var(--hdr-sub-fs);
+  color: var(--muted, #6b7280);
+  line-height: 1.25;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* икон-кнопки */
+.iconBtn{
+  width: 36px; height: 36px;
+  display: grid; place-items: center;
+  border: none; border-radius: 10px;
+  background: transparent; color: var(--text, #111827);
+  cursor: pointer;
+  transition: background .18s ease, transform .06s ease, opacity .12s ease;
+  -webkit-appearance: none; appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.iconBtn:hover{ background: var(--hover-bg); }
+.iconBtn:active{ transform: translateY(1px); }
+.iconBtn:focus{ outline: none; }
+.iconBtn:focus-visible{ box-shadow: 0 0 0 3px var(--ring); }
+
+.icon{ font-size: 22px; line-height: 1; }
+.ideaIcon{ font-size: 22px; line-height: 1; }
+
+/* ЛАМПОЧКА — «как в StoryHeader» */
+.lampBtn{
+  background: transparent;
+  opacity: .9;
+}
+.lampBtn:hover{ background: var(--hover-bg); opacity: 1; }
+.lampBtn .ideaIcon{ filter: grayscale(1) brightness(.9); }
+.lampBtn:hover .ideaIcon{ filter: none; }
+
+/* ===== Мобилка: делаем как у PracticesHeader ===== */
+@media (max-width:700px) and (hover:none) and (pointer:coarse){
+  /* добавляем safe-area сверху внутрь хедера */
+  .header{
+    padding-top: calc(env(safe-area-inset-top, 0px) + (var(--hdr-pad-y) / 2));
+    padding-left: 12px;   /* те же значения, что у списка практик */
+    padding-right: 12px;
+  }
+
+  /* убираем «залипший» hover/active на iOS */
+  .iconBtn:hover,
+  .iconBtn:active{
+    background: transparent !important;
+  }
+
+  /* чуть компактнее кнопки/иконки */
+  .iconBtn{ width: 34px; height: 34px; border-radius: 10px; }
+  .icon, .ideaIcon{ font-size: 21px; }
+}
+
+/* десктоп: логика прежняя, когда сайдбар открыт — бургер не рендерится */
+@media (prefers-reduced-motion:reduce){
+  .iconBtn{ transition: none !important; }
+}

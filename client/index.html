@@ -2,32 +2,23 @@
 <html lang="ru">
   <head>
     <meta charset="utf-8" />
-    <!-- запрет зума: user-scalable=no + фикс масштаба -->
+
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"
-    >
-    <meta name="theme-color" content="#f5f5f5" />
-    <title>Neurocessing</title>
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+
+    <meta name="theme-color" content="#ffffff" />
+    <title>Neuroprocessing</title>
 
     <link rel="manifest" href="/manifest.webmanifest" />
 
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Neurocessing" />
+    <meta name="apple-mobile-web-app-title" content="Neuroprocessing" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
 
-    <!-- небольшие стили, чтобы снизить шанс дабл-тап зума -->
-    <style>
-      html, body {
-        -webkit-text-size-adjust: 100%; /* не увеличивать шрифты самопроизвольно */
-        touch-action: manipulation;     /* отключает двойной тап-zoom в большинстве браузеров */
-      }
-      /* чтобы устранить 300мс задержку в старых браузерах — по желанию добавляй FastClick */
-    </style>
-
-    <!-- Yandex Metrika (оставил как было) -->
     <script type="text/javascript">
       (function(m,e,t,r,i,k,a){
         m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
@@ -46,42 +37,37 @@
       });
     </script>
 
-    <!-- пометка для PWA standalone -->
     <script>
       (function(){
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-        if (isStandalone) document.documentElement.classList.add('pwa-standalone');
+        var isStandalone =
+          window.matchMedia('(display-mode: standalone)').matches ||
+          window.navigator.standalone;
+        if (isStandalone) {
+          document.documentElement.classList.add('pwa-standalone');
+          window.addEventListener('DOMContentLoaded', function () {
+            document.body.classList.add('pwa-standalone');
+          });
+        }
       })();
     </script>
 
-    <!-- ЖЁСТКАЯ БЛОКИРОВКА жестов зума (iOS/Android) -->
     <script>
       (function () {
-        // Блок pinch-zoom (iOS Safari)
-        const block = (e) => { e.preventDefault(); };
-        document.addEventListener('gesturestart', block, { passive: false });
-        document.addEventListener('gesturechange', block, { passive: false });
-        document.addEventListener('gestureend', block, { passive: false });
+        const isTouch =
+          matchMedia('(hover: none) and (pointer: coarse)').matches ||
+          'ontouchstart' in window;
+        if (!isTouch) return;
 
-        // Блок pinch (двумя пальцами) через колесо с Ctrl (Desktop/Android Chrome)
-        window.addEventListener('wheel', function(e){
-          if (e.ctrlKey) e.preventDefault();
-        }, { passive: false });
+        window.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
 
-        // Блок double-tap zoom (iOS/Android)
         let lastTouchEnd = 0;
         document.addEventListener('touchend', function (e) {
           const now = Date.now();
-          if (now - lastTouchEnd <= 300) {
-            e.preventDefault();
-          }
+          if (now - lastTouchEnd <= 300) e.preventDefault();
           lastTouchEnd = now;
         }, { passive: false });
 
-        // Дополнительно: дизейблим двойной тап по ссылкам/кнопкам
-        document.addEventListener('dblclick', function (e) {
-          e.preventDefault();
-        }, { passive: false });
+        document.addEventListener('dblclick', function (e) { e.preventDefault(); }, { passive: false });
       })();
     </script>
   </head>
@@ -89,7 +75,7 @@
   <body>
     <div id="root"></div>
     <div id="storyModal"></div>
-    <div id="profileModal"></div>
+    <div id="settings"></div>
     <div id="authLoader"></div>
     <div id="storyMenu"></div>
     <div id="practicesModal"></div>

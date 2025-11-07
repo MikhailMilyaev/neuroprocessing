@@ -6,7 +6,6 @@ import Toast from '../../../components/Toast/Toast';
 import { recoveryRequest } from '../../../http/userApi';
 import { useNavigate } from 'react-router-dom';
 import { RESET_SENT_ROUTE } from '../../../utils/consts';
-import BackBtn from '../../../components/BackBtn/BackBtn';
 import classes from './Reset.module.css';
 
 const supKey = (email) => `resetSupportUntil:${(email || '').toLowerCase()}`;
@@ -112,7 +111,6 @@ const Reset = () => {
   return (
     <div className={classes.container}>
       <div className={classes.header}>
-        <BackBtn variant="inline" />
         <Brand />
       </div>
 

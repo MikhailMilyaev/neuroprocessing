@@ -21,10 +21,10 @@ export default function IdeaItem({
   onClick,
   onFocusAny,
   onBlurAll,
-  registerScoreRef,          
-  onScoreFinalized,          
-  registerTextRef,           
-  onTextArrow,               
+  registerScoreRef,
+  onScoreFinalized,
+  registerTextRef,
+  onTextArrow,
 }) {
   const [open, setOpen] = useState(false);
 
@@ -41,8 +41,9 @@ export default function IdeaItem({
   const canShowPracticesUI = hasPractices && !isArchived;
 
   const hasText = !!(text && text.trim().length);
-  const canOpenPractices = canShowPracticesUI && hasText;
 
+  // ⬇️ Панель можно открывать, если есть практики и идея не в архиве — текст не обязателен
+  const canOpenPractices = canShowPracticesUI;
   const isOpen = canShowPracticesUI && open;
 
   const toggleOpen = () => {
@@ -97,7 +98,6 @@ export default function IdeaItem({
     if (!isOpen) return;
     const slot = practiceSlotRef.current;
     if (!slot) return;
-
   }, [isOpen, practices.length]);
 
   useEffect(() => {
@@ -128,7 +128,6 @@ export default function IdeaItem({
     if (str === '') return;
     const n = Number(str);
     if (!Number.isFinite(n)) return;
-
     if (document.activeElement !== scoreInputRef.current) return;
 
     let delay = 100;
@@ -141,16 +140,14 @@ export default function IdeaItem({
 
   useEffect(() => () => clearFinalizeTimer(), []);
 
-const handleTextKeyDown = (e) => {
-  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const dir = e.key === 'ArrowUp' ? -1 : 1;
-    onTextArrow?.(id, dir);  
-  }
-};
-
+  const handleTextKeyDown = (e) => {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      e.stopPropagation();
+      const dir = e.key === 'ArrowUp' ? -1 : 1;
+      onTextArrow?.(id, dir);
+    }
+  };
 
   return (
     <div
@@ -190,14 +187,10 @@ const handleTextKeyDown = (e) => {
             type="button"
             className={`${classes.iconBtn} ${classes.toggleBtn} ${open ? classes.open : ''}`}
             aria-label={open ? 'Скрыть практики' : 'Показать практики'}
-            title={
-              hasText
-                ? (open ? 'Скрыть практики' : 'Показать практики')
-                : 'Сначала введите текст идеи'
-            }
+            title={open ? 'Скрыть практики' : 'Показать практики'}
             aria-expanded={open}
             onClick={toggleOpen}
-            disabled={!canOpenPractices}
+            disabled={!canOpenPractices} // блокируем только если практик нет или архив
             onFocus={() => onFocusAny?.(id)}
             onBlur={handleFieldBlur}
           >
@@ -277,11 +270,10 @@ const handleTextKeyDown = (e) => {
       </div>
 
       {isOpen && (
-  <div className={classes.practiceSlot} ref={practiceSlotRef}>
-    {/* 🔹 сюда добавили ideaText */}
-    <PracticePanel practices={practices} ideaText={text} />
-  </div>
-)}
+        <div className={classes.practiceSlot} ref={practiceSlotRef}>
+          <PracticePanel practices={practices} ideaText={text} />
+        </div>
+      )}
     </div>
   );
 }

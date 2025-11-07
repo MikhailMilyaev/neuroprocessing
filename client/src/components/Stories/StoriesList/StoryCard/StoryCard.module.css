@@ -1,144 +1,91 @@
 .row {
   position: relative;
   overflow: hidden;
-  border-radius: 20px;
-  margin-bottom: 12px;
+  margin: 0;
   background: transparent;
   touch-action: pan-y;
 }
 
-/* теперь фон под кнопками совпадает с закруглением карточки */
-.rowRevealed {
-  background: #0a84ff; /* синий фон под радиусами, чтобы не было просветов */
-  border-radius: 20px;
-}
-
-.actions {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  justify-content: flex-end;
-  align-items: stretch;
-  z-index: 0;
-  pointer-events: none;
-  gap: 0;
-  padding-right: 0;
-  overflow: hidden;
-  border-radius: 20px; /* радиус совпадает с карточкой */
-}
-
-/* Общие кнопки действий */
-.actionBtn {
-  pointer-events: auto;
-  width: 96px; /* 2×96 = 192px — совпадает с ACTION_W */
-  height: 100%;
-  border: none;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  font-size: 13px;
-  cursor: pointer;
-  border-radius: 0;
-  margin: 0;
-}
-.actionBtn:active {
-  opacity: 0.9;
-}
-.actionIcon {
-  font-size: 22px;
-}
-.actionText {
-  font-weight: 600;
-  letter-spacing: 0.2px;
-}
-
-/* Изменить — синяя, с плавным закруглением слева */
-.editBtn {
-  background: #0a84ff;
-  color: #fff;
-  border-top-left-radius: 20px;
-  border-bottom-left-radius: 20px;
-}
-
-/* Удалить — красная, прилегает вплотную справа */
-.trashBtn {
-  background: #ff3b30;
-  color: #fff;
-  border-top-right-radius: 20px;
-  border-bottom-right-radius: 20px;
-}
-
+/* контент карточки */
 .storyCard {
   position: relative;
   overflow: hidden;
   width: 100%;
-  border-radius: 20px;
-  padding: 20px 64px 20px 10px;
+  padding: 18px 64px 18px 10px;
   font-size: 18px;
-  background-color: #fff;
-  margin-bottom: 0;
+  background-color: var(--card, #fff);
   border: none;
+  border-bottom: 1px solid var(--border, #e6e6e6);
   text-align: left;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.12s ease;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
-  z-index: 1;
-  touch-action: pan-y;
-}
-
-.slide {
-  transform: translateX(0);
-  transition: transform 0.18s ease;
-  will-change: transform;
-}
-
-.dragging {
-  transition: none !important;
-}
-
-.storyCard:hover {
-  background-color: #aff4c6;
   cursor: pointer;
 }
+.row:last-child .storyCard { border-bottom: none; }
 
-.storyCardActive {
-  background-color: #aff4c6;
-  cursor: pointer;
-}
+.storyCardActive { background-color: var(--card-active, #eef1f6); }
 
-/* режим редактирования */
 .editingMode {
-  background: #fff;
+  background: var(--card, #fff);
+  padding-right: 10px !important;
 }
 
 .titleText {
-  background: transparent;
   display: inline-block;
+  vertical-align: middle;     /* ⬅ добавили: выравнивание по центру строки */
+  line-height: 1.1;           /* ⬅ чуть ниже, чтобы текст стоял по центру */
+  position: relative;         /* ⬅ пригодится для тонкой подстройки */
+  top: 1px;                   /* ⬅ можно 0–2px, если хочется ровнее по глазу */
   max-width: calc(100% - 20px);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.placeholderText { color: var(--muted, #9aa0a6); }
 
-.placeholderText {
-  color: #9aa0a6;
-}
-
+/* время справа (ПК) */
 .timeRight {
   position: absolute;
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
   font-size: 16px;
-  color: #9aa0a6;
-  background-color: transparent;
+  color: var(--muted, #9aa0a6);
   white-space: nowrap;
   pointer-events: none;
 }
+.timeHidden { display: none !important; }
+.storyCard:hover .timeRight { display: none; }
 
-/* Инпут заголовка */
+/* ⋮ — десктоп */
+.kebabBtn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text, #111);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+.kebabBtn:hover,
+.kebabBtn:active { background: transparent !important; }
+.kebabIcon { font-size: 22px; line-height: 1; }
+.storyCard:hover .kebabBtn { opacity: 1; pointer-events: auto; }
+.kebabPinned { opacity: 1 !important; pointer-events: auto !important; }
+
+/* инпут */
 .titleInput {
   width: 100%;
   border: none;
@@ -147,53 +94,46 @@
   font-size: 18px;
   line-height: 1.4;
   padding: 2px 0 2px 2px;
-  color: #111827;
+  color: var(--text, #111827);
 }
-.titleInput::placeholder {
-  color: #9aa0a6;
-}
-.titleInput:focus {
-  outline: none;
+.titleInput::placeholder { color: var(--muted, #9aa0a6); }
+
+/* Десктоп: hover-подсветка */
+@media (hover:hover) and (pointer:fine) {
+  .storyCard:hover { background-color: var(--hover-bg, #f0f1f3); }
+  .storyCard:active { background-color: var(--hover-bg, #f0f1f3); }
 }
 
-/* Ripple */
-.ripple {
-  position: absolute;
-  border-radius: 50%;
-  transform: scale(0);
-  pointer-events: none;
-  opacity: 0.9;
-  animation: ripple 10s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
-  will-change: transform, opacity;
-}
-.rippleLeft {
-  background: rgba(34, 197, 94, 0.22);
-}
-.rippleRight {
-  background: rgba(34, 197, 94, 0.3);
-}
-@keyframes ripple {
-  to {
-    transform: scale(1.6);
-    opacity: 0;
-  }
-}
-
-/* Мобильные правки */
-@media (max-width: 700px) {
-  .titleText,
-  .timeRight {
-    user-select: none;
-    -webkit-user-select: none;
-  }
-
+/* Мобилка: без hover */
+@media (max-width:700px) and (hover:none) and (pointer:coarse) {
   .storyCard {
-    padding: 18px 64px 18px 14px;
+    padding: 16px 64px 16px 14px;
     font-size: 16px;
-    color: #000;
+    color: var(--text, #000);
+    background-color: var(--card, #fff) !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+  .storyCard:hover,
+  .storyCard:active { background-color: var(--card, #fff) !important; }
+
+  .titleInput { font-size: 16px; }
+
+  .titleText, .timeRight {
+    user-select: none !important;
+    -webkit-user-select: none !important;
   }
 
-  .titleInput {
-    font-size: 16px;
-  }
+  .kebabBtn { display: none; }     /* ⋮ прячем на мобилке */
+  .storyCard:hover .timeRight { display: inline; }
+}
+
+/* выбранная карточка — видна поверх блюра, но не кликается */
+.storyCardSelected {
+  outline: 2px solid rgba(0,0,0,0.08);
+  background: var(--card, #fff);
+  position: relative;
+  z-index: 1001;        /* выше backdrop, ниже pop */
+  pointer-events: none;  
 }

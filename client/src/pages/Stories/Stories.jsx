@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { flushSync } from 'react-dom';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useOutletContext } from 'react-router-dom';
 import { ns } from '../../utils/ns';
 import { subscribe, getActorChannel, startRealtime } from '../../utils/realtime';
 import StoriesHeader from '../../components/Stories/StoriesHeader/StoriesHeader';
@@ -24,11 +23,29 @@ const getTs = (s) => {
   return Number.isFinite(t) ? t : 0;
 };
 const sortByUpdated = (arr) => (arr || []).slice().sort((a, b) => getTs(b) - getTs(a));
-const mapForIndex = ({ id, slug, title, archive, updatedAt, updated_at, reevalDueAt, reeval_due_at }) => ({
-  id, slug, title, archive,
-  updatedAt: updatedAt ?? updated_at,
-  reevalDueAt: reevalDueAt ?? reeval_due_at ?? null,
+const toIndexItem = (s) => ({
+  id: Number(s?.id),                          
+  slug: s?.slug ?? null,
+  title: s?.title ?? '',
+  archive: !!s?.archive,
+  updatedAt: s?.updatedAt ?? s?.updated_at ?? null,
+  reevalDueAt: s?.reevalDueAt ?? s?.reeval_due_at ?? null,
 });
+
+const writeIndexSafe = (list) => {
+  const byId = new Map();
+  for (const it of (list || [])) {
+    const id = Number(it?.id);
+    if (!Number.isFinite(id)) continue;  
+    const prev = byId.get(id);
+    if (!prev) { byId.set(id, it); continue; }
+    const tNew = Date.parse(it?.updatedAt ?? it?.updated_at ?? 0) || 0;
+    const tOld = Date.parse(prev?.updatedAt ?? prev?.updated_at ?? 0) || 0;
+    byId.set(id, tNew >= tOld ? it : prev);
+  }
+  const normalized = Array.from(byId.values()).map(toIndexItem);
+  writeStoriesIndex(normalized);
+};
 
 const warmStoryChunk = (() => {
   let started = false;
@@ -41,7 +58,6 @@ const warmStoryChunk = (() => {
   };
 })();
 
-/** var под нижнюю навигацию */
 function useBottomNavHeightVar(varName = '--bottom-nav-h') {
   useEffect(() => {
     const setH = () => {
@@ -63,7 +79,6 @@ function useBottomNavHeightVar(varName = '--bottom-nav-h') {
   }, [varName]);
 }
 
-/** var под высоту хедера */
 function useHeaderHeightVar(headerRef, varName = '--stories-header-h') {
   useEffect(() => {
     if (!headerRef.current) return;
@@ -87,6 +102,8 @@ function useHeaderHeightVar(headerRef, varName = '--stories-header-h') {
 const Stories = () => {
   const location = useLocation();
   const navigate = useNavigate();
+
+  const { onOpenSidebar, isSidebarOpen } = useOutletContext() || { onOpenSidebar: () => {}, isSidebarOpen: false };
 
   const [searchInput, setSearchInput] = useState('');
   const [storiesList, setStoriesList] = useState(() => sortByUpdated(readStoriesIndex()));
@@ -114,7 +131,6 @@ const Stories = () => {
   const [pendingArchivedId, setPendingArchivedId] = useState(null);
   const [pendingActiveId, setPendingActiveId] = useState(null);
 
-  // Новый: id только что созданной истории для МОБИЛКИ, чтобы включить инлайн-редакт
   const [newlyCreatedId, setNewlyCreatedId] = useState(null);
 
   const net = navigator.connection?.effectiveType || '';
@@ -180,8 +196,7 @@ const Stories = () => {
     if (state.toast || state.archivedId || state.activeId) {
       navigate(location.pathname, { replace: true, state: {} });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let cancelled = false;
@@ -221,7 +236,7 @@ const Stories = () => {
         const union = Array.from(byId.values());
         const sorted = sortByUpdated(union);
         setStoriesList(sorted);
-        writeStoriesIndex(sorted.map(mapForIndex));
+        writeIndexSafe(sorted);
       })
       .catch((e) => {
         console.error('[fetchStories active]', e);
@@ -271,14 +286,13 @@ const Stories = () => {
         const union = Array.from(byId.values());
         const sorted = sortByUpdated(union);
         setStoriesList(sorted);
-        writeStoriesIndex(sorted.map(mapForIndex));
+        writeIndexSafe(sorted);
         setArchiveLoaded(true);
       })
       .catch((e) => console.error('[fetchStories archive]', e));
 
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showArchive]);
+  }, [showArchive]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const flashTimerRef = useRef(null);
   const scrollAndFlash = useCallback((id) => {
@@ -302,7 +316,6 @@ const Stories = () => {
         if (!el2) return;
         el2.scrollIntoView({ behavior: 'smooth', block: 'center' });
         el2.classList.remove(classes.flashHighlight);
-        // eslint-disable-next-line no-unused-expressions
         el2.offsetWidth;
         el2.classList.add(classes.flashHighlight);
         if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
@@ -315,7 +328,6 @@ const Stories = () => {
 
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     el.classList.remove(classes.flashHighlight);
-    // eslint-disable-next-line no-unused-expressions
     el.offsetWidth;
     el.classList.add(classes.flashHighlight);
 
@@ -364,195 +376,116 @@ const Stories = () => {
     window.matchMedia('(hover: none)').matches &&
     window.matchMedia('(pointer: coarse)').matches;
 
-const tempMapRef = useRef(new Map()); // tempId -> realId
+  const tempMapRef = useRef(new Map());
 
-const handleAddStory = async (initialTitleArg = '', opts = {}) => {
-  const initialTitle = typeof initialTitleArg === 'string' ? initialTitleArg : '';
-  const preferInline = !!opts.inline;
+  const handleAddStory = async (initialTitleArg = '', opts = {}) => {
+    const initialTitle = typeof initialTitleArg === 'string' ? initialTitleArg : '';
+    const preferInline = !!opts.inline;
 
-  const now = Date.now();
-  if (creating || now - lastAddAtRef.current < 600) return;
-  lastAddAtRef.current = now;
+    const now = Date.now();
+    if (creating || now - lastAddAtRef.current < 600) return;
+    lastAddAtRef.current = now;
 
-  const isReallyInline =
-    preferInline ||
-    (window.matchMedia('(max-width:700px)').matches &&
-      window.matchMedia('(hover: none)').matches &&
-      window.matchMedia('(pointer: coarse)').matches);
+    const isReallyInline =
+      preferInline ||
+      (window.matchMedia('(max-width:700px)').matches &&
+        window.matchMedia('(hover: none)').matches &&
+        window.matchMedia('(pointer: coarse)').matches);
 
-  // ===== НЕ-ИНЛАЙН (десктоп и т.п.) — всё как было =====
-  if (!isReallyInline) {
-    setCreating(true);
-    try {
-      const story = await createStory({ title: initialTitle || '', content: '' });
-
-      try { markSeenThisSession(String(story.id)); } catch {}
+    if (!isReallyInline) {
+      setCreating(true);
       try {
-        writeSnapshot(String(story.id), {
-          updatedAt: story?.updatedAt || new Date().toISOString(),
-          archive: false,
-          reevalDueAt: null,
-          stopContentY: null,
-          baselineContent: story?.content || '',
-          reevalCount: 0,
-          showArchiveSection: true,
-          lastViewContentY: null,
+        const story = await createStory({ title: initialTitle || '', content: '' });
+
+        try { markSeenThisSession(String(story.id)); } catch {}
+        try {
+          writeSnapshot(String(story.id), {
+            updatedAt: story?.updatedAt || new Date().toISOString(),
+            archive: false,
+            reevalDueAt: null,
+            stopContentY: null,
+            baselineContent: story?.content || '',
+            reevalCount: 0,
+            showArchiveSection: true,
+            lastViewContentY: null,
+            remindersEnabled: true, remindersFreqSec: 30, remindersIndex: 0, remindersPaused: false,
+            title: story?.title || '',
+            content: story?.content || '',
+            ideas: [],
+          });
+        } catch {}
+
+        setStoriesList(prev => {
+          const next = sortByUpdated([story, ...(prev || [])]);
+          writeIndexSafe(next);
+          window.dispatchEvent(new Event('stories:index:changed'));
+          return next;
+        });
+
+        navigate(`${STORY_ROUTE}/${story.slug || story.id}`);
+        return story; 
+      } catch (e) {
+        console.error(e);
+        alert('Не удалось создать историю. Проверьте соединение и попробуйте ещё раз.');
+      } finally {
+        setCreating(false);
+      }
+      return;
+    }
+
+    if (initialTitle.trim().length > 0) {
+      const created = await createStory({ title: initialTitle.trim(), content: '' });
+
+      try { markSeenThisSession(String(created.id)); } catch {}
+      try {
+        writeSnapshot(String(created.id), {
+          updatedAt: created?.updatedAt || new Date().toISOString(),
+          archive: false, reevalDueAt: null,
+          stopContentY: null, baselineContent: created?.content || '',
+          reevalCount: 0, showArchiveSection: true, lastViewContentY: null,
           remindersEnabled: true, remindersFreqSec: 30, remindersIndex: 0, remindersPaused: false,
-          title: story?.title || '',
-          content: story?.content || '',
-          ideas: [],
+          title: created?.title || '', content: created?.content || '', ideas: [],
         });
       } catch {}
 
       setStoriesList(prev => {
-        const next = sortByUpdated([story, ...(prev || [])]);
-        writeStoriesIndex(next.map(mapForIndex));
+        const next = sortByUpdated([{ ...created }, ...(prev || [])]);
+        writeIndexSafe(next);
+        window.dispatchEvent(new Event('stories:index:changed'));
         return next;
       });
 
-      navigate(`${STORY_ROUTE}/${story.slug}`);
-      return story;
-    } catch (e) {
-      console.error(e);
-      alert('Не удалось создать историю. Проверьте соединение и попробуйте ещё раз.');
-    } finally {
-      setCreating(false);
+      return created;
     }
+
+    document.dispatchEvent(new CustomEvent('stories:open-create-overlay'));
     return;
-  }
-
-  // ===== ИНЛАЙН (МОБИЛКА) =====
-
-  // 1) ЕСЛИ уже есть текст (EmptyState -> ввёл заголовок -> blur/Готово),
-  //    создаём сразу на сервере С ЭТИМ заголовком и возвращаем объект наверх.
-  if (initialTitle.trim().length > 0) {
-    const created = await createStory({ title: initialTitle.trim(), content: '' });
-
-    try { markSeenThisSession(String(created.id)); } catch {}
-    try {
-      writeSnapshot(String(created.id), {
-        updatedAt: created?.updatedAt || new Date().toISOString(),
-        archive: false, reevalDueAt: null,
-        stopContentY: null, baselineContent: created?.content || '',
-        reevalCount: 0, showArchiveSection: true, lastViewContentY: null,
-        remindersEnabled: true, remindersFreqSec: 30, remindersIndex: 0, remindersPaused: false,
-        title: created?.title || '', content: created?.content || '', ideas: [],
-      });
-    } catch {}
-
-    setStoriesList(prev => {
-      const next = sortByUpdated([{ ...created }, ...(prev || [])]);
-      writeStoriesIndex(next.map(mapForIndex));
-      return next;
-    });
-
-    // submitDraft сам сделает navigate по возвращённому объекту
-    return created;
-  }
-
-  // 2) ПУСТОЙ заголовок — создаём temp-карточку, фокусим, а сервер — параллельно
-  const tempId = `temp-${Date.now()}`;
-
-  flushSync(() => {
-    setStoriesList(prev => {
-      const tempStory = {
-        id: tempId,
-        slug: null,
-        title: '',
-        archive: false,
-        updatedAt: new Date().toISOString(),
-        reevalDueAt: null,
-      };
-      const next = sortByUpdated([tempStory, ...(prev || [])]);
-      writeStoriesIndex(next.map(mapForIndex));
-      return next;
-    });
-    setNewlyCreatedId(tempId);
-  });
-
-  // Сигнал списку: переведи temp-карточку в режим редактирования и фокусни input
-  document.dispatchEvent(new CustomEvent('stories:focus-new', { detail: tempId }));
-
-  // Параллельно создаём реальную историю на сервере
-  try {
-    const story = await createStory({ title: '', content: '' });
-
-    try { markSeenThisSession(String(story.id)); } catch {}
-    try {
-      writeSnapshot(String(story.id), {
-        updatedAt: story?.updatedAt || new Date().toISOString(),
-        archive: false, reevalDueAt: null,
-        stopContentY: null, baselineContent: story?.content || '',
-        reevalCount: 0, showArchiveSection: true, lastViewContentY: null,
-        remindersEnabled: true, remindersFreqSec: 30, remindersIndex: 0, remindersPaused: false,
-        title: story?.title || '', content: story?.content || '', ideas: [],
-      });
-    } catch {}
-
-    tempMapRef.current.set(tempId, Number(story.id));
-
-    // Если temp-карточку уже удалили (вышли пустым), удалим и на сервере
-    const stillHasTemp = (lst) => lst.some(s => String(s.id) === String(tempId));
-    let deletedAlready = false;
-
-    setStoriesList(prev => {
-      if (!stillHasTemp(prev)) {
-        deletedAlready = true;
-        return prev;
-      }
-      // Подменяем temp на реальную
-      const withoutTemp = prev.filter(s => String(s.id) !== String(tempId));
-      const next = sortByUpdated([{ ...story }, ...withoutTemp]);
-      writeStoriesIndex(next.map(mapForIndex));
-      return next;
-    });
-
-    // Сообщим списку, что temp заменился реальным id (чтобы сохранить фокус/режим редактирования)
-    document.dispatchEvent(new CustomEvent('stories:temp-resolved', {
-      detail: { tempId, realId: story.id },
-    }));
-
-    if (deletedAlready) {
-      try {
-        await removeStory(story.id);
-        try { purgeStoryLocal(String(story.id)); } catch {}
-        try { removeFromStoriesIndex(Number(story.id)); } catch {}
-      } catch (e) {
-        const status = e?.response?.status || e?.status || 0;
-        if (status !== 404) console.error('[cleanup removeStory after temp delete]', e);
-      }
-    }
-  } catch (e) {
-    console.error(e);
-    // Создание на сервере не удалось — убираем temp
-    setStoriesList(prev => {
-      const next = prev.filter(s => String(s.id) !== String(tempId));
-      writeStoriesIndex(next.map(mapForIndex));
-      return next;
-    });
-    alert('Не удалось создать историю. Проверьте соединение и попробуйте ещё раз.');
-  }
-};
-
+  };
 
   const handleDeleteStory = async (id) => {
     const prev = storiesList;
     const next = sortByUpdated((prev || []).filter((s) => Number(s.id) !== Number(id)));
     setStoriesList(next);
-    writeStoriesIndex(next.map(mapForIndex));
+    writeIndexSafe(next);
+    window.dispatchEvent(new Event('stories:index:changed'));
 
     try { purgeStoryLocal(String(id)); } catch {}
     try { removeFromStoriesIndex(Number(id)); } catch {}
 
     try {
       await removeStory(id);
+      try {
+        const cur = readStoriesIndex() || [];
+        const cleaned = cur.filter(s => Number(s.id) !== Number(id));
+        writeIndexSafe(cleaned);
+      } catch {}
     } catch (e) {
       const status = e?.response?.status || e?.status || 0;
       if (status === 404) return;
 
       console.error('[removeStory fail]', e);
       setStoriesList(prev);
-      writeStoriesIndex(prev.map(mapForIndex));
+      writeIndexSafe(prev);
     }
   };
 
@@ -582,15 +515,12 @@ const handleAddStory = async (initialTitleArg = '', opts = {}) => {
         if (patch.deleted === true) {
           setStoriesList((prev) => {
             const next = sortByUpdated((prev || []).filter(s => Number(s.id) !== storyIdNum));
-            writeStoriesIndex(next.map(mapForIndex));
+            writeIndexSafe(next);
+            window.dispatchEvent(new Event('stories:index:changed'));
             return next;
           });
           try { removeFromStoriesIndex?.(storyIdNum); } catch {}
           try { purgeStoryLocal?.(String(storyIdNum)); } catch {}
-
-          setToastType('info');
-          setToastMsg('История была удалена в другой вкладке');
-          setToastKey((k) => k + 1);
 
           return;
         }
@@ -611,7 +541,7 @@ const handleAddStory = async (initialTitleArg = '', opts = {}) => {
           byId.set(storyIdNum, nextItem);
           const arr = Array.from(byId.values());
           const sorted = sortByUpdated(arr);
-          writeStoriesIndex(sorted.map(mapForIndex));
+          writeIndexSafe(sorted);
           return sorted;
         });
         return;
@@ -621,7 +551,8 @@ const handleAddStory = async (initialTitleArg = '', opts = {}) => {
         const storyIdNum = Number(msg.storyId);
         setStoriesList((prev) => {
           const next = sortByUpdated((prev || []).filter(s => Number(s.id) !== storyIdNum));
-          writeStoriesIndex(next.map(mapForIndex));
+          writeIndexSafe(next);
+          window.dispatchEvent(new Event('stories:index:changed'));
           return next;
         });
         try { removeFromStoriesIndex?.(storyIdNum); } catch {}
@@ -633,66 +564,62 @@ const handleAddStory = async (initialTitleArg = '', opts = {}) => {
     return () => { off(); };
   }, []);
 
-   const handleTempCommit = async (tempId, title) => {
-   const trimmed = (title || '').trim();
-   if (!trimmed) {
-     // пустой заголовок -> удалить временную карточку
-     setStoriesList(prev => {
-       const next = prev.filter(s => String(s.id) !== String(tempId));
-       writeStoriesIndex(next.map(mapForIndex));
-       return next;
-     });
-     return;
-   }
+  const handleTempCommit = async (tempId, title) => {
+    const trimmed = (title || '').trim();
+    if (!trimmed) {
+      setStoriesList(prev => {
+        const next = prev.filter(s => String(s.id) !== String(tempId));
+        writeIndexSafe(next);
+        window.dispatchEvent(new Event('stories:index:changed'));
+        return next;
+      });
+      return;
+    }
 
-   // 1) есть ли уже маппинг на реальный id?
-   const realId = tempMapRef.current.get(tempId);
-   if (realId) {
-     await updateStory(realId, { title: trimmed });
-     // подчистим tmp и перейдём на историю
-     setStoriesList(prev => {
-       const withoutTemp = prev.filter(s => String(s.id) !== String(tempId));
-       writeStoriesIndex(withoutTemp.map(mapForIndex));
-       return sortByUpdated(withoutTemp);
-     });
-     const found = (storiesList || []).find(s => Number(s.id) === Number(realId));
-     navigate(`${STORY_ROUTE}/${found?.slug || realId}`);
-     return;
-   }
+    const realId = tempMapRef.current.get(tempId);
+    if (realId) {
+      await updateStory(realId, { title: trimmed });
+      setStoriesList(prev => {
+        const withoutTemp = prev.filter(s => String(s.id) !== String(tempId));
+        writeIndexSafe(withoutTemp);
+        return sortByUpdated(withoutTemp);
+      });
+      const found = (storiesList || []).find(s => Number(s.id) === Number(realId));
+      navigate(`${STORY_ROUTE}/${found?.slug || realId}`);
+      return;
+    }
 
-   // 2) реального id ещё нет — создаём сейчас с заголовком
-   const created = await createStory({ title: trimmed, content: '' });
-   try { markSeenThisSession(String(created.id)); } catch {}
-try {
-     writeSnapshot(String(created.id), {
-       updatedAt: created?.updatedAt || new Date().toISOString(),
-       archive: false, reevalDueAt: null,
-       stopContentY: null, baselineContent: created?.content || '',
-       reevalCount: 0, showArchiveSection: true, lastViewContentY: null,
-       remindersEnabled: true, remindersFreqSec: 30, remindersIndex: 0, remindersPaused: false,
-       title: created?.title || '', content: created?.content || '', ideas: [],
-     });
-   } catch {}
+    const created = await createStory({ title: trimmed, content: '' });
+    try { markSeenThisSession(String(created.id)); } catch {}
+    try {
+      writeSnapshot(String(created.id), {
+        updatedAt: created?.updatedAt || new Date().toISOString(),
+        archive: false, reevalDueAt: null,
+        stopContentY: null, baselineContent: created?.content || '',
+        reevalCount: 0, showArchiveSection: true, lastViewContentY: null,
+        remindersEnabled: true, remindersFreqSec: 30, remindersIndex: 0, remindersPaused: false,
+        title: created?.title || '', content: created?.content || '', ideas: [],
+      });
+    } catch {}
 
-   setStoriesList(prev => {
-  const withoutTemp = prev.filter(s => String(s.id) !== String(tempId));
-  const next = sortByUpdated([{ ...created }, ...withoutTemp]);
-  writeStoriesIndex(next.map(mapForIndex));
-  return next;
-});
+    setStoriesList(prev => {
+      const withoutTemp = prev.filter(s => String(s.id) !== String(tempId));
+      const next = sortByUpdated([{ ...created }, ...withoutTemp]);
+      writeIndexSafe(next);
+      window.dispatchEvent(new Event('stories:index:changed'));
+      return next;
+    });
 
-// остаёмся в списке на мобиле
-const isMobile =
-  window.matchMedia('(max-width:700px)').matches &&
-  window.matchMedia('(hover: none)').matches &&
-  window.matchMedia('(pointer: coarse)').matches;
+    const isMob =
+      window.matchMedia('(max-width:700px)').matches &&
+      window.matchMedia('(hover: none)').matches &&
+      window.matchMedia('(pointer: coarse)').matches;
 
-if (!isMobile) {
-  navigate(`${STORY_ROUTE}/${created.slug || created.id}`);
-}
- };
+    if (!isMob) {
+      navigate(`${STORY_ROUTE}/${created.slug || created.id}`);
+    }
+  };
 
-  // колбэк для переименования — прокинем вниз
   const onRenameStory = async (id, title) => {
     await updateStory(id, { title });
   };
@@ -709,24 +636,33 @@ if (!isMobile) {
           searchInput={searchInput}
           setSearchInput={setSearchInput}
           onAddStory={handleAddStory}
+          onOpenSidebar={onOpenSidebar}
+          isSidebarOpen={isSidebarOpen}
         />
       </div>
 
-      <div className={classes.scrollArea} role="region" onScroll={() => setSwipeCloseKey(k => k + 1)} aria-label="Список историй">
-        <StoriesList
-          searchInput={searchInput}
-          storiesList={storiesList}
-          isLoading={isLoading}
-          onDeleteStory={handleDeleteStory}
-          showArchive={showArchive}
-          onAddStory={handleAddStory}
-          onToggleArchive={handleToggleArchive}
-          closeKey={swipeCloseKey}
-          onRenameStory={onRenameStory}
-          onTempCommit={handleTempCommit}
-          newlyCreatedId={newlyCreatedId}   // <<< важно для мобильного инлайн-редакта
-          clearNewlyCreated={() => setNewlyCreatedId(null)}
-        />
+      <div
+        className={classes.scrollArea}
+        role="region"
+        onScroll={() => setSwipeCloseKey(k => k + 1)}
+        aria-label="Список историй"
+      >
+        <div className={classes.contentInner}>
+          <StoriesList
+            searchInput={searchInput}
+            storiesList={storiesList}
+            isLoading={isLoading}
+            onDeleteStory={handleDeleteStory}
+            showArchive={showArchive}
+            onAddStory={handleAddStory}
+            onToggleArchive={handleToggleArchive}
+            closeKey={swipeCloseKey}
+            onRenameStory={onRenameStory}
+            onTempCommit={handleTempCommit}
+            newlyCreatedId={newlyCreatedId}
+            clearNewlyCreated={() => setNewlyCreatedId(null)}
+          />
+        </div>
       </div>
 
       <Toast

@@ -13,11 +13,10 @@ export default function IdeaList({
 }) {
   const lastAutoFocusKeyRef = useRef(null);
 
-  // Автофокус: берём первую пустую идею (обычно только что добавленную)
+  // автофокус для только что созданной/пустой идеи
   useEffect(() => {
     if (!items || items.length === 0) return;
 
-    // приоритет: самая верхняя пустая идея; если есть временная (id < 0) — её
     const candidate =
       items.find((it) => it.id < 0) ||
       items.find((it) => String(it.text || '').trim() === '');
@@ -25,18 +24,12 @@ export default function IdeaList({
     if (!candidate) return;
 
     const key = candidate.uiKey;
-    if (lastAutoFocusKeyRef.current === key) return; // не дёргаем повторно
+    if (lastAutoFocusKeyRef.current === key) return;
 
-    // подождём, пока ref попадёт в карту
     const tryFocus = (tries = 12) => {
       const el = inputRefs.current.get(key);
       if (el) {
-        try {
-          el.focus({ preventScroll: true });
-        } catch {
-          try { el.focus(); } catch {}
-        }
-        // курсор в конец
+        try { el.focus({ preventScroll: true }); } catch { try { el.focus(); } catch {} }
         const len = el.value?.length ?? 0;
         try { el.setSelectionRange(len, len); } catch {}
         lastAutoFocusKeyRef.current = key;
@@ -44,8 +37,6 @@ export default function IdeaList({
       }
       if (tries > 0) setTimeout(() => tryFocus(tries - 1), 30);
     };
-
-    // два тика на всякий случай
     setTimeout(() => tryFocus(), 0);
   }, [items, inputRefs]);
 
@@ -81,9 +72,8 @@ export default function IdeaList({
             type="button"
             className={classes.moreBtn}
             onClick={() => onOpenMenu(it.id)}
-            aria-label="Действия"
             disabled={selectMode}
-            title={selectMode ? 'Недоступно в режиме выбора' : 'Действия'}
+            aria-label="Действия"
           >
             ⋯
           </button>

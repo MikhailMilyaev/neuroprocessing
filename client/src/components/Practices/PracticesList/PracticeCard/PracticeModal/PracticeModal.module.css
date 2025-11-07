@@ -1,0 +1,131 @@
+:root {
+  --story-card-fs: 16px;
+  --story-card-time-fs: 16px;
+}
+
+/* Запрет выделения/копирования */
+.noSelect,
+.pop,
+.backdrop,
+.selectedGhost {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+/* Поповер */
+.pop {
+  position: fixed;
+  min-width: 220px;
+  background: var(--card, #fff);
+  color: var(--text, #111);
+  border-radius: 14px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.18);
+  padding: 6px 0;
+  z-index: 1100;
+  pointer-events: auto; /* перехватываем клики */
+  transition: opacity .12s ease, transform .12s ease;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+.popMobile { border-radius: 16px; }
+
+.hidden { opacity: 0; transform: translateY(2px) scale(.98); pointer-events: none; }
+.ready  { opacity: 1; transform: translateY(0) scale(1); }
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-size: var(--story-card-fs);
+  line-height: 1.4;
+}
+.item:hover { background: var(--hover-bg, #f0f1f3); }
+
+.iconDanger { font-size: 20px; color: #ef4444; }
+.labelDanger { color: #ef4444; font-size: var(--story-card-fs); font-weight: 600; }
+
+/* Блюр фон — ОБЯЗАТЕЛЬНО перехватываем всё */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0,0,0,0.08);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  backdrop-filter: blur(12px) saturate(1.2);
+  pointer-events: auto;
+  touch-action: none;     /* глушим жесты прокрутки/тапы */
+  cursor: default;
+}
+
+/* «Призрак» выбранной карточки — layout 1:1 с карточкой */
+.selectedGhost {
+  position: fixed;
+  z-index: 1005;
+  background: var(--card, #fff);
+  border-radius: 12px;
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.06),
+    0 4px 12px rgba(0,0,0,0.08),
+    0 0 0 1px rgba(0,0,0,0.06) inset;
+  pointer-events: auto;     /* кликабельна для поповера */
+  padding: 16px 64px 16px 14px;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  font-family: inherit;
+  transition:
+    transform .18s ease,
+    left .18s ease,
+    top .18s ease,
+    width .18s ease,
+    height .18s ease,
+    padding .18s ease,
+    border-radius .18s ease;
+}
+
+/* столбец текста слева */
+.ghostCol{ display:block; }
+
+/* Заголовок (практика) */
+.ghostTitle {
+  display: block;
+  max-width: calc(100% - 80px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text, #111827);
+  font-size: var(--story-card-fs);
+  line-height: 1.25;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+/* Второй ряд — идея (ровно как в карточке) */
+.ghostIdea {
+  display: block;
+  color: var(--muted, #6b7280);
+  font-size: 14px;
+  line-height: 1.25;
+  max-width: calc(100% - 24px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Время справа */
+.ghostTime {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--story-card-time-fs);
+  line-height: 1;
+  color: var(--muted, #9aa0a6);
+  white-space: nowrap;
+}

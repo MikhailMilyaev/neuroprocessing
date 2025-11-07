@@ -7,17 +7,12 @@ import { observer } from 'mobx-react-lite';
 
 import ProtectedRoute from './routes/guards/ProtectedRoute';
 import PublicRoute from './routes/guards/PublicRoute';
-import AdminRoute from './routes/guards/AdminRoute';
 
 import FullScreenLoader from './components/FullScreenLoader/FullScreenLoader';
 import { ACCESS_KEY } from './http';
 
 import AppShell from './layout/AppShell';
-import AdminShell from './layout/AdminShell';
 import { useMetrika } from './hooks/useMetrika';
-import { ADMIN_ROUTE } from './utils/consts';
-
-import AdminUsers from './pages/Admin/AdminUsers';  
 
 const YM_ID = 104377537;
 
@@ -65,17 +60,6 @@ const App = observer(() => {
           <Route key={path} path={path} element={element} />
         ))}
       </Route>
-
-      <Route
-        path={ADMIN_ROUTE}
-        element={
-          <AdminRoute>
-            <AdminShell>
-              <AdminUsers />
-            </AdminShell>
-          </AdminRoute>
-        }
-      />
     </Routes>
   );
 });
