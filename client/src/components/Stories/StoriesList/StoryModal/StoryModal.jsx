@@ -3,23 +3,17 @@ import { useEffect, useRef, useState } from "react";
 import classes from "./StoryModal.module.css";
 import { MdDeleteOutline, MdEdit } from "react-icons/md";
 
-/** Desktop: обычный поповер; Mobile: блюр + «карточка-призрак».
- *  На телефоне:
- *   - обычный long-press: поповер + призрак; по "Изменить" прячем поповер и редактируем призрак.
- *   - создание: forceMobileEdit=true — сразу редактируем призрак (поповер не показываем).
- */
 const StoryModal = ({
   open,
   position,
   onClose,
   onDelete,
-  onEdit,                 // ПК
+  onEdit,                 
   mobile = false,
-  anchorRect = null,      // DOMRect карточки (может быть null при создании)
-  overlayMeta = null,     // { title, time, isPlaceholder }
-  onMobileEditSubmit,     // (nextTitle: string) => void|Promise
-  selectedId,             // id карточки (может быть null при создании)
-  forceMobileEdit = false // НОВОЕ: сразу редактирование без поповера
+  anchorRect = null,       
+  overlayMeta = null,      
+  onMobileEditSubmit,      
+  forceMobileEdit = false  
 }) => {
   const popRef = useRef(null);
   const ghostRef = useRef(null);
@@ -28,7 +22,6 @@ const StoryModal = ({
   const [pos, setPos] = useState({ x: -9999, y: -9999 });
   const [ready, setReady] = useState(false);
 
-  // мобильное редактирование (или создание)
   const [mobileEditing, setMobileEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
 
@@ -37,7 +30,6 @@ const StoryModal = ({
     requestAnimationFrame(() => onClose?.());
   };
 
-  // Закрытие по тапу вне
   useEffect(() => {
     if (!open) return;
     const onDown = (e) => {
@@ -62,7 +54,6 @@ const StoryModal = ({
     };
   }, [open, mobile, mobileEditing, editValue, onMobileEditSubmit]);
 
-  // Лочим фон под блюром
   useEffect(() => {
     if (!open || !mobile) return;
     const html = document.documentElement;
@@ -89,7 +80,6 @@ const StoryModal = ({
   const onForce = () => {
     const el = inputRef.current;
     if (!el) return;
-    // Небольшая задержка — чтобы инпут точно был в DOM и видим
     setTimeout(() => {
       try { el.focus({ preventScroll: true }); } catch { el.focus(); }
       try { el.click(); } catch {}
@@ -106,7 +96,6 @@ const StoryModal = ({
 }, [mobile, open]);
 
 
-  // позиционирование поповера (ПК/обычный моб)
   useEffect(() => {
     if (!open) return;
     setReady(false);
@@ -131,7 +120,6 @@ const StoryModal = ({
       return;
     }
 
-    // Mobile (когда НЕ forceMobileEdit): позиция относительно anchorRect
     if (!forceMobileEdit) {
       const a = anchorRect;
       if (!a) return;
@@ -154,12 +142,10 @@ const StoryModal = ({
         setReady(true);
       });
     } else {
-      // forceMobileEdit: поповер не нужен, но чтобы не мигал — помечаем ready
       setReady(true);
     }
   }, [open, mobile, position, anchorRect, forceMobileEdit]);
 
-  // динамический top для призрака (в режиме редактирования/создания)
   const computeEditTop = () => {
     const vvTop = (window.visualViewport && Number.isFinite(window.visualViewport.offsetTop))
       ? window.visualViewport.offsetTop
@@ -186,13 +172,11 @@ const StoryModal = ({
     };
   }, [open, mobile, mobileEditing]);
 
-  // при входе в режим редактирования/создания
   useEffect(() => {
     if (!mobile || !open) return;
     if (forceMobileEdit) setMobileEditing(true);
   }, [mobile, open, forceMobileEdit]);
 
-  // Фокус инпута в мобильном редактировании
   useEffect(() => {
     if (!mobile || !open || !mobileEditing) return;
     setEditValue(overlayMeta?.isPlaceholder ? "" : (overlayMeta?.title || ""));
@@ -226,7 +210,7 @@ const StoryModal = ({
 
   const onClickEditDesktop = (e) => {
     e.preventDefault(); e.stopPropagation();
-    onEdit?.(); // ПК
+    onEdit?.(); 
   };
 
   const onClickEditMobile = (e) => {
@@ -290,7 +274,6 @@ const StoryModal = ({
     <>
       {mobile && (
         <>
-          {/* Блюр: тап = сохранить (если редактируем) и закрыть */}
           <div
             className={classes.backdrop}
             aria-hidden
@@ -298,13 +281,11 @@ const StoryModal = ({
             onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onCancelMobile(); }}
           />
-          {/* Призрак */}
           <div
             ref={ghostRef}
             className={`${classes.selectedGhost} ${mobileEditing ? classes.ghostEditing : ""}`}
             style={ghostStyle}
             aria-hidden={false}
-            // ВАЖНО: не глушим события, когда уже редактируем — иначе iOS не поднимает клавиатуру
             onTouchStart={(e) => { if (!mobileEditing) { e.preventDefault(); e.stopPropagation(); } }}
             onMouseDown={(e) => { if (!mobileEditing) { e.preventDefault(); e.stopPropagation(); } }}
             onClick={(e) => { if (!mobileEditing) { e.preventDefault(); e.stopPropagation(); } }}
@@ -345,7 +326,6 @@ const StoryModal = ({
         </>
       )}
 
-      {/* На мобилке контент-поповер скрываем если уже редактируем или в force-создании */}
       {(!mobile || (!mobileEditing && !forceMobileEdit)) && content}
     </>,
     document.getElementById("storyModal")

@@ -12,11 +12,10 @@
   min-height: 120px;
   background: transparent;
 
-  /* тонкий скролл на переменных темы */
-  scrollbar-width: thin;                                 /* Firefox */
-  scrollbar-color: var(--scrollbar-thumb) transparent;   /* Firefox */
+  scrollbar-width: thin;                                  
+  scrollbar-color: var(--scrollbar-thumb) transparent;    
 }
-.stage::-webkit-scrollbar { width: var(--scrollbar-w); } /* Chrome/Safari/Edge */
+.stage::-webkit-scrollbar { width: var(--scrollbar-w); }  
 .stage::-webkit-scrollbar-track { background: transparent; }
 .stage::-webkit-scrollbar-thumb {
   background-color: var(--scrollbar-thumb);
@@ -28,13 +27,6 @@
 .stage::-webkit-scrollbar-button { width:0; height:0; display:none; }
 .stage::-webkit-scrollbar-corner { background: transparent; }
 
-/* десктопный «уголок» для ресайза */
-.stageResizable {
-  resize: vertical;
-  cursor: ns-resize;
-}
-
-/* Контент */
 .editable {
   position: relative;
   outline: none;
@@ -47,7 +39,6 @@
   color: var(--text);
 }
 
-/* плейсхолдер */
 .editable[data-empty="true"]::before {
   content: attr(data-placeholder);
   color: color-mix(in oklab, var(--text) 40%, transparent);
@@ -58,28 +49,50 @@
   white-space: pre-wrap;
 }
 
-/* ===== Мобильный drag-handle ===== */
-.mobileHandle {
+.resizeHandle {
   position: sticky;
-  bottom: 0; /* всегда внизу видимой области stage */
+  bottom: 0;             
   left: 0;
   right: 0;
-  height: 22px;
+  height: 18px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background: linear-gradient(to bottom, transparent, color-mix(in oklab, var(--bg) 85%, transparent) 35%, var(--bg) 100%);
-  touch-action: none; /* чтобы тянуть без скролла */
-}
-.mobileHandleBar {
-  width: 48px;
-  height: 5px;
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--text) 20%, transparent);
-  margin-bottom: 6px;
+
+  background: transparent;
+
+  touch-action: none;    
+  cursor: ns-resize;
+  z-index: 1;
 }
 
-/* Мобильный */
+.resizeHandleBar {
+  width: 44px;
+  height: 5px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--text) 22%, transparent);
+  margin-bottom: 6px;
+  transition: width 140ms ease, background 140ms ease, opacity 140ms ease, height 140ms ease;
+  opacity: 0.9;
+}
+
+.handleActive .resizeHandleBar {
+  width: calc(100% - 16px);  
+  height: 6px;
+  background: color-mix(in oklab, var(--text) 40%, transparent);
+  opacity: 1;
+}
+
+.isDesktop:hover .resizeHandleBar {
+  background: color-mix(in oklab, var(--text) 35%, transparent);
+  opacity: 1;
+}
+
+.handleActive .resizeHandleBar {
+  background: color-mix(in oklab, var(--text) 45%, transparent);
+  opacity: 1;
+}
+
 @media (max-width: 900px) {
   .wrapper {
     max-width: 100%;
@@ -90,7 +103,7 @@
     background: transparent;
     border-radius: 0;
     box-shadow: none;
-    padding: 12px 8px 0; /* снизу убрал паддинг, его займёт handle */
+    padding: 12px 8px 0; 
     min-height: 200px;
     -webkit-overflow-scrolling: touch;
 
@@ -117,4 +130,12 @@
     left: 1px;
     color: color-mix(in oklab, var(--text) 45%, transparent);
   }
+
+  .resizeHandle { height: 22px; }
+}
+
+@media (min-width: 901px) {
+  .wrapper { padding: 0 4px; }
+  .resizeHandle { height: 16px; }
+  .isDesktop .resizeHandleBar { width: 48px; }
 }

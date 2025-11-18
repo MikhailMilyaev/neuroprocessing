@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import IdeaItem from '../IdeaItem/IdeaItem';
 import classes from './IdeaList.module.css';
+import { PRACTICES } from '../../../../http/practiceApi';
 
 const ANIM_MS = 250;
 const archivedFlag = (score) => score !== '' && score != null && Number(score) === 0;
@@ -13,10 +14,7 @@ export default function IdeaList({
   onTextChange,
   onScoreChange,
   onBlurEmpty,
-  practicesById = { __default: [] },
-  onIdeaClick,
-  onIdeaFocus,
-  onIdeaBlur,
+  practicesById = { __default: PRACTICES },
   initialHydrate = false,
   freezeAnimKey = 0,
 }) {
@@ -215,23 +213,23 @@ export default function IdeaList({
     focusNextScore(id, dir);
   };
 
-const focusNextText = (fromId, direction = 1, inArchive = false) => {
-  const order = inArchive ? archivedOrder : activeOrder;
-  const idx = order.indexOf(fromId);
-  if (idx === -1) return;
-  const i = idx + direction;
-  if (i < 0 || i >= order.length) return;
+  const focusNextText = (fromId, direction = 1, inArchive = false) => {
+    const order = inArchive ? archivedOrder : activeOrder;
+    const idx = order.indexOf(fromId);
+    if (idx === -1) return;
+    const i = idx + direction;
+    if (i < 0 || i >= order.length) return;
 
-  const targetId = order[i];
-  const el = textRefs.current.get(targetId);
-  if (el) {
-    try {
-      el.focus();
-      const len = el.value?.length ?? 0;
-      el.setSelectionRange?.(len, len);   
-    } catch {}
-  }
-};
+    const targetId = order[i];
+    const el = textRefs.current.get(targetId);
+    if (el) {
+      try {
+        el.focus();
+        const len = el.value?.length ?? 0;
+        el.setSelectionRange?.(len, len);
+      } catch {}
+    }
+  };
 
   const handleTextArrow = (id, direction = 1, { inArchive = false } = {}) => {
     focusNextText(id, direction, inArchive);
@@ -254,9 +252,6 @@ const focusNextText = (fromId, direction = 1, inArchive = false) => {
           onScoreChange={onScoreChange}
           onBlurEmpty={onBlurEmpty}
           practices={practicesById?.[b.id] ?? practicesById?.__default ?? []}
-          onClick={() => onIdeaClick?.(b.id)}
-          onFocusAny={() => onIdeaFocus?.(b.id)}
-          onBlurAll={() => onIdeaBlur?.(b.id)}
           registerScoreRef={registerScoreRef}
           onScoreFinalized={handleScoreFinalized}
           registerTextRef={registerTextRef}
@@ -282,9 +277,6 @@ const focusNextText = (fromId, direction = 1, inArchive = false) => {
               onScoreChange={onScoreChange}
               onBlurEmpty={onBlurEmpty}
               practices={practicesById?.[b.id] ?? practicesById?.__default ?? []}
-              onClick={() => onIdeaClick?.(b.id)}
-              onFocusAny={() => onIdeaFocus?.(b.id)}
-              onBlurAll={() => onIdeaBlur?.(b.id)}
               registerTextRef={registerTextRef}
               onTextArrow={(id2, dir) => handleTextArrow(id2, dir, { inArchive: true })}
             />

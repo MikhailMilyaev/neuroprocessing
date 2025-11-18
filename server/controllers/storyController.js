@@ -37,10 +37,6 @@ class StoryController {
         archive: false,
         slug: unique,
         showArchiveSection: true,
-        remindersEnabled: false,
-        remindersFreqSec: 30,
-        remindersPaused: false,
-        remindersIndex: 0,
       });
 
       try {
@@ -70,14 +66,8 @@ class StoryController {
               content: story.content,
               archive: story.archive,
               slug: story.slug,
-              remindersEnabled: story.remindersEnabled,
-              remindersFreqSec: story.remindersFreqSec,
-              remindersPaused: story.remindersPaused,
-              remindersIndex: story.remindersIndex,
               showArchiveSection: story.showArchiveSection ?? true,
-              baselineContent: story.baselineContent ?? '',
               reevalCount: story.reevalCount ?? 0,
-              stopContentY: story.stopContentY ?? null,
               lastViewContentY: story.lastViewContentY ?? null,
               reevalDueAt: story.reevalDueAt ?? null,
               updatedAt: story.updatedAt,
@@ -133,9 +123,7 @@ class StoryController {
       const allowed = new Set([
         'id', 'slug', 'title', 'content', 'archive', 'actor_id',
         'updatedAt', 'createdAt', 'reevalDueAt',
-        'stopContentY', 'baselineContent', 'reevalCount',
-        'showArchiveSection', 'lastViewContentY',
-        'remindersEnabled', 'remindersFreqSec', 'remindersIndex', 'remindersPaused',
+        'reevalCount', 'showArchiveSection', 'lastViewContentY',
       ]);
       let attributes;
       if (fieldsParam) {
@@ -205,10 +193,13 @@ class StoryController {
       if (!prev) return res.status(404).json({ message: 'История не найдена' });
 
       const {
-        title, content, archive, baselineContent,
-        showArchiveSection, showArchive,
-        remindersEnabled, remindersFreqSec, remindersPaused, remindersIndex,
-        lastViewContentY, reevalDueAt,
+        title,
+        content,
+        archive,
+        showArchiveSection,
+        showArchive,
+        lastViewContentY,
+        reevalDueAt,
       } = req.body;
 
       const updateData = {};
@@ -220,7 +211,6 @@ class StoryController {
       }
 
       if (content !== undefined) updateData.content = content;
-      if (baselineContent !== undefined) updateData.baselineContent = baselineContent;
 
       if (showArchiveSection !== undefined || showArchive !== undefined) {
         const v = (showArchiveSection !== undefined) ? showArchiveSection : showArchive;
@@ -230,27 +220,6 @@ class StoryController {
       if (archive !== undefined) {
         const v = archive;
         updateData.archive = (v === true || v === 'true' || v === 1 || v === '1');
-      }
-
-      if (remindersEnabled !== undefined) {
-        const v = remindersEnabled;
-        updateData.remindersEnabled = (v === true || v === 'true' || v === 1 || v === '1');
-      }
-      if (remindersPaused !== undefined) {
-        const v = remindersPaused;
-        updateData.remindersPaused = (v === true || v === 'true' || v === 1 || v === '1');
-      }
-      if (remindersFreqSec !== undefined) {
-        if (remindersFreqSec == null || remindersFreqSec === 'null' || remindersFreqSec === '') {
-          updateData.remindersFreqSec = null;
-        } else {
-          const n = Number(remindersFreqSec);
-          updateData.remindersFreqSec = Number.isFinite(n) ? n : null;
-        }
-      }
-      if (remindersIndex !== undefined) {
-        const n = Number(remindersIndex);
-        updateData.remindersIndex = Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
       }
 
       if (lastViewContentY !== undefined) {
@@ -283,18 +252,13 @@ class StoryController {
             version: new Date().toISOString(),
             opId,
             patch: {
-              ...(title !== undefined ? { title: updated.title } : {}),
+              ...(title   !== undefined ? { title:   updated.title }   : {}),
               ...(content !== undefined ? { content: updated.content } : {}),
               ...(archive !== undefined ? { archive: updated.archive } : {}),
-              ...(baselineContent !== undefined ? { baselineContent: updated.baselineContent } : {}),
               ...(showArchiveSection !== undefined || showArchive !== undefined
                   ? { showArchiveSection: updated.showArchiveSection } : {}),
-              ...(remindersEnabled !== undefined ? { remindersEnabled: updated.remindersEnabled } : {}),
-              ...(remindersPaused  !== undefined ? { remindersPaused:  updated.remindersPaused } : {}),
-              ...(remindersFreqSec !== undefined ? { remindersFreqSec: updated.remindersFreqSec } : {}),
-              ...(remindersIndex   !== undefined ? { remindersIndex:   updated.remindersIndex } : {}),
               ...(lastViewContentY !== undefined ? { lastViewContentY: updated.lastViewContentY } : {}),
-              ...(reevalDueAt      !== undefined ? { reevalDueAt:      updated.reevalDueAt } : {}),
+              ...(reevalDueAt      !== undefined ? { reevalDueAt:      updated.reevalDueAt }      : {}),
               ...(updateData.slug ? { slug: updated.slug } : {}),
               updatedAt: updated.updatedAt,
             }
@@ -354,90 +318,7 @@ class StoryController {
     } catch (e) { next(e); }
   }
 
-  async setStop(req, res, next) {
-    try {
-      const actor_id = req.actorId;
-      if (!actor_id) return res.status(401).json({ message: 'Unauthorized' });
-
-      const { id } = req.params;
-      const { stopContentY } = req.body;
-      const n = Number(stopContentY);
-      if (!Number.isFinite(n) || n < 0) {
-        return res.status(400).json({ message: 'stopContentY must be a non-negative number' });
-      }
-      const [count, rows] = await Story.update(
-        { stopContentY: Math.round(n) },
-        { where: { id, actor_id }, returning: true }
-      );
-      if (!count) return res.status(404).json({ message: 'История не найдена' });
-
-      const updated = rows[0];
-
-      try {
-        const hub  = req.app?.locals?.hub;
-        const opId = req.opId || null;
-        if (hub) {
-          hub.publish(`story:${id}`, {
-            type: 'story.updated',
-            storyId: Number(id),
-            version: new Date().toISOString(),
-            opId,
-            patch: { stopContentY: updated.stopContentY, updatedAt: updated.updatedAt }
-          });
-          hub.publish(`actor:${actor_id}`, {
-            type: 'stories.index.patch',
-            storyId: Number(id),
-            opId,
-            patch: { updatedAt: updated.updatedAt }
-          });
-        }
-      } catch (e) {
-        console.warn('[ws publish story.setStop] fail:', e?.message || e);
-      }
-
-      return res.json(updated);
-    } catch (e) { next(e); }
-  }
-
-  async clearStop(req, res, next) {
-    try {
-      const actor_id = req.actorId;
-      if (!actor_id) return res.status(401).json({ message: 'Unauthorized' });
-
-      const { id } = req.params;
-      const [count, rows] = await Story.update(
-        { stopContentY: null },
-        { where: { id, actor_id }, returning: true }
-      );
-      if (!count) return res.status(404).json({ message: 'История не найдена' });
-
-      const updated = rows[0];
-
-      try {
-        const hub  = req.app?.locals?.hub;
-        const opId = req.opId || null;
-        if (hub) {
-          hub.publish(`story:${id}`, {
-            type: 'story.updated',
-            storyId: Number(id),
-            version: new Date().toISOString(),
-            opId,
-            patch: { stopContentY: null, updatedAt: updated.updatedAt }
-          });
-          hub.publish(`actor:${actor_id}`, {
-            type: 'stories.index.patch',
-            storyId: Number(id),
-            opId,
-            patch: { updatedAt: updated.updatedAt }
-          });
-        }
-      } catch (e) {
-        console.warn('[ws publish story.clearStop] fail:', e?.message || e);
-      }
-
-      return res.json(updated);
-    } catch (e) { next(e); }
-  }
+  // setStop / clearStop УДАЛЕНИ — фича больше не нужна
 
   async reeval(req, res, next) {
     const t = await sequelize.transaction();
@@ -471,7 +352,7 @@ class StoryController {
         await StoryIdea.update({ score: null }, { where: { id: ids }, transaction: t });
       }
 
-      await story.update({ reevalCount: nextRound, baselineContent: story.content }, { transaction: t });
+      await story.update({ reevalCount: nextRound }, { transaction: t });
 
       await t.commit();
 
@@ -495,7 +376,6 @@ class StoryController {
             opId,
             patch: {
               reevalCount: fresh?.reevalCount ?? nextRound,
-              baselineContent: fresh?.baselineContent ?? story.content,
               updatedAt: fresh?.updatedAt ?? new Date().toISOString()
             }
           });
@@ -543,7 +423,7 @@ class StoryController {
       }
 
       await StoryIdea.update({ score: null }, { where: { storyId: id }, transaction: t });
-      await story.update({ reevalCount: nextRound, baselineContent: story.content }, { transaction: t });
+      await story.update({ reevalCount: nextRound }, { transaction: t });
 
       await t.commit();
 
@@ -567,7 +447,6 @@ class StoryController {
             opId,
             patch: {
               reevalCount: fresh?.reevalCount ?? nextRound,
-              baselineContent: fresh?.baselineContent ?? story.content,
               updatedAt: fresh?.updatedAt ?? new Date().toISOString()
             }
           });

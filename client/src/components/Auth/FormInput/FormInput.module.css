@@ -1,45 +1,52 @@
 .inputContainer {
   position: relative;
   width: 100%;
-  max-width: 385px;               
-  margin: 11px auto;              
+  max-width: 385px;
+  margin: 11px auto;
   display: block;
 }
 
 .input {
   width: 100%;
-  background-color: #fff;
-  padding: 11px calc(var(--eye-box, 31px) + 24px) 11px 44px;
-  border-radius: 16px;           
-  font-size: 18px;                
-  border: none;
-  outline: none;
-  transition: box-shadow 0.2s ease-in-out;
-  min-height: 48px;               
   box-sizing: border-box;
+  background-color: #f9fafb;              
+  padding: 11px calc(var(--eye-box, 31px) + 24px) 11px 44px;
+  border-radius: 16px;
+  font-size: 18px;
+  border: 1px solid #e5e7eb;               
+  outline: none;
+  min-height: 48px;
+  transition:
+    background-color 0.15s ease-in-out,
+    border-color 0.15s ease-in-out,
+    box-shadow 0.15s ease-in-out;
 }
 
 .input:focus {
-  box-shadow: 0 0 6px rgba(0,0,0,0.15);  
+  background-color: #ffffff;
+  border-color: #111111;
+  box-shadow:
+    0 0 0 1px #111111,
+    0 0 6px rgba(0, 0, 0, 0.15);
 }
 
 .leftIcon {
   position: absolute;
-  left: 11px;                   
+  left: 11px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 22px;               
-  color: gray;
-  background: white;
+  font-size: 22px;
+  color: #6b7280;               
+  background: transparent;
   line-height: 0;
   pointer-events: none;
 }
 
 .rightIcon {
-  --eye-box: 31px;             
-  --eye-font: 20px;               
+  --eye-box: 31px;
+  --eye-font: 20px;
   position: absolute;
-  right: 11px;                    
+  right: 11px;
   top: 50%;
   transform: translateY(-50%);
   width: var(--eye-box);
@@ -49,23 +56,25 @@
   place-items: center;
   font-size: var(--eye-font);
   line-height: 0;
-  color: gray;
-  background: white;
+  color: #6b7280;
+  background: transparent;
   border: none;
   padding: 0;
   cursor: pointer;
-  transition: background-color .15s ease, color .15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .rightIcon:hover {
-  background-color: rgb(245, 245, 245);
+  background-color: #f3f4f6;
 }
 
 .inputContainer:focus-within .leftIcon,
 .inputContainer:focus-within .rightIcon {
-  color: black;
+  color: #111111;
 }
 
-.eyeSm { --eye-box: 26px; --eye-font: 18px; }   
-.eyeMd { --eye-box: 31px; --eye-font: 20px; }  
-.eyeLg { --eye-box: 37px; --eye-font: 22px; } 
+.eyeSm { --eye-box: 26px; --eye-font: 18px; }
+.eyeMd { --eye-box: 31px; --eye-font: 20px; }
+.eyeLg { --eye-box: 37px; --eye-font: 22px; }

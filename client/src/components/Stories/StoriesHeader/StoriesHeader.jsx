@@ -69,10 +69,15 @@ export default function StoriesHeader({
     e.stopPropagation();
 
     try {
-      if (isMobile) armKeyboardKeeper();
-      const p = onAddStory("", { inline: isMobile });
-      if (p?.then) { try { await p; } catch {} }
-      setTimeout(removeKeeper, 2000);
+      if (isMobile) {
+        armKeyboardKeeper();
+        const p = onAddStory("", { inline: true }); // мобилка — через оверлей
+        if (p?.then) { try { await p; } catch {} }
+        setTimeout(removeKeeper, 2000);
+      } else {
+        // десктоп — просим список вставить draft вверху
+        document.dispatchEvent(new Event("stories:begin-create-draft"));
+      }
     } catch (err) {
       console.error("Create story failed:", err);
       removeKeeper();

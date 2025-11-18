@@ -73,7 +73,6 @@ export default function GoodBadRun() {
         <section className={styles.finalNote}>
           Повторите шаблон с этой идеей несколько раз (1–4 раза или больше),
           затем переходите к следующей идее или к переоценке всего списка.
-          Продолжение следует…
         </section>
       </main>
     </div>

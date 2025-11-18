@@ -26,9 +26,6 @@ export default function StoryCard({
   createdAt,
   created_at,
   isHighlighted,
-  onDelete,
-  closeKey = 0,
-  isDraft = false,
   isEditing = false,
   onBeginRename,
   onSubmitTitle,
@@ -107,12 +104,12 @@ export default function StoryCard({
   const commit = () => {
     const t = (value ?? "").trim();
     if (!t) {
-      onSubmitTitle?.("", id);
+      onSubmitTitle?.(id, "");
       onCancelEdit?.(id);
       return;
     }
     setOptimisticTitle(t);
-    onSubmitTitle?.(t, id);
+    onSubmitTitle?.(id, t);
     onCancelEdit?.(id);
   };
   const onInputKeyDown = (e) => {

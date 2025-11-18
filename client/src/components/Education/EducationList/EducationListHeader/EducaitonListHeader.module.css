@@ -1,0 +1,121 @@
+:root {
+  --ring: rgba(20, 174, 92, 0.35);
+  --fg-icon: #111827;
+  --hover-bg: #f0f1f3;
+  --btn-h: 40px;
+  --hdr-pad-mobile: 10px;
+  --hdr-pad-desktop: 12px;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--bg);
+}
+
+.headerPaddedMobile {
+  padding-inline: 12px;
+  padding-block: calc(var(--hdr-pad-mobile) / 2)
+    calc(var(--hdr-pad-mobile) / 2);
+}
+
+@media (min-width: 701px) {
+  .headerPaddedMobile {
+    padding-inline: 16px;
+    padding-block: calc(var(--hdr-pad-desktop) / 2)
+      calc(var(--hdr-pad-desktop) / 2);
+  }
+}
+
+@media (max-width: 700px) and (hover: none) and (pointer: coarse) {
+  .headerPaddedMobile {
+    padding-top: calc(
+      env(safe-area-inset-top, 0px) + (var(--hdr-pad-mobile) / 2)
+    );
+  }
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
+.burger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--btn-h);
+  min-height: var(--btn-h);
+  width: var(--btn-h);
+  min-width: var(--btn-h);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  border-radius: 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.18s ease, transform 0.06s ease,
+    opacity 0.2s ease;
+}
+
+.burger:hover {
+  background: var(--hover-bg);
+}
+
+.burger:active {
+  transform: translateY(1px);
+}
+
+.burger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.burgerIcon {
+  width: 22px;
+  height: 22px;
+  color: var(--fg-icon);
+  display: block;
+}
+
+@media (min-width: 701px) {
+  .sidebarOpen .burger {
+    width: 0;
+    min-width: 0;
+    margin: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+@media (max-width: 700px) and (hover: none) and (pointer: coarse) {
+  .burger:hover,
+  .burger:active {
+    background: transparent !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .burger {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    min-height: 34px;
+    border-radius: 9px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .burger {
+    transition: none !important;
+  }
+}

@@ -8,7 +8,6 @@ import FullScreenLoader from '../../components/FullScreenLoader/FullScreenLoader
 import Toast from '../../components/Toast/Toast';
 
 import classes from './Stories.module.css';
-import { STORY_ROUTE } from '../../utils/consts';
 import { fetchStories, createStory, removeStory, updateStory } from '../../http/storyApi';
 import { readStoriesIndex, writeStoriesIndex, removeFromStoriesIndex } from '../../utils/cache/storiesCache';
 import { useSmartDelay } from '../../hooks/useSmartDelay';
@@ -24,7 +23,7 @@ const getTs = (s) => {
 };
 const sortByUpdated = (arr) => (arr || []).slice().sort((a, b) => getTs(b) - getTs(a));
 const toIndexItem = (s) => ({
-  id: Number(s?.id),                          
+  id: Number(s?.id),
   slug: s?.slug ?? null,
   title: s?.title ?? '',
   archive: !!s?.archive,
@@ -36,7 +35,7 @@ const writeIndexSafe = (list) => {
   const byId = new Map();
   for (const it of (list || [])) {
     const id = Number(it?.id);
-    if (!Number.isFinite(id)) continue;  
+    if (!Number.isFinite(id)) continue;
     const prev = byId.get(id);
     if (!prev) { byId.set(id, it); continue; }
     const tNew = Date.parse(it?.updatedAt ?? it?.updated_at ?? 0) || 0;
@@ -105,11 +104,8 @@ const Stories = () => {
 
   const { onOpenSidebar, isSidebarOpen } = useOutletContext() || { onOpenSidebar: () => {}, isSidebarOpen: false };
 
-  const [searchInput, setSearchInput] = useState('');
   const [storiesList, setStoriesList] = useState(() => sortByUpdated(readStoriesIndex()));
   const [isLoading, setIsLoading] = useState(true);
-  const [swipeCloseKey, setSwipeCloseKey] = useState(0);
-  const scrollRef = useRef(null);
 
   const [showArchive, setShowArchive] = useState(() => {
     const state = location.state || {};
@@ -130,8 +126,6 @@ const Stories = () => {
 
   const [pendingArchivedId, setPendingArchivedId] = useState(null);
   const [pendingActiveId, setPendingActiveId] = useState(null);
-
-  const [newlyCreatedId, setNewlyCreatedId] = useState(null);
 
   const net = navigator.connection?.effectiveType || '';
   const saveData = navigator.connection?.saveData || false;
@@ -172,14 +166,12 @@ const Stories = () => {
       setPendingArchivedId(Number(state.archivedId));
       setShowArchive(true);
       localStorage.setItem(ARCHIVE_KEY(), 'true');
-      setSearchInput('');
     }
 
     if (state.activeId) {
       setPendingActiveId(Number(state.activeId));
       setShowArchive(false);
       localStorage.setItem(ARCHIVE_KEY(), 'false');
-      setSearchInput('');
     } else {
       try {
         const v = sessionStorage.getItem(ACTIVE_HIGHLIGHT_KEY());
@@ -187,7 +179,6 @@ const Stories = () => {
           setPendingActiveId(Number(v));
           setShowArchive(false);
           localStorage.setItem(ARCHIVE_KEY(), 'false');
-          setSearchInput('');
           sessionStorage.removeItem(ACTIVE_HIGHLIGHT_KEY());
         }
       } catch {}
@@ -295,6 +286,7 @@ const Stories = () => {
   }, [showArchive]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const flashTimerRef = useRef(null);
+
   const scrollAndFlash = useCallback((id) => {
     if (!id) return;
 
@@ -307,27 +299,13 @@ const Stories = () => {
       return el;
     };
 
-    let el = tryFind();
-
-    if (!el && searchInput) {
-      setSearchInput('');
-      setTimeout(() => {
-        const el2 = tryFind();
-        if (!el2) return;
-        el2.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        el2.classList.remove(classes.flashHighlight);
-        el2.offsetWidth;
-        el2.classList.add(classes.flashHighlight);
-        if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
-        flashTimerRef.current = setTimeout(() => el2.classList.remove(classes.flashHighlight), 2000);
-      }, 60);
-      return;
-    }
-
+    const el = tryFind();
     if (!el) return;
 
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     el.classList.remove(classes.flashHighlight);
+    // force reflow
+    // eslint-disable-next-line no-unused-expressions
     el.offsetWidth;
     el.classList.add(classes.flashHighlight);
 
@@ -335,7 +313,7 @@ const Stories = () => {
     flashTimerRef.current = setTimeout(() => {
       el.classList.remove(classes.flashHighlight);
     }, 2000);
-  }, [searchInput, setSearchInput]);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -370,13 +348,6 @@ const Stories = () => {
       setPendingActiveId(null);
     }, 50);
   }, [pendingActiveId, storiesList, isLoading, scrollAndFlash]);
-
-  const isMobile = () =>
-    window.matchMedia('(max-width:700px)').matches &&
-    window.matchMedia('(hover: none)').matches &&
-    window.matchMedia('(pointer: coarse)').matches;
-
-  const tempMapRef = useRef(new Map());
 
   const handleAddStory = async (initialTitleArg = '', opts = {}) => {
     const initialTitle = typeof initialTitleArg === 'string' ? initialTitleArg : '';
@@ -422,8 +393,7 @@ const Stories = () => {
           return next;
         });
 
-        navigate(`${STORY_ROUTE}/${story.slug || story.id}`);
-        return story; 
+        return story;
       } catch (e) {
         console.error(e);
         alert('Не удалось создать историю. Проверьте соединение и попробуйте ещё раз.');
@@ -458,6 +428,7 @@ const Stories = () => {
       return created;
     }
 
+    // мобилка – оверлей; на десктопе этот эвент теперь перехватывается StoriesList-ом
     document.dispatchEvent(new CustomEvent('stories:open-create-overlay'));
     return;
   };
@@ -493,13 +464,6 @@ const Stories = () => {
     setShowArchive(val);
     localStorage.setItem(ARCHIVE_KEY(), String(val));
   };
-
-  const activeCount  = (storiesList || []).filter(s => !s.archive).length;
-  const archiveCount = (storiesList || []).filter(s =>  s.archive).length;
-
-  const hasSearchInSelectedTab = showArchive
-    ? (archiveLoaded && archiveCount > 0)
-    : (activeCount > 0);
 
   useEffect(() => {
     startRealtime();
@@ -566,9 +530,11 @@ const Stories = () => {
 
   const handleTempCommit = async (tempId, title) => {
     const trimmed = (title || '').trim();
+
+    // пустой заголовок → просто убираем временную карточку
     if (!trimmed) {
       setStoriesList(prev => {
-        const next = prev.filter(s => String(s.id) !== String(tempId));
+        const next = (prev || []).filter(s => String(s.id) !== String(tempId));
         writeIndexSafe(next);
         window.dispatchEvent(new Event('stories:index:changed'));
         return next;
@@ -576,20 +542,9 @@ const Stories = () => {
       return;
     }
 
-    const realId = tempMapRef.current.get(tempId);
-    if (realId) {
-      await updateStory(realId, { title: trimmed });
-      setStoriesList(prev => {
-        const withoutTemp = prev.filter(s => String(s.id) !== String(tempId));
-        writeIndexSafe(withoutTemp);
-        return sortByUpdated(withoutTemp);
-      });
-      const found = (storiesList || []).find(s => Number(s.id) === Number(realId));
-      navigate(`${STORY_ROUTE}/${found?.slug || realId}`);
-      return;
-    }
-
+    // создаём реальную историю
     const created = await createStory({ title: trimmed, content: '' });
+
     try { markSeenThisSession(String(created.id)); } catch {}
     try {
       writeSnapshot(String(created.id), {
@@ -603,21 +558,12 @@ const Stories = () => {
     } catch {}
 
     setStoriesList(prev => {
-      const withoutTemp = prev.filter(s => String(s.id) !== String(tempId));
+      const withoutTemp = (prev || []).filter(s => String(s.id) !== String(tempId));
       const next = sortByUpdated([{ ...created }, ...withoutTemp]);
       writeIndexSafe(next);
       window.dispatchEvent(new Event('stories:index:changed'));
       return next;
     });
-
-    const isMob =
-      window.matchMedia('(max-width:700px)').matches &&
-      window.matchMedia('(hover: none)').matches &&
-      window.matchMedia('(pointer: coarse)').matches;
-
-    if (!isMob) {
-      navigate(`${STORY_ROUTE}/${created.slug || created.id}`);
-    }
   };
 
   const onRenameStory = async (id, title) => {
@@ -632,9 +578,6 @@ const Stories = () => {
         <StoriesHeader
           showArchive={showArchive}
           onToggleArchive={handleToggleArchive}
-          hasAnyStories={hasSearchInSelectedTab}
-          searchInput={searchInput}
-          setSearchInput={setSearchInput}
           onAddStory={handleAddStory}
           onOpenSidebar={onOpenSidebar}
           isSidebarOpen={isSidebarOpen}
@@ -644,23 +587,18 @@ const Stories = () => {
       <div
         className={classes.scrollArea}
         role="region"
-        onScroll={() => setSwipeCloseKey(k => k + 1)}
         aria-label="Список историй"
       >
         <div className={classes.contentInner}>
           <StoriesList
-            searchInput={searchInput}
             storiesList={storiesList}
             isLoading={isLoading}
             onDeleteStory={handleDeleteStory}
             showArchive={showArchive}
             onAddStory={handleAddStory}
             onToggleArchive={handleToggleArchive}
-            closeKey={swipeCloseKey}
             onRenameStory={onRenameStory}
             onTempCommit={handleTempCommit}
-            newlyCreatedId={newlyCreatedId}
-            clearNewlyCreated={() => setNewlyCreatedId(null)}
           />
         </div>
       </div>

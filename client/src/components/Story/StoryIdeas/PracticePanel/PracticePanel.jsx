@@ -1,4 +1,3 @@
-// src/components/Story/StoryIdeas/PracticePanel/PracticePanel.jsx
 import { useLayoutEffect, useMemo, useRef, useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import classes from "./PracticePanel.module.css";
@@ -31,7 +30,6 @@ export default function PracticePanel({
       }
       setLaunchedSet(s);
     } catch {
-      // тихо игнорируем; кнопки всё равно сработают (создание/переход)
       setLaunchedSet(new Set());
     }
   }, [ideaText, encodedIdea]);
@@ -42,18 +40,15 @@ export default function PracticePanel({
   useLayoutEffect(() => {
     const el = listRef.current;
     if (!el) return;
-
     const updateOverflow = () => {
       const needsScroll = el.scrollHeight > el.clientHeight + 1;
       el.style.overflowY = needsScroll ? "auto" : "hidden";
     };
-
     updateOverflow();
     const ro = new ResizeObserver(updateOverflow);
     ro.observe(el);
     const onResize = () => updateOverflow();
     window.addEventListener("resize", onResize);
-
     return () => {
       ro.disconnect();
       window.removeEventListener("resize", onResize);
@@ -73,22 +68,19 @@ export default function PracticePanel({
     const practiceSlug = p.slug || p.id;
     if (!practiceSlug || !ideaText) return;
 
-    // если уже запущена — просто перейти
     if (launchedSet.has(practiceSlug)) {
       navigate(`${PRACTICES_ROUTE}/${practiceSlug}/${encodedIdea}`);
       return;
     }
 
-    // иначе создать и перейти
     const run = await createRunIfNeeded(practiceSlug, ideaText);
-    // обновим локальный список, чтобы кнопка сменилась на "Запущена"
     setLaunchedSet(prev => new Set(prev).add(practiceSlug));
     navigate(`${PRACTICES_ROUTE}/${run.practiceSlug}/${run.ideaSlug}`);
   };
 
   return (
     <div className={classes.vwrap} style={{ maxHeight }}>
-      <ul ref={listRef} className={classes.list}>
+      <ul ref={listRef} className={classes.list} role="list">
         {practices.map((p) => {
           const slug = p.slug || p.id;
           const launched = launchedSet.has(slug);

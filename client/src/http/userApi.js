@@ -3,8 +3,8 @@ import { jwtDecode } from 'jwt-decode';
 import { clearAllStoryCaches } from '../utils/cache/clearAllStoryCaches';
 import { getDeviceId } from './deviceId';
 
-export const registration = async (name, email, password, phone) => {
-  const { data } = await $host.post('/user/registration', { name, email, password, phone, role: 'USER' });
+export const registration = async (name, email, password) => {
+  const { data } = await $host.post('/user/registration', { name, email, password, role: 'USER' });
   return data;
 };
 

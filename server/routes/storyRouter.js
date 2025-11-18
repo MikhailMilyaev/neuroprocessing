@@ -13,8 +13,6 @@ router.get('/:id',            auth, attachActorId, storyController.getOne);
 router.get('/:id/full',       auth, attachActorId, storyController.getFull);
 router.put('/:id',            auth, attachActorId, attachOpId, storyController.update);
 router.delete('/:id',         auth, attachActorId, attachOpId, storyController.remove);
-router.put('/:id/stop',       auth, attachActorId, attachOpId, storyController.setStop);
-router.delete('/:id/stop',    auth, attachActorId, attachOpId, storyController.clearStop);
 router.post('/:id/reevaluate',      auth, attachActorId, attachOpId, storyController.reeval);
 router.post('/:id/rereview-start',  auth, attachActorId, attachOpId, storyController.rereviewStart);
 

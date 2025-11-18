@@ -3,16 +3,19 @@
   --anim-ease-out: cubic-bezier(.17,.84,.44,1);
   --anim-ease-in:  cubic-bezier(.36,0,.66,-0.01);
   --anim-shift: 6px;
-
   --enter-flash: rgba(160, 231, 184, .18);
 }
 
 .beliefWrap {
   max-width: 800px;
   margin: 12px auto 0 auto;
+
+  /* две колонки: [инпут идеи] [правая зона с кнопкой и оценкой] */
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
+  column-gap: 8px;
+
   padding: 4px 0;
   transition:
     opacity var(--anim-ms) var(--anim-ease-out),
@@ -46,6 +49,40 @@
   z-index: 1;
 }
 
+.scoreWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  inline-size: max-content;
+  position: relative;
+  z-index: 2;
+}
+
+/* кнопка слева от ячейки оценки */
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: #222;
+  cursor: pointer;
+  transition: transform .08s ease, background .15s ease, opacity .15s ease, box-shadow .18s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.iconBtn:hover { background: rgba(0,0,0,0.06); }
+.iconBtn:active { background: rgba(0,0,0,0.12); transform: translateY(1px); }
+.iconBtn:focus { outline: none; }
+.iconBtn:focus-visible { box-shadow: 0 0 0 2px rgba(0,0,0,.08); border-radius: 999px; }
+.iconBtn svg { display: block; width: 18px; height: 18px; pointer-events: none; }
+
+.scoreToggleBtn { margin-right: -2px; opacity: .85; }
+.beliefWrap:hover .scoreToggleBtn { opacity: 1; }
+.open svg { transform: rotate(180deg); transition: transform .15s ease; }
+
 .beliefScore {
   width: 38px;
   height: 22px;
@@ -72,7 +109,7 @@
 .archived .beliefScore { color: #666; background: #f7f7f7; border-color: #DADADA; }
 
 .leaving {
-  pointer-events: none;         
+  pointer-events: none;
   animation: fadeOutDown var(--anim-ms) var(--anim-ease-in) forwards;
 }
 @keyframes fadeOutDown {
@@ -80,9 +117,7 @@
   to   { opacity: 0; transform: translateY(var(--anim-shift)); }
 }
 
-.archivedEnter {
-  animation: archivedIn var(--anim-ms) var(--anim-ease-out);
-}
+.archivedEnter { animation: archivedIn var(--anim-ms) var(--anim-ease-out); }
 @keyframes archivedIn {
   from { opacity: 0; transform: translateY(calc(var(--anim-shift) * -0.6)); }
   to   { opacity: 1; transform: translateY(0); }
@@ -97,45 +132,11 @@
   to   { opacity: 0; transform: translateY(calc(var(--anim-shift) * -1)); }
 }
 
-.reenter {
-  animation: reenterUp var(--anim-ms) var(--anim-ease-out);
-}
+.reenter { animation: reenterUp var(--anim-ms) var(--anim-ease-out); }
 @keyframes reenterUp {
   from { opacity: 0; transform: translateY(var(--anim-shift)); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
-.scoreWrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  inline-size: max-content;
-  position: relative;
-  z-index: 2;
-}
-
-.iconBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px; height: 32px;
-  border-radius: 999px;
-  border: none;
-  background: transparent;
-  color: #222;
-  cursor: pointer;
-  transition: transform .08s ease, background .15s ease, opacity .15s ease, box-shadow .18s ease;
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
-}
-.iconBtn:hover { background: rgba(0,0,0,0.06); }
-.iconBtn:active { background: rgba(0,0,0,0.12); transform: translateY(1px); }
-.iconBtn:focus { outline: none; }
-.iconBtn:focus-visible { box-shadow: 0 0 0 2px rgba(0,0,0,.08); border-radius: 999px; }
-.iconBtn svg { display: block; width: 18px; height: 18px; pointer-events: none; }
-.toggleBtn { opacity: .85; }
-.beliefWrap:hover .toggleBtn:not(:disabled) { opacity: 1; }
-.open svg { transform: rotate(180deg); transition: transform .15s ease; }
 
 .practiceSlot { grid-column: 1 / -1; }
 
@@ -148,21 +149,8 @@
   color: #888; background: transparent; box-shadow: none; transform: none; opacity: .5;
   cursor: not-allowed; pointer-events: auto;
 }
-.toggleBtn:disabled { opacity: .5 !important; }
 
-.archiveHeader {
-  max-width: 800px;
-  margin: 20px auto 6px auto;
-  font-size: 14px;
-  color: #6b7280;
-  letter-spacing: .2px;
-  user-select: none;
-}
-
-.noAnim * {
-  animation: none !important;
-  transition: none !important;
-}
+.noAnim * { animation: none !important; transition: none !important; }
 
 @media (prefers-reduced-motion: reduce) {
   .beliefWrap,
@@ -182,26 +170,18 @@
     margin-right: 0;
   }
 
-  .practiceSlot {
-    margin-left: 0;
-    margin-right: 0;
-  }
-}
-
-@media (max-width: 900px) {
   .beliefInput {
-    border-bottom: 2px solid #C8C8C8;  
+    border-bottom: 2px solid #C8C8C8;
     border-radius: 0 !important;
     -webkit-border-radius: 0 !important;
     background-clip: padding-box;
     -webkit-appearance: none;
     appearance: none;
     transform: none !important;
-    -webkit-mask-image: none !important;  
+    -webkit-mask-image: none !important;
   }
 
-  .beliefWrap.active .beliefInput {
-    border-bottom-color: #A0E7B8;
-    border-radius: 0 !important;
-  }
+  .beliefWrap.active .beliefInput { border-bottom-color: #A0E7B8; }
+
+  .practiceSlot { margin-left: 0; margin-right: 0; }
 }

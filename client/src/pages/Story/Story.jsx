@@ -12,19 +12,26 @@ import IdeaList from '../../components/Story/StoryIdeas/IdeaList/IdeaList';
 import Spinner from '../../components/Spinner/Spinner';
 import FullScreenLoader from '../../components/FullScreenLoader/FullScreenLoader';
 import CompleteModal from '../../components/Story/CompleteModal/CompleteModal';
+import ReevaluateModal from '../../components/Story/ReevaluateModal/ReevaluateModal';
 import Toast from '../../components/Toast/Toast';
-import { readSnapshot, writeSnapshot, isSeenThisSession, markSeenThisSession, markStoryDirty, clearStoryDirty } from '../../utils/cache/storySnapshot';
-import { patchStoriesIndex, removeFromStoriesIndex } from '../../utils/cache/storiesCache';
-import { readStoriesIndex } from '../../utils/cache/storiesCache';
+import {
+  readSnapshot,
+  writeSnapshot,
+  isSeenThisSession,
+  markSeenThisSession,
+  markStoryDirty,
+  clearStoryDirty,
+} from '../../utils/cache/storySnapshot';
+import { patchStoriesIndex, removeFromStoriesIndex, readStoriesIndex } from '../../utils/cache/storiesCache';
 import { useSmartDelay } from '../../hooks/useSmartDelay';
 import { listPractices } from '../../http/practiceApi';
 import s from './Story.module.css';
 
-const HK  = id => ns(`story_history_${id}`);
-const PK  = id => ns(`story_pointer_${id}`);
+const HK = (id) => ns(`story_history_${id}`);
+const PK = (id) => ns(`story_pointer_${id}`);
 
-const VK  = id => ns(`story_viewY_${id}`);
-const VKL = id => ns(`story_viewY_local_${id}`);
+const VK = (id) => ns(`story_viewY_${id}`);
+const VKL = (id) => ns(`story_viewY_local_${id}`);
 
 const ARCHIVE_KEY = () => ns('showArchive');
 const ACTIVE_HIGHLIGHT_KEY = () => ns('stories_active_highlight');
@@ -36,7 +43,7 @@ const IDEA_CHAR_LIMIT = 80;
 const SORT_KEY = (id) => ns(`story_sorted_${id}`);
 const SORT_BASE_KEY = (id) => ns(`story_sorted_base_${id}`);
 
-const parseFinite = v => {
+const parseFinite = (v) => {
   const n = Number(v);
   return Number.isFinite(n) && n >= 0 ? n : null;
 };
@@ -57,7 +64,7 @@ const pickInitialViewYFromStorages = (id, snap) => {
 };
 
 const mapIdeasToBeliefs = (ideas = []) =>
-  ideas.map(i => ({
+  ideas.map((i) => ({
     id: i.id,
     uiKey: `i-${i.id}`,
     text: i.text || '',
@@ -72,16 +79,19 @@ export default function Story() {
 
   const idFromIndex = useMemo(() => {
     const idx = readStoriesIndex();
-    const item = (idx || []).find(s => s.slug === slug);
+    const item = (idx || []).find((s) => s.slug === slug);
     return item?.id ?? null;
   }, [slug]);
 
   const [id, setId] = useState(idFromIndex);
   const initialSnap = id ? readSnapshot(id) : null;
   if (id && initialSnap && (initialSnap.reevalCount ?? 0) > 0) {
-    const hasZeroes = Array.isArray(initialSnap.ideas) && initialSnap.ideas.some(i => i?.score === 0);
+    const hasZeroes = Array.isArray(initialSnap.ideas) && initialSnap.ideas.some((i) => i?.score === 0);
     if (hasZeroes) {
-      writeSnapshot(id, { ...initialSnap, ideas: (initialSnap.ideas || []).map(i => ({ ...i, score: null })) });
+      writeSnapshot(id, {
+        ...initialSnap,
+        ideas: (initialSnap.ideas || []).map((i) => ({ ...i, score: null })),
+      });
     }
   }
 
@@ -119,27 +129,32 @@ export default function Story() {
   const [toastMsg, setToastMsg] = useState('');
   const [toastType, setToastType] = useState('error');
   const [toastKey, setToastKey] = useState(0);
-  const showError = msg => { setToastMsg(msg); setToastType('error'); setToastKey(k => k + 1); };
+  const showError = (msg) => {
+    setToastMsg(msg);
+    setToastType('error');
+    setToastKey((k) => k + 1);
+  };
 
   const [sortedView, setSortedView] = useState(false);
-  const vkRef = useRef(null);
-  const contentRef = useRef(null);  
+  const contentRef = useRef(null);
 
   const [allPractices, setAllPractices] = useState([]);
- useEffect(() => {
-   let cancelled = false;
-   (async () => {
-     try {
-       const ps = await listPractices();
-       if (!cancelled) setAllPractices(Array.isArray(ps) ? ps : []);
-     } catch {
-       if (!cancelled) setAllPractices([]);
-     }
-   })();
-   return () => { cancelled = true; };
- }, []);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const ps = await listPractices();
+        if (!cancelled) setAllPractices(Array.isArray(ps) ? ps : []);
+      } catch {
+        if (!cancelled) setAllPractices([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
- const practicesById = useMemo(() => ({ __default: allPractices }), [allPractices]);
+  const practicesById = useMemo(() => ({ __default: allPractices }), [allPractices]);
 
   useEffect(() => {
     if (!id) return;
@@ -152,20 +167,23 @@ export default function Story() {
 
   const [unsortedOrder, setUnsortedOrder] = useState(null);
 
-  const [reevalRound, setReevalRound] = useState(canTrustCache ? (initialSnap.reevalCount ?? 0) : 0);
+  const [reevalRound, setReevalRound] = useState(canTrustCache ? initialSnap.reevalCount ?? 0 : 0);
   const [ideasLoading, setIdeasLoading] = useState(!canTrustCache);
   const [showOverlay, setShowOverlay] = useState(false);
 
-  const current = useMemo(() => history[pointer] ?? { title: '', content: '', beliefs: [] }, [history, pointer]);
+  const current = useMemo(
+    () => history[pointer] ?? { title: '', content: '', beliefs: [] },
+    [history, pointer]
+  );
 
   const [isArchivedStory, setIsArchivedStory] = useState(canTrustCache ? !!initialSnap.archive : false);
 
-  const isArchived = b => b?.score !== '' && b?.score != null && Number(b.score) === 0;
+  const isArchived = (b) => b?.score !== '' && b?.score != null && Number(b.score) === 0;
 
-  const areAllActiveScored = list => {
-    const active = (list || []).filter(b => !isArchived(b));
+  const areAllActiveScored = (list) => {
+    const active = (list || []).filter((b) => !isArchived(b));
     if (active.length === 0) return true;
-    return active.every(b => {
+    return active.every((b) => {
       const v = b.score;
       if (v === '' || v == null) return false;
       const num = Number(v);
@@ -206,7 +224,7 @@ export default function Story() {
   const openUnarchivedToast = () => {
     setToastType('info');
     setToastMsg('История стала активной');
-    setToastKey(k => k + 1);
+    setToastKey((k) => k + 1);
   };
 
   const hydratedFromCacheRef = useRef(canTrustCache);
@@ -244,7 +262,9 @@ export default function Story() {
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [slug, navigate]);
 
   useEffect(() => {
@@ -256,13 +276,13 @@ export default function Story() {
       const wantSorted = e.newValue === '1';
       setSortedView(wantSorted);
 
-      const full = (history[pointer]?.beliefs || []);
+      const full = history[pointer]?.beliefs || [];
       if (!full.length) return;
 
       const isArchivedFlag = (b) => b?.score !== '' && b?.score != null && Number(b?.score) === 0;
 
       if (wantSorted) {
-        const active = full.filter(b => !isArchivedFlag(b));
+        const active = full.filter((b) => !isArchivedFlag(b));
         const archived = full.filter(isArchivedFlag);
         const activeSorted = active
           .map((b, idx) => ({ ...b, _idx: idx }))
@@ -274,7 +294,7 @@ export default function Story() {
         try {
           const raw = localStorage.getItem(SORT_BASE_KEY(id));
           if (!raw) {
-            localStorage.setItem(SORT_BASE_KEY(id), JSON.stringify(full.map(b => b.id)));
+            localStorage.setItem(SORT_BASE_KEY(id), JSON.stringify(full.map((b) => b.id)));
           }
         } catch {}
       } else {
@@ -285,9 +305,7 @@ export default function Story() {
         if (!Array.isArray(base) || base.length === 0) return;
 
         const pos = new Map(base.map((bid, i) => [bid, i]));
-        const restored = full.slice().sort((a, b) =>
-          (pos.get(a.id) ?? Infinity) - (pos.get(b.id) ?? Infinity)
-        );
+        const restored = full.slice().sort((a, b) => (pos.get(a.id) ?? Infinity) - (pos.get(b.id) ?? Infinity));
         apply({ ...current, beliefs: restored });
       }
     };
@@ -317,18 +335,16 @@ export default function Story() {
         let startedFromArchive = false;
 
         const shouldStartRereview =
-          !!story?.archive && (
-            (dueToken && snapToken !== dueToken) ||
-            (!dueToken && snapStartedRound !== roundToUse)
-          );
+          !!story?.archive &&
+          ((dueToken && snapToken !== dueToken) || (!dueToken && snapStartedRound !== roundToUse));
 
         if (shouldStartRereview) {
           startedFromArchive = true;
           try {
             const { round } = await beginRereview(id);
-            roundToUse = round || (roundToUse + 1);
+            roundToUse = round || roundToUse + 1;
           } catch {
-            roundToUse = (roundToUse + 1);
+            roundToUse = roundToUse + 1;
           }
         }
 
@@ -341,7 +357,7 @@ export default function Story() {
           const wantSorted = localStorage.getItem(SORT_KEY(id)) === '1';
           if (wantSorted) {
             const isArchivedFlag = (b) => b?.score !== '' && b?.score != null && Number(b?.score) === 0;
-            const active   = beliefs.filter(b => !isArchivedFlag(b));
+            const active = beliefs.filter((b) => !isArchivedFlag(b));
             const archived = beliefs.filter(isArchivedFlag);
             const activeSorted = active
               .map((b, idx) => ({ ...b, _idx: idx }))
@@ -352,11 +368,10 @@ export default function Story() {
           }
         } catch {}
 
-        const prevOrder = (initialSnapLocal?.ideas || []).map(i => i.id);
-        const serverOrder = ideasRaw.map(i => i.id);
+        const prevOrder = (initialSnapLocal?.ideas || []).map((i) => i.id);
+        const serverOrder = ideasRaw.map((i) => i.id);
         const sameOrder =
-          prevOrder.length === serverOrder.length &&
-          prevOrder.every((v, i) => v === serverOrder[i]);
+          prevOrder.length === serverOrder.length && prevOrder.every((v, i) => v === serverOrder[i]);
 
         setHistory([{ title: story?.title || '', content: story?.content || '', beliefs }]);
         setPointer(0);
@@ -364,24 +379,27 @@ export default function Story() {
         setReevalRound(roundToUse);
 
         setArchiveOn(story?.showArchiveSection ?? true);
-        setInitialViewY(v => {
+        setInitialViewY((v) => {
           if (v != null) return v;
           const fromStorages = pickInitialViewYFromStorages(id, initialSnapLocal);
           const fromDb = parseFinite(story?.lastViewContentY);
           return fromStorages ?? fromDb ?? null;
         });
 
-        const nextRereviewToken =
-          shouldStartRereview
-            ? (dueToken || `round:${roundToUse}`)
-            : (snapToken ?? (dueToken || null));
+        const nextRereviewToken = shouldStartRereview
+          ? dueToken || `round:${roundToUse}`
+          : snapToken ?? dueToken ?? null;
 
         writeSnapshot(id, {
           updatedAt: story?.updatedAt || new Date().toISOString(),
           archive: !!story?.archive,
           reevalDueAt: story?.reevalDueAt ?? null,
           rereviewToken: nextRereviewToken,
-          rereviewStartedRound: shouldStartRereview ? roundToUse : (Number.isFinite(snapStartedRound) ? snapStartedRound : null),
+          rereviewStartedRound: shouldStartRereview
+            ? roundToUse
+            : Number.isFinite(snapStartedRound)
+            ? snapStartedRound
+            : null,
           reevalCount: roundToUse,
           showArchiveSection: story?.showArchiveSection ?? true,
           remindersEnabled: story?.remindersEnabled ?? true,
@@ -409,7 +427,7 @@ export default function Story() {
         setIdeasLoading(false);
 
         if ((doFreeze || startedFromArchive || !localCanTrustCache) && !sameOrder) {
-          setFreezeAnimKey(k => k + 1);
+          setFreezeAnimKey((k) => k + 1);
         }
         hydratedFromCacheRef.current = false;
       } catch {
@@ -418,13 +436,19 @@ export default function Story() {
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   const isIOSStandalone = useMemo(() => {
     const ua = navigator.userAgent || '';
-    const isiOS = /iP(hone|ad|od)/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    const isiOS =
+      /iP(hone|ad|od)/i.test(ua) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const standalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true;
     return isiOS && standalone;
   }, []);
 
@@ -478,7 +502,7 @@ export default function Story() {
         removeFromStoriesIndex(Number(id));
         setToastType('success');
         setToastMsg('История удалена');
-        setToastKey(k => k + 1);
+        setToastKey((k) => k + 1);
         navigate('/stories', { replace: true });
         return;
       }
@@ -491,7 +515,7 @@ export default function Story() {
         const last = prev[prev.length - 1] || { title: '', content: '', beliefs: [] };
         const next = {
           ...last,
-          ...(p.title   !== undefined ? { title: p.title }     : {}),
+          ...(p.title !== undefined ? { title: p.title } : {}),
           ...(p.content !== undefined ? { content: p.content } : {}),
         };
         const base = prev.slice(0, prev.length - 1);
@@ -505,7 +529,7 @@ export default function Story() {
         writeSnapshot(id, {
           ...prevSnap,
           updatedAt: p.updatedAt || new Date().toISOString(),
-          ...(p.title   !== undefined ? { title: p.title } : {}),
+          ...(p.title !== undefined ? { title: p.title } : {}),
           ...(p.content !== undefined ? { content: p.content } : {}),
           ...(p.archive !== undefined ? { archive: !!p.archive } : {}),
           ...(p.reevalDueAt !== undefined ? { reevalDueAt: p.reevalDueAt ?? null } : {}),
@@ -515,9 +539,9 @@ export default function Story() {
       try {
         patchStoriesIndex(Number(id), {
           id: Number(id),
-          ...(p.title   !== undefined ? { title: p.title } : {}),
+          ...(p.title !== undefined ? { title: p.title } : {}),
           ...(p.archive !== undefined ? { archive: !!p.archive } : {}),
-          ...(p.slug    !== undefined ? { slug: p.slug } : {}),
+          ...(p.slug !== undefined ? { slug: p.slug } : {}),
           ...(p.reevalDueAt !== undefined ? { reevalDueAt: p.reevalDueAt ?? null } : {}),
           updatedAt: p.updatedAt || new Date().toISOString(),
         });
@@ -543,15 +567,15 @@ export default function Story() {
               removeFromStoriesIndex(Number(id));
               setToastType('info');
               setToastMsg('История была удалена в другой вкладке');
-              setToastKey(k => k + 1);
+              setToastKey((k) => k + 1);
               navigate('/stories', { replace: true });
               return;
             }
             patchStoriesIndex(Number(id), {
               id: Number(id),
-              ...(p.title   !== undefined ? { title: p.title } : {}),
+              ...(p.title !== undefined ? { title: p.title } : {}),
               ...(p.archive !== undefined ? { archive: !!p.archive } : {}),
-              ...(p.slug    !== undefined ? { slug: p.slug } : {}),
+              ...(p.slug !== undefined ? { slug: p.slug } : {}),
               ...(p.reevalDueAt !== undefined ? { reevalDueAt: p.reevalDueAt ?? null } : {}),
               updatedAt: p.updatedAt || new Date().toISOString(),
             });
@@ -579,19 +603,17 @@ export default function Story() {
           if (!i?.id) return;
 
           patchBeliefs((list) => {
-            if (list.some(b => b.id === i.id)) return list;
+            if (list.some((b) => b.id === i.id)) return list;
 
             const norm = (t) => (t || '').trim();
             const serverText = norm(i.text);
 
-            const hasTempSame = list.some(b =>
-              b.id < 0 && norm(b.text) === serverText
-            );
+            const hasTempSame = list.some((b) => b.id < 0 && norm(b.text) === serverText);
             if (hasTempSame) return list;
 
             const b = mapIdeasToBeliefs([i])[0];
             const isArchived = (v) => v.score !== '' && v.score != null && Number(v.score) === 0;
-            const active = list.filter(x => !isArchived(x));
+            const active = list.filter((x) => !isArchived(x));
             const archived = list.filter(isArchived);
             return [b, ...active, ...archived];
           });
@@ -604,38 +626,44 @@ export default function Story() {
           if (!iid) return;
 
           patchBeliefs((list) => {
-            const idx = list.findIndex(b => b.id === iid);
+            const idx = list.findIndex((b) => b.id === iid);
             if (idx === -1) {
-              return list.map(b => {
+              return list.map((b) => {
                 if (b.id !== iid) return b;
                 return {
                   ...b,
-                  ...(p.text   !== undefined ? { text: p.text } : {}),
-                  ...(p.score  !== undefined ? { score: p.score == null ? '' : String(p.score) } : {}),
+                  ...(p.text !== undefined ? { text: p.text } : {}),
+                  ...(p.score !== undefined
+                    ? { score: p.score == null ? '' : String(p.score) }
+                    : {}),
                   ...(p.sortOrder !== undefined ? { sortOrder: p.sortOrder } : {}),
                 };
               });
             }
 
             const prevItem = list[idx];
-            const wasArchived = prevItem.score !== '' && prevItem.score != null && Number(prevItem.score) === 0;
+            const wasArchived =
+              prevItem.score !== '' && prevItem.score != null && Number(prevItem.score) === 0;
 
             const nextItem = {
               ...prevItem,
-              ...(p.text   !== undefined ? { text: p.text } : {}),
-              ...(p.score  !== undefined ? { score: p.score == null ? '' : String(p.score) } : {}),
+              ...(p.text !== undefined ? { text: p.text } : {}),
+              ...(p.score !== undefined
+                ? { score: p.score == null ? '' : String(p.score) }
+                : {}),
               ...(p.sortOrder !== undefined ? { sortOrder: p.sortOrder } : {}),
             };
 
-            const nowArchived = nextItem.score !== '' && nextItem.score != null && Number(nextItem.score) === 0;
+            const nowArchived =
+              nextItem.score !== '' && nextItem.score != null && Number(nextItem.score) === 0;
 
             let next = list.slice();
             next[idx] = nextItem;
 
             if (wasArchived !== nowArchived) {
-              const rest = next.filter(b => b.id !== iid);
+              const rest = next.filter((b) => b.id !== iid);
               const isArch = (x) => x.score !== '' && x.score != null && Number(x.score) === 0;
-              const active   = rest.filter(x => !isArch(x));
+              const active = rest.filter((x) => !isArch(x));
               const archived = rest.filter(isArch);
               next = nowArchived
                 ? [...active, nextItem, ...archived]
@@ -650,7 +678,7 @@ export default function Story() {
         case 'idea.deleted': {
           const iid = msg.ideaId;
           if (!iid) return;
-          patchBeliefs((list) => list.filter(b => b.id !== iid));
+          patchBeliefs((list) => list.filter((b) => b.id !== iid));
           break;
         }
 
@@ -665,12 +693,13 @@ export default function Story() {
         }
 
         case 'reeval.completed': {
-          setReevalRound((msg.round || 0));
+          setReevalRound(msg.round || 0);
           setHistory((prev) => {
             const last = prev[prev.length - 1] || { title: '', content: '', beliefs: [] };
-            const nextBeliefs = (last.beliefs || []).map(b => {
-              const isArchived = b.score !== '' && b.score != null && Number(b.score) === 0;
-              return isArchived ? b : { ...b, score: '' };
+            const nextBeliefs = (last.beliefs || []).map((b) => {
+              const isArchFlag =
+                b.score !== '' && b.score != null && Number(b.score) === 0;
+              return isArchFlag ? b : { ...b, score: '' };
             });
             const base = prev.slice(0, prev.length - 1);
             return [...base, { ...last, beliefs: nextBeliefs }];
@@ -680,7 +709,7 @@ export default function Story() {
             const prevSnap = readSnapshot(id) || {};
             writeSnapshot(id, {
               ...prevSnap,
-              reevalCount: (msg.round || prevSnap.reevalCount || 0),
+              reevalCount: msg.round || prevSnap.reevalCount || 0,
               updatedAt: new Date().toISOString(),
             });
           } catch {}
@@ -688,7 +717,7 @@ export default function Story() {
         }
 
         case 'rereview.started': {
-          setReevalRound((msg.round || 0));
+          setReevalRound(msg.round || 0);
           setIsArchivedStory(false);
           setArchiveOn(true);
 
@@ -698,7 +727,7 @@ export default function Story() {
               ...prevSnap,
               archive: false,
               reevalDueAt: null,
-              reevalCount: (msg.round || prevSnap.reevalCount || 0),
+              reevalCount: msg.round || prevSnap.reevalCount || 0,
               updatedAt: new Date().toISOString(),
             });
           } catch {}
@@ -727,16 +756,18 @@ export default function Story() {
   }, [history, pointer, id]);
 
   useEffect(() => {
-    const timersMap   = ideaTimersRef.current;
-    const pendingMap  = ideaPendingRef.current;
+    const timersMap = ideaTimersRef.current;
+    const pendingMap = ideaPendingRef.current;
 
     return () => {
       (async () => {
-        const saveTimer   = saveTimerRef.current;
+        const saveTimer = saveTimerRef.current;
         const lastPayload = lastStoryPayloadRef.current;
 
         if (lastPayload) {
-          try { await sendStoryUpdate(lastPayload); } catch {}
+          try {
+            await sendStoryUpdate(lastPayload);
+          } catch {}
         }
         if (saveTimer) clearTimeout(saveTimer);
         lastStoryPayloadRef.current = null;
@@ -745,11 +776,12 @@ export default function Story() {
 
         for (const [, t] of timersMap.entries()) clearTimeout(t);
         for (const [iid, payload] of pendingMap.entries()) {
-          try { await sendIdeaUpdate(iid, payload); } catch {}
+          try {
+            await sendIdeaUpdate(iid, payload);
+          } catch {}
         }
         timersMap.clear();
         pendingMap.clear();
-
       })();
     };
   }, [id]);
@@ -761,7 +793,9 @@ export default function Story() {
     }
     const lastPayload = lastStoryPayloadRef.current;
     if (lastPayload) {
-      try { await sendStoryUpdate(lastPayload) } catch {}
+      try {
+        await sendStoryUpdate(lastPayload);
+      } catch {}
       lastStoryPayloadRef.current = null;
     }
     for (const t of ideaTimersRef.current.values()) clearTimeout(t);
@@ -840,7 +874,7 @@ export default function Story() {
 
         title: (partial?.title ?? current.title) ?? '',
         content: (partial?.content ?? current.content) ?? '',
-        ideas: (current.beliefs || []).map(b => ({
+        ideas: (current.beliefs || []).map((b) => ({
           id: b.id,
           text: b.text ?? '',
           score: b.score === '' ? null : Number(b.score),
@@ -854,7 +888,8 @@ export default function Story() {
   const apply = (nextState) => {
     const base = history.slice(0, pointer + 1);
     const updated = [...base, nextState];
-    const trimmed = updated.length > HISTORY_MAX ? updated.slice(updated.length - HISTORY_MAX) : updated;
+    const trimmed =
+      updated.length > HISTORY_MAX ? updated.slice(updated.length - HISTORY_MAX) : updated;
     setHistory(trimmed);
     setPointer(trimmed.length - 1);
   };
@@ -924,47 +959,11 @@ export default function Story() {
     ideaTimersRef.current.set(key, t);
   };
 
-  const focusBeliefInput = (bid) => {
-    const el = document.getElementById(`belief-input-${bid}`);
-    if (!el) return;
-
-    try { el.focus({ preventScroll: true }); } catch { el.focus(); }
-    const len = el.value?.length ?? 0;
-    try { el.setSelectionRange(len, len); } catch {}
-
-    const container = contentRef.current;
-    if (!container) { try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch {} return; }
-
-    const ensureVisible = () => {
-      const cRect = container.getBoundingClientRect();
-      const r = el.getBoundingClientRect();
-      const vvH = window.visualViewport?.height ?? window.innerHeight;
-      const bottomLimit = Math.min(cRect.bottom, vvH) - 16;
-      const topLimit = cRect.top + 8;
-      if (r.top < topLimit) {
-        container.scrollBy({ top: r.top - topLimit, behavior: 'smooth' });
-      } else if (r.bottom > bottomLimit) {
-        container.scrollBy({ top: r.bottom - bottomLimit, behavior: 'smooth' });
-      }
-    };
-
-    ensureVisible();
-    const vv = window.visualViewport;
-    if (vv) {
-      const onVV = () => { setTimeout(ensureVisible, 25); vv.removeEventListener('resize', onVV); };
-      vv.addEventListener('resize', onVV);
-    }
-    setTimeout(ensureVisible, 120);
-  };
-
   const addBelief = async (initialText = '') => {
     const currentList = current?.beliefs || [];
-    const existingEmpty = currentList.find(b => !((b.text || '').trim()));
+    const existingEmpty = currentList.find((b) => !(b.text || '').trim());
     if (existingEmpty) {
       setShowBelief(true);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => focusBeliefInput(existingEmpty.id));
-      });
       return existingEmpty.id;
     }
 
@@ -985,13 +984,6 @@ export default function Story() {
 
     latestIdeaTextRef.current.set(tempId, safeText);
     apply({ ...current, beliefs: [beliefObj, ...currentList] });
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        focusBeliefInput(tempId);
-        setTimeout(() => focusBeliefInput(tempId), 50);
-      });
-    });
 
     patchStoriesIndex(Number(id), { updatedAt: new Date().toISOString() });
 
@@ -1022,26 +1014,31 @@ export default function Story() {
         text: initial.text ?? '',
         score: initial.score ?? null,
         sortOrder: Date.now(),
-        introducedRound: (initial?.introducedRound ?? reevalRound),
+        introducedRound: initial?.introducedRound ?? reevalRound,
       });
 
-      setHistory(prevHist => {
+      setHistory((prevHist) => {
         const last = prevHist[prevHist.length - 1] || { title: '', content: '', beliefs: [] };
         const list = last.beliefs || [];
 
-        const nextBeliefs = list.map(b => {
+        const nextBeliefs = list.map((b) => {
           if (b.id !== tempId) return b;
 
           const localLatest = latestIdeaTextRef.current.get(tempId);
           const localFromState = b.text ?? '';
-          const preferredLocal = (typeof localLatest === 'string' ? localLatest : localFromState) ?? '';
-          const hasUsefulLocal = preferredLocal && preferredLocal !== '\u200B' && preferredLocal.trim().length > 0;
+          const preferredLocal =
+            (typeof localLatest === 'string' ? localLatest : localFromState) ?? '';
+          const hasUsefulLocal =
+            preferredLocal &&
+            preferredLocal !== '\u200B' &&
+            preferredLocal.trim().length > 0;
 
           return {
             ...b,
             id: created.id,
-            text: hasUsefulLocal ? preferredLocal : (created.text || ''),
-            introducedRound: b.introducedRound ?? (created.introducedRound ?? reevalRound),
+            text: hasUsefulLocal ? preferredLocal : created.text || '',
+            introducedRound:
+              b.introducedRound ?? created.introducedRound ?? reevalRound,
             uiKey: b.uiKey,
           };
         });
@@ -1051,13 +1048,19 @@ export default function Story() {
         return clone;
       });
 
-      const latest = String((latestIdeaTextRef.current.get(tempId) ?? created.text ?? '')).slice(0, IDEA_CHAR_LIMIT);
+      const latest = String(
+        (latestIdeaTextRef.current.get(tempId) ?? created.text ?? '')
+      ).slice(0, IDEA_CHAR_LIMIT);
       if (latest !== (created.text || '')) {
-        try { await sendIdeaUpdate(created.id, { text: latest }); } catch {}
+        try {
+          await sendIdeaUpdate(created.id, { text: latest });
+        } catch {}
       }
 
       if (deleteAfterCreateRef.current.has(tempId)) {
-        try { await deleteStoryIdea(created.id); } catch {}
+        try {
+          await deleteStoryIdea(created.id);
+        } catch {}
         deleteAfterCreateRef.current.delete(tempId);
       }
 
@@ -1074,7 +1077,7 @@ export default function Story() {
     userTouchedRef.current = true;
     markStoryDirty(id);
 
-    const bEntry = (current.beliefs || []).find(b => b.id === bid);
+    const bEntry = (current.beliefs || []).find((b) => b.id === bid);
     if (!bEntry) return;
 
     const beforeLen = (bEntry.text || '').length;
@@ -1088,7 +1091,7 @@ export default function Story() {
       showError(`Достигнут лимит ${IDEA_CHAR_LIMIT} символов`);
     }
 
-    const nextBeliefs = (current.beliefs || []).map(b =>
+    const nextBeliefs = (current.beliefs || []).map((b) =>
       b.id === bid ? { ...b, text: limited } : b
     );
     apply({ ...current, beliefs: nextBeliefs });
@@ -1112,29 +1115,29 @@ export default function Story() {
   };
 
   const reorderImmediately = (list, targetId, toArchive) => {
-    const idx = (list || []).findIndex(b => b.id === targetId);
+    const idx = (list || []).findIndex((b) => b.id === targetId);
     if (idx === -1) return list;
     const moved = list[idx];
-    const rest  = list.filter((_, i) => i !== idx);
+    const rest = list.filter((_, i) => i !== idx);
     const isArch = (x) => x.score !== '' && x.score != null && Number(x.score) === 0;
-    const active   = rest.filter(x => !isArch(x));
+    const active = rest.filter((x) => !isArch(x));
     const archived = rest.filter(isArch);
-    return toArchive
-      ? [...active, moved, ...archived]
-      : [moved, ...active, ...archived];
+    return toArchive ? [...active, moved, ...archived] : [moved, ...active, ...archived];
   };
 
   const updateBeliefScore = async (bid, raw) => {
     userTouchedRef.current = true;
     markStoryDirty(id);
 
-    const bEntry = current.beliefs.find(b => b.id === bid);
+    const bEntry = current.beliefs.find((b) => b.id === bid);
     if (!bEntry) return;
 
     const hasText = !!(bEntry.text && bEntry.text.trim().length);
     if (!hasText) {
       if (raw !== '' && raw != null) {
-        const nb = current.beliefs.map(b => b.id === bid ? { ...b, score: '' } : b);
+        const nb = current.beliefs.map((b) =>
+          b.id === bid ? { ...b, score: '' } : b
+        );
         apply({ ...current, beliefs: nb });
         showError('Сначала введите текст идеи');
       }
@@ -1145,7 +1148,9 @@ export default function Story() {
       bEntry.score !== '' && bEntry.score != null && Number(bEntry.score) === 0;
 
     if (raw === '') {
-      const nb = current.beliefs.map(b => b.id === bid ? { ...b, score: '' } : b);
+      const nb = current.beliefs.map((b) =>
+        b.id === bid ? { ...b, score: '' } : b
+      );
 
       if (wasArchived) {
         if (bid > 0) scheduleIdeaUpdate(bid, { score: null });
@@ -1166,7 +1171,7 @@ export default function Story() {
 
     const nowArchived = n === 0;
 
-    const nextBeliefs = current.beliefs.map(b =>
+    const nextBeliefs = current.beliefs.map((b) =>
       b.id === bid ? { ...b, score: String(n) } : b
     );
 
@@ -1199,7 +1204,7 @@ export default function Story() {
   const handleBeliefBlur = async (bid) => {
     userTouchedRef.current = true;
 
-    const b = current.beliefs.find(x => x.id === bid);
+    const b = current.beliefs.find((x) => x.id === bid);
     if (!b) return;
 
     const textEmpty = !b.text?.trim();
@@ -1208,14 +1213,16 @@ export default function Story() {
     markStoryDirty(id);
 
     if (bid > 0) {
-      try { await deleteStoryIdea(bid); } catch {}
+      try {
+        await deleteStoryIdea(bid);
+      } catch {}
     } else {
       if (creatingIdeaRef.current.has(bid)) {
         deleteAfterCreateRef.current.add(bid);
       }
     }
 
-    const remaining = (current.beliefs || []).filter(x => x.id !== bid);
+    const remaining = (current.beliefs || []).filter((x) => x.id !== bid);
     apply({ ...current, beliefs: remaining });
 
     if (remaining.length === 0) setShowBelief(false);
@@ -1227,15 +1234,64 @@ export default function Story() {
     patchStoriesIndex(Number(id), { updatedAt: new Date().toISOString() });
   };
 
+  const [confirmReevalOpen, setConfirmReevalOpen] = useState(false);
   const [confirmArchiveOpen, setConfirmArchiveOpen] = useState(false);
 
   const handleArchiveRequest = () => {
     const list = current.beliefs || [];
-    if (list.length === 0) { showError('Список идей пуст'); setMenuOpen(false); return; }
-    const allZero = list.every(b => b.score !== '' && b.score != null && Number(b.score) === 0);
-    if (!allZero) { showError('Все идеи должны иметь 0 психоэмоциональный заряд'); setMenuOpen(false); return; }
+    if (list.length === 0) {
+      showError('Список идей пуст');
+      setMenuOpen(false);
+      return;
+    }
+    const allZero = list.every(
+      (b) => b.score !== '' && b.score != null && Number(b.score) === 0
+    );
+    if (!allZero) {
+      showError('Все идеи должны иметь 0 психоэмоциональный заряд');
+      setMenuOpen(false);
+      return;
+    }
     setMenuOpen(false);
     setConfirmArchiveOpen(true);
+  };
+
+  // запрос на переоценку — только валидация + открытие модалки
+  const handleReevaluateRequest = () => {
+    const list = current.beliefs || [];
+    if (list.length === 0) {
+      showError('Список идей пуст');
+      return;
+    }
+    if (!areAllActiveScored(list)) {
+      showError('Оцените весь список идей');
+      return;
+    }
+    setConfirmReevalOpen(true);
+  };
+
+  // подтверждение переоценки — тут уже реальные запросы
+  const handleConfirmReevaluate = async () => {
+    const list = current.beliefs || [];
+    setConfirmReevalOpen(false);
+
+    await flushPendingWrites();
+
+    try {
+      const { round } = await sendReevaluate(id);
+      const nextBeliefs = list.map((b) =>
+        b.score !== '' && b.score != null && Number(b.score) === 0
+          ? b
+          : { ...b, score: '' }
+      );
+      apply({ ...current, beliefs: nextBeliefs });
+      setReevalRound(round || 0);
+      patchStoriesIndex(Number(id), { updatedAt: new Date().toISOString() });
+      markStoryDirty(id);
+    } catch (e) {
+      const msg = e?.response?.data?.message || 'Не удалось сохранить переоценку';
+      showError(msg);
+    }
   };
 
   const handleCompleteArchive = async () => {
@@ -1296,16 +1352,27 @@ export default function Story() {
 
   const handleSortToggle = async () => {
     const full = current.beliefs || [];
-    if (full.length === 0) { showError('Список идей пуст'); return; }
-    if (!areAllActiveScored(full)) { showError('Оцените весь список идей'); return; }
+    if (full.length === 0) {
+      showError('Список идей пуст');
+      return;
+    }
+    if (!areAllActiveScored(full)) {
+      showError('Оцените весь список идей');
+      return;
+    }
 
     const isArchivedFlag = (b) => b?.score !== '' && b?.score != null && Number(b?.score) === 0;
-    const active = full.filter(b => !isArchivedFlag(b));
+    const active = full.filter((b) => !isArchivedFlag(b));
     const archived = full.filter(isArchivedFlag);
 
     if (!sortedView) {
-      setUnsortedOrder(full.map(b => b.id));
-      try { localStorage.setItem(SORT_BASE_KEY(id), JSON.stringify(full.map(b => b.id))); } catch {}
+      setUnsortedOrder(full.map((b) => b.id));
+      try {
+        localStorage.setItem(
+          SORT_BASE_KEY(id),
+          JSON.stringify(full.map((b) => b.id))
+        );
+      } catch {}
       const activeSorted = active
         .map((b, idx) => ({ ...b, _idx: idx }))
         .sort((a, b) => Number(b.score) - Number(a.score) || a._idx - b._idx)
@@ -1317,7 +1384,7 @@ export default function Story() {
       setMenuOpen(false);
 
       try {
-        const order = nextBeliefs.map(b => b.id);
+        const order = nextBeliefs.map((b) => b.id);
         await sendReorderIdeas(id, order);
       } catch {}
     } else {
@@ -1331,8 +1398,8 @@ export default function Story() {
       }
 
       const indexOf = new Map(order.map((id, i) => [id, i]));
-      const restored = full.slice().sort((a, b) =>
-        (indexOf.get(a.id) ?? Infinity) - (indexOf.get(b.id) ?? Infinity)
+      const restored = full.slice().sort(
+        (a, b) => (indexOf.get(a.id) ?? Infinity) - (indexOf.get(b.id) ?? Infinity)
       );
       apply({ ...current, beliefs: restored });
       setSortedView(false);
@@ -1341,7 +1408,7 @@ export default function Story() {
       setMenuOpen(false);
 
       try {
-        await sendReorderIdeas(id, restored.map(b => b.id));
+        await sendReorderIdeas(id, restored.map((b) => b.id));
       } catch {}
     }
   };
@@ -1355,8 +1422,14 @@ export default function Story() {
     } catch {}
   };
 
-  const showIdeasSpinner = useSmartDelay(ideasLoading, { delayIn: 200, minVisible: 300 });
-  const showOverlaySmart = useSmartDelay(showOverlay, { delayIn: 300, minVisible: 400 });
+  const showIdeasSpinner = useSmartDelay(ideasLoading, {
+    delayIn: 200,
+    minVisible: 300,
+  });
+  const showOverlaySmart = useSmartDelay(showOverlay, {
+    delayIn: 300,
+    minVisible: 400,
+  });
 
   if (!id) {
     return <FullScreenLoader />;
@@ -1370,13 +1443,10 @@ export default function Story() {
         <StoryHeader
           title={current.title}
           onTitleChange={(v) => changeField('title', v)}
-          onTitleBlur={() => scheduleSave({ title: current.title, content: current.content })}
-          onAddBelief={(mode) => {
-            if (mode === 'pointer') {
-              try { vkRef.current?.focus({ preventScroll: true }); } catch {}
-            }
-            addBelief();
-          }}
+          onTitleBlur={() =>
+            scheduleSave({ title: current.title, content: current.content })
+          }
+          onAddBelief={() => addBelief()}
           onOpenMenu={(e) => openMenu(e)}
           menuOpen={menuOpen}
           reevalRound={reevalRound}
@@ -1384,7 +1454,12 @@ export default function Story() {
         />
       </div>
 
-      <div className={s.scrollArea} ref={contentRef} role="region" aria-label="История">
+      <div
+        className={s.scrollArea}
+        ref={contentRef}
+        role="region"
+        aria-label="История"
+      >
         <StoryText
           value={current.content}
           onChange={(v) => changeField('content', v)}
@@ -1395,7 +1470,13 @@ export default function Story() {
         />
 
         {!canTrustCache && showIdeasSpinner ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              padding: 16,
+            }}
+          >
             <Spinner size={24} />
           </div>
         ) : (
@@ -1419,31 +1500,16 @@ export default function Story() {
           onClose={() => setMenuOpen(false)}
           onSort={handleSortToggle}
           sorted={sortedView}
-          onReevaluate={async () => {
-            const list = current.beliefs || [];
-            if (list.length === 0) { showError('Список идей пуст'); return; }
-            if (!areAllActiveScored(list)) { showError('Оцените весь список идей'); return; }
-
-            await flushPendingWrites();
-
-            try {
-              const { round } = await sendReevaluate(id);
-              const nextBeliefs = list.map(b =>
-                (b.score !== '' && b.score != null && Number(b.score) === 0) ? b : { ...b, score: '' }
-              );
-              apply({ ...current, beliefs: nextBeliefs });
-              setReevalRound(round || 0);
-              setMenuOpen(false);
-              patchStoriesIndex(Number(id), { updatedAt: new Date().toISOString() });
-              markStoryDirty(id);
-            } catch (e) {
-              const msg = e?.response?.data?.message || 'Не удалось сохранить переоценку';
-              showError(msg);
-            }
-          }}
+          onReevaluate={handleReevaluateRequest}
           archiveEnabled={archiveOn}
           onToggleArchive={handleToggleArchive}
           onArchiveStory={handleArchiveRequest}
+        />
+
+        <ReevaluateModal
+          open={confirmReevalOpen}
+          onCancel={() => setConfirmReevalOpen(false)}
+          onConfirm={handleConfirmReevaluate}
         />
 
         <CompleteModal
@@ -1452,17 +1518,12 @@ export default function Story() {
           onConfirm={handleCompleteArchive}
         />
 
-        <input
-          ref={vkRef}
-          className={s.vkCatcher}
-          type="text"
-          inputMode="text"
-          autoComplete="off"
-          aria-hidden="true"
-          tabIndex={-1}
+        <Toast
+          message={toastMsg}
+          type={toastType || 'success'}
+          duration={5000}
+          version={toastKey}
         />
-
-        <Toast message={toastMsg} type={toastType || 'success'} duration={5000} version={toastKey} />
       </div>
     </div>
   );

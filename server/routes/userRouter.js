@@ -7,7 +7,14 @@ const validate = require('../middleware/validate');
 const v = require('../middleware/validators');
 const enforceOrigin = require('../middleware/enforceOrigin');
 
-router.post('/registration', authLimiter, [v.name, v.email, v.password, v.phoneRU], validate, userController.registration);
+router.post(
+  '/registration',
+  authLimiter,
+  [v.name, v.email, v.password],
+  validate,
+  userController.registration
+);
+
 router.post('/login', enforceOrigin, authLimiter, [v.email, v.password, v.deviceId], validate, userController.login);
 router.get('/check', authMiddleware, userController.check);
 

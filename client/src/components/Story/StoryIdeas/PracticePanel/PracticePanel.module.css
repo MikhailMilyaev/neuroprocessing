@@ -1,25 +1,38 @@
 :root{
-  --sb-h: 8px;  
+  --sb-h: 8px;
+
+  /* цвета как у списка историй */
+  --card-bg: #fff;
+  --hover-bg: #f0f1f3;
+  --border: #e6e6e6;
+
+  --btn-border: #e5e7eb;
+  --btn-text: #111;
+  --accent: #14AE5C;
+  --muted: #9aa0a6;
 }
 
+/* контейнер панели практик — тянется на ширину идеи */
 .vwrap {
   position: relative;
   margin-top: 8px;
   background: transparent;
   overflow: hidden;
-  border-radius: 16px;
+  border-radius: 0;      /* ровная, как список */
+  width: 100%;
 }
 
+/* список без лишних отступов — полностью во всю ширину */
 .list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 2px 2px 0;
+  gap: 0;               /* как у историй: разделяются границей, не зазорами */
+  padding: 0;
   margin: 0;
   list-style: none;
   max-height: inherit;
   scrollbar-width: thin;
-  scrollbar-color: #bbb transparent;  
+  scrollbar-color: #bbb transparent;
 }
 
 .list::-webkit-scrollbar { width: var(--sb-h); }
@@ -27,27 +40,35 @@
 .list::-webkit-scrollbar-thumb { background-color: #999; border-radius: 4px; }
 .list::-webkit-scrollbar-thumb:hover { background-color: #666; }
 
+/* строка (карточка) — как у историй: белый фон, нижняя граница, без теней */
 .row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
 
-  background: #fff;
-  border-radius: 16px;
-  padding: 14px 16px;
-  box-shadow: 0 1px 2px rgba(0,0,0,.05);
-  transition: transform .12s ease, box-shadow .15s ease;
+  background: var(--card-bg);
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 14px 10px 14px 10px; /* симметричные отступы как у историй */
+  width: 100%;
+
+  transition: background-color .12s ease;
 }
 
-.row:hover,
-.row:focus-within {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 10px rgba(0,0,0,.10);
+/* последняя строка без нижней границы, чтобы смотреться целостно */
+.list > .row:last-child { border-bottom: none; }
+
+/* hover — только подсветка фона, без движения и теней */
+@media (hover:hover) and (pointer:fine) {
+  .row:hover,
+  .row:focus-within {
+    background: var(--hover-bg);
+  }
 }
 
 .title {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 500;
   line-height: 1.2;
   white-space: nowrap;
@@ -63,13 +84,13 @@
   flex: 0 0 auto;
 }
 
-/* Обучение — нейтральная кнопка */
+/* Обучение — нейтральная кнопка (как чип) */
 .educationBtn {
   padding: 6px 14px;
   border-radius: 999px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--btn-border);
   background: #fff;
-  color: #111;
+  color: var(--btn-text);
   font-weight: 500;
   font-size: 14px;
   cursor: pointer;
@@ -82,7 +103,7 @@
   padding: 6px 14px;
   border-radius: 999px;
   border: none;
-  background: #14AE5C;
+  background: var(--accent);
   color: #fff;
   font-weight: 600;
   font-size: 14px;
@@ -91,6 +112,7 @@
 }
 .runBtn:hover { opacity: .9; }
 
+/* disabled */
 .runBtnDisabled,
 .runBtn:disabled {
   background: #9ca3af;
@@ -98,12 +120,26 @@
   opacity: .9;
 }
 
-/* Мобилка: вписываем панель практик в те же 10px */
+/* Мобилка: компактнее шрифты и кнопки */
 @media (max-width: 900px) {
   .vwrap {
     margin-left: 0;
     margin-right: 0;
-    border-radius: 12px;
+    border-radius: 0;
+  }
+
+  .row {
+    padding: 12px 8px;
+  }
+
+  .title {
+    font-size: 16px;
+  }
+
+  .educationBtn,
+  .runBtn {
+    padding: 5px 12px;
+    font-size: 13px;
   }
 
   .list {

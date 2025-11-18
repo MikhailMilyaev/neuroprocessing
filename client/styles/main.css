@@ -41,9 +41,10 @@ body {
   overflow-x: hidden;
 }
 
+/* 🔧 тут было overflow: hidden; — ломало скролл лендинга */
 @media (min-width: 701px) {
   html, body {
-    overflow: hidden;
+    overflow-x: hidden;              /* только по X блокируем */
     padding: 0 !important;
     margin: 0 !important;
   }

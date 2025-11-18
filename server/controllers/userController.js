@@ -105,106 +105,124 @@ async function enforceGlobalSessionLimit(userId) {
 }
 
 class userController {
-  async registration(req, res, next) {
-  try {
-    const rawName = req.body?.name ?? ''
-    const rawEmail = req.body?.email ?? ''
-    const rawPhone = req.body?.phone ?? ''           
-    const password = req.body?.password ?? ''
+    async registration(req, res, next) {
+    try {
+      const rawName  = req.body?.name  ?? '';
+      const rawEmail = req.body?.email ?? '';
+      const password = req.body?.password ?? '';
 
-    const name = String(rawName).trim()
-    const email = String(rawEmail).trim().toLowerCase()
-    if (!name || !email || !password || !rawPhone) {
-      return next(ApiError.badRequest('Заполните все поля.'))
-    }
+      const name  = String(rawName).trim();
+      const email = String(rawEmail).trim().toLowerCase();
 
-    if (!isValidRuPhone(rawPhone)) {
-      return next(ApiError.badRequest('Неверный формат телефона (РФ).'))
-    }
-    const phoneE164 = normalizeRuPhone(rawPhone) 
-
-    const now = new Date()
-    let user = await User.findOne({ where: { email } })
-
-    if (user) {
-      if (user.isVerified) {
-        return res.status(409).json({ code: 'ALREADY_EXISTS', message: 'Не удалось зарегистрироваться.' })
+      // 🔹 теперь без телефона
+      if (!name || !email || !password) {
+        return next(ApiError.badRequest('Заполните все поля.'));
       }
 
-      const rawToken = crypto.randomBytes(32).toString('hex')
-      const tokenHash = hashToken(rawToken)
-      user.verificationToken = tokenHash
-      user.verificationTokenExpires = new Date(now.getTime() + VERIFY_TOKEN_TTL_HOURS * 3600 * 1000)
-      user.verificationLastSentAt = now
-      if (!user.verificationResendResetAt || now > user.verificationResendResetAt) {
-        user.verificationResendCount = 0
-        user.verificationResendResetAt = new Date(now.getTime() + VERIFY_DAILY_WINDOW_HOURS * 3600 * 1000)
-      }
-      user.verificationResendCount += 1
-      await user.save()
+      const now = new Date();
+      let user = await User.findOne({ where: { email } });
 
-      const proto = req.headers['x-forwarded-proto'] || req.protocol
-      const host = req.get('host')
-      const base = new URL(process.env.API_URL || `${proto}://${host}`)
-      base.pathname = '/api/user/verify'
-      base.searchParams.set('token', rawToken)
-      const verifyLink = base.toString()
+      if (user) {
+        if (user.isVerified) {
+          return res
+            .status(409)
+            .json({ code: 'ALREADY_EXISTS', message: 'Не удалось зарегистрироваться.' });
+        }
+
+        const rawToken = crypto.randomBytes(32).toString('hex');
+        const tokenHash = hashToken(rawToken);
+        user.verificationToken = tokenHash;
+        user.verificationTokenExpires = new Date(
+          now.getTime() + VERIFY_TOKEN_TTL_HOURS * 3600 * 1000
+        );
+        user.verificationLastSentAt = now;
+        if (!user.verificationResendResetAt || now > user.verificationResendResetAt) {
+          user.verificationResendCount = 0;
+          user.verificationResendResetAt = new Date(
+            now.getTime() + VERIFY_DAILY_WINDOW_HOURS * 3600 * 1000
+          );
+        }
+        user.verificationResendCount += 1;
+        await user.save();
+
+        const proto = req.headers['x-forwarded-proto'] || req.protocol;
+        const host = req.get('host');
+        const base = new URL(process.env.API_URL || `${proto}://${host}`);
+        base.pathname = '/api/user/verify';
+        base.searchParams.set('token', rawToken);
+        const verifyLink = base.toString();
+
+        try {
+          const info = await sendVerificationEmail({
+            to: user.email,
+            name: user.name,
+            verifyLink,
+          });
+          console.log('[mail] sent', info.messageId, info.response);
+        } catch (e) {
+          console.log('[mail] fail', e?.message || String(e));
+        }
+
+        return res
+          .status(409)
+          .json({ code: 'UNVERIFIED_EXISTS', message: 'Подтвердите почту, письмо отправлено.' });
+      }
+
+      const hashPassword = await bcrypt.hash(password, 12);
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      const tokenHash = hashToken(rawToken);
+      const expires = new Date(now.getTime() + VERIFY_TOKEN_TTL_HOURS * 3600 * 1000);
+
+      // 🔹 создаём пользователя без телефона
+      user = await User.create({
+        name,
+        email,
+        role: 'USER',
+        password: hashPassword,
+        isVerified: false,
+        verificationToken: tokenHash,
+        verificationTokenExpires: expires,
+        verificationLastSentAt: now,
+        verificationResendCount: 1,
+        verificationResendResetAt: new Date(
+          now.getTime() + VERIFY_DAILY_WINDOW_HOURS * 3600 * 1000
+        ),
+      });
+
+      const actorId = uuidv4();
+      const cipher_blob = encryptLink({ actor_id: actorId });
+      await IdentityLink.create({
+        user_id: user.id,
+        cipher_blob,
+        key_version: KEY_VERSION,
+      });
+
+      const proto = req.headers['x-forwarded-proto'] || req.protocol;
+      const host = req.get('host');
+      const base = new URL(process.env.API_URL || `${proto}://${host}`);
+      base.pathname = '/api/user/verify';
+      base.searchParams.set('token', rawToken);
+      const verifyLink = base.toString();
 
       try {
-        const info = await sendVerificationEmail({ to: user.email, name: user.name, verifyLink })
-        console.log('[mail] sent', info.messageId, info.response)
+        const info = await sendVerificationEmail({
+          to: user.email,
+          name: user.name,
+          verifyLink,
+        });
+        console.log('[mail] sent', info.messageId, info.response);
       } catch (e) {
-        console.log('[mail] fail', e?.message || String(e))
+        console.log('[mail] fail', e?.message || String(e));
       }
 
-      return res.status(409).json({ code: 'UNVERIFIED_EXISTS', message: 'Подтвердите почту, письмо отправлено.' })
+      return res
+        .status(201)
+        .json({ message: 'Письмо отправлено.', needsVerification: true });
+    } catch (err) {
+      return next(err);
     }
-
-    const hashPassword = await bcrypt.hash(password, 12)
-    const rawToken = crypto.randomBytes(32).toString('hex')
-    const tokenHash = hashToken(rawToken)
-    const expires = new Date(now.getTime() + VERIFY_TOKEN_TTL_HOURS * 3600 * 1000)
-
-    user = await User.create({
-      name,
-      email,
-      role: 'USER',
-      password: hashPassword,
-
-      phone: phoneE164,                 
-      phoneVerified: false,              
-
-      isVerified: false,
-      verificationToken: tokenHash,
-      verificationTokenExpires: expires,
-      verificationLastSentAt: now,
-      verificationResendCount: 1,
-      verificationResendResetAt: new Date(now.getTime() + VERIFY_DAILY_WINDOW_HOURS * 3600 * 1000),
-    })
-
-    const actorId = uuidv4()
-    const cipher_blob = encryptLink({ actor_id: actorId })
-    await IdentityLink.create({ user_id: user.id, cipher_blob, key_version: KEY_VERSION })
-
-    const proto = req.headers['x-forwarded-proto'] || req.protocol
-    const host = req.get('host')
-    const base = new URL(process.env.API_URL || `${proto}://${host}`)
-    base.pathname = '/api/user/verify'
-    base.searchParams.set('token', rawToken)
-    const verifyLink = base.toString()
-
-    try {
-      const info = await sendVerificationEmail({ to: user.email, name: user.name, verifyLink })
-      console.log('[mail] sent', info.messageId, info.response)
-    } catch (e) {
-      console.log('[mail] fail', e?.message || String(e))
-    }
-
-    return res.status(201).json({ message: 'Письмо отправлено.', needsVerification: true })
-  } catch (err) {
-    return next(err)
   }
-}
+
 
   async login(req, res, next) {
     const password = req.body?.password ?? '';

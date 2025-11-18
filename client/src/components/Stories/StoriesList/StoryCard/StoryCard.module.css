@@ -6,7 +6,6 @@
   touch-action: pan-y;
 }
 
-/* контент карточки */
 .storyCard {
   position: relative;
   overflow: hidden;
@@ -22,9 +21,14 @@
   user-select: none;
   cursor: pointer;
 }
-.row:last-child .storyCard { border-bottom: none; }
 
-.storyCardActive { background-color: var(--card-active, #eef1f6); }
+.row:last-child .storyCard {
+  border-bottom: none;
+}
+
+.storyCardActive {
+  background-color: var(--card-active, #eef1f6);
+}
 
 .editingMode {
   background: var(--card, #fff);
@@ -33,18 +37,20 @@
 
 .titleText {
   display: inline-block;
-  vertical-align: middle;     /* ⬅ добавили: выравнивание по центру строки */
-  line-height: 1.1;           /* ⬅ чуть ниже, чтобы текст стоял по центру */
-  position: relative;         /* ⬅ пригодится для тонкой подстройки */
-  top: 1px;                   /* ⬅ можно 0–2px, если хочется ровнее по глазу */
-  max-width: calc(100% - 20px);
+  vertical-align: middle;
+  line-height: 1.1;
+  position: relative;
+  top: 1px;
+  max-width: calc(100% - 120px);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.placeholderText { color: var(--muted, #9aa0a6); }
 
-/* время справа (ПК) */
+.placeholderText {
+  color: var(--muted, #9aa0a6);
+}
+
 .timeRight {
   position: absolute;
   right: 10px;
@@ -55,10 +61,15 @@
   white-space: nowrap;
   pointer-events: none;
 }
-.timeHidden { display: none !important; }
-.storyCard:hover .timeRight { display: none; }
 
-/* ⋮ — десктоп */
+.timeHidden {
+  display: none !important;
+}
+
+.storyCard:hover .timeRight {
+  display: none;
+}
+
 .kebabBtn {
   position: absolute;
   right: 10px;
@@ -79,13 +90,27 @@
   pointer-events: none;
   transition: opacity 0.12s ease;
 }
-.kebabBtn:hover,
-.kebabBtn:active { background: transparent !important; }
-.kebabIcon { font-size: 22px; line-height: 1; }
-.storyCard:hover .kebabBtn { opacity: 1; pointer-events: auto; }
-.kebabPinned { opacity: 1 !important; pointer-events: auto !important; }
 
-/* инпут */
+.kebabBtn:hover,
+.kebabBtn:active {
+  background: transparent !important;
+}
+
+.kebabIcon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.storyCard:hover .kebabBtn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.kebabPinned {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
 .titleInput {
   width: 100%;
   border: none;
@@ -96,16 +121,21 @@
   padding: 2px 0 2px 2px;
   color: var(--text, #111827);
 }
-.titleInput::placeholder { color: var(--muted, #9aa0a6); }
 
-/* Десктоп: hover-подсветка */
-@media (hover:hover) and (pointer:fine) {
-  .storyCard:hover { background-color: var(--hover-bg, #f0f1f3); }
-  .storyCard:active { background-color: var(--hover-bg, #f0f1f3); }
+.titleInput::placeholder {
+  color: var(--muted, #9aa0a6);
 }
 
-/* Мобилка: без hover */
-@media (max-width:700px) and (hover:none) and (pointer:coarse) {
+@media (hover:hover) and (pointer:fine) {
+  .storyCard:hover {
+    background-color: var(--hover-bg, #f0f1f3);
+  }
+  .storyCard:active {
+    background-color: var(--hover-bg, #f0f1f3);
+  }
+}
+
+@media (max-width: 700px) and (hover: none) and (pointer: coarse) {
   .storyCard {
     padding: 16px 64px 16px 14px;
     font-size: 16px;
@@ -115,25 +145,35 @@
     -webkit-user-select: none !important;
     -webkit-tap-highlight-color: transparent !important;
   }
+
   .storyCard:hover,
-  .storyCard:active { background-color: var(--card, #fff) !important; }
+  .storyCard:active {
+    background-color: var(--card, #fff) !important;
+  }
 
-  .titleInput { font-size: 16px; }
+  .titleInput {
+    font-size: 16px;
+  }
 
-  .titleText, .timeRight {
+  .titleText,
+  .timeRight {
     user-select: none !important;
     -webkit-user-select: none !important;
   }
 
-  .kebabBtn { display: none; }     /* ⋮ прячем на мобилке */
-  .storyCard:hover .timeRight { display: inline; }
+  .kebabBtn {
+    display: none;
+  }
+
+  .storyCard:hover .timeRight {
+    display: inline;
+  }
 }
 
-/* выбранная карточка — видна поверх блюра, но не кликается */
 .storyCardSelected {
-  outline: 2px solid rgba(0,0,0,0.08);
+  outline: 2px solid rgba(0, 0, 0, 0.08);
   background: var(--card, #fff);
   position: relative;
-  z-index: 1001;        /* выше backdrop, ниже pop */
-  pointer-events: none;  
+  z-index: 1001;
+  pointer-events: none;
 }

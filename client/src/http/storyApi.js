@@ -51,16 +51,6 @@ export const updateStory = async (id, patch, { opId } = {}) => {
   return data;
 };
 
-export const setStoryStop = async (id, stopContentY) => {
-  const { data } = await $authHost.put(`/story/${id}/stop`, { stopContentY });
-  return data;
-};
-
-export const clearStoryStop = async (id) => {
-  const { data } = await $authHost.delete(`/story/${id}/stop`);
-  return data;
-};
-
 export const reevaluateStory = async (id, { opId } = {}) => {
   const { data } = await $authHost.post(
     `/story/${id}/reevaluate`,

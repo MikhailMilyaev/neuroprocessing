@@ -10,7 +10,8 @@ import IdeaDrafts from '../pages/IdeaDrafts/IdeaDrafts';
 import Practices from '../pages/Practices/Practices';
 import Practice from '../pages/Practice/Practice';
 
-import Education from '../pages/Educaiton/Education';
+import EducationList from '../pages/Educaiton/EducationList/EducationList';
+import EducationArticle from '../pages/Educaiton/EducationArticle/EducationArticle';
 
 import NotFound from '../pages/NotFound/NotFound';
 
@@ -26,6 +27,7 @@ import {
   PRACTICES_ROUTE, PRACTICE_ROUTE, EDUCATION_ROUTE
 } from '../utils/consts';
 
+
 export const authRoutes = [
   { path: STORIES_ROUTE, element: <Stories /> },
   { path: `${STORY_ROUTE}/:slug`, element: <Story /> },
@@ -34,7 +36,8 @@ export const authRoutes = [
   { path: PRACTICES_ROUTE, element: <Practices /> },
   { path: PRACTICE_ROUTE, element: <Practice /> },
 
-  { path: EDUCATION_ROUTE, element: <Education /> },
+  { path: EDUCATION_ROUTE, element: <EducationList /> },
+  { path: `${EDUCATION_ROUTE}/:articleId`, element: <EducationArticle /> },
 ];
 
 export const publicRoutes = [

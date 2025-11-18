@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { useNavigate, useLocation, useOutletContext } from 'react-router-dom';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { useNavigate, useOutletContext } from 'react-router-dom';
+import { flushSync } from 'react-dom';
+
 import classes from './IdeaDrafts.module.css';
 import { subscribe, getActorChannel, startRealtime } from '../../utils/realtime';
 import Toast from '../../components/Toast/Toast';
@@ -14,15 +16,23 @@ import {
 } from '../../http/ideaDraftsApi';
 
 import { fetchStories } from '../../http/storyApi';
-import { STORY_ROUTE, STORIES_ROUTE } from '../../utils/consts';
+import { STORY_ROUTE } from '../../utils/consts';
 
 import EmptyIdeasState from '../../components/IdeaDrafts/EmptyIdeasState/EmptyIdeasState';
 import IdeaList from '../../components/IdeaDrafts/IdeaList/IdeaList';
-import { flushSync } from 'react-dom';
-
-import { genOpId, markSentOp, isOwnOp } from '../../utils/opId';
 import IdeasHeader from '../../components/IdeaDrafts/IdeasHeader/IdeasHeader';
 import IdeaMoveModal from '../../components/IdeaDrafts/IdeaMoveModal/IdeaMoveModal';
+
+import BlockLoader from '../../components/BlockLoader/BlockLoader';
+import { useSmartDelay } from '../../hooks/useSmartDelay';
+
+import { genOpId, markSentOp, isOwnOp } from '../../utils/opId';
+import {
+  readIdeaDraftsInbox,
+  writeIdeaDraftsInbox,
+  readIdeaDraftsStories,
+  writeIdeaDraftsStories,
+} from '../../utils/cache/ideaDraftsCache';
 
 const CHAR_LIMIT = 80;
 
@@ -69,21 +79,19 @@ function useHeaderHeightVar(headerRef, varName = '--ideas-header-h') {
 }
 
 export default function Ideas() {
-  const [toast, setToast] = useState({ msg: '', ver: 0 });
   const navigate = useNavigate();
-  const location = useLocation();
+  const { onOpenSidebar, isSidebarOpen } = useOutletContext?.() || {
+    onOpenSidebar: () => {},
+    isSidebarOpen: false,
+  };
 
-  const { onOpenSidebar, isSidebarOpen } = useOutletContext?.() || { onOpenSidebar: () => {}, isSidebarOpen: false };
+  const [toast, setToast] = useState({ msg: '', ver: 0 });
 
-  const backTarget = location.state?.from || STORIES_ROUTE;
-
-  const showToast = (msg) => setToast(({ ver }) => ({ msg, ver: ver + 1 }));
-  const [items, setItems] = useState([]);
-  const [stories, setStories] = useState({ active: [], archive: [] });
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState(() => readIdeaDraftsInbox());
+  const [stories, setStories] = useState(() => readIdeaDraftsStories());
+  const [loading, setLoading] = useState(false);
 
   const [menuFor, setMenuFor] = useState(null);
-  const [searchStory, setSearchStory] = useState(''); // можно выпилить позже, сейчас не используется в модалке
 
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
@@ -96,6 +104,8 @@ export default function Ideas() {
   const creatingRef = useRef(new Map());
   const seqRef = useRef(0);
 
+  const showToast = (msg) => setToast(({ ver }) => ({ msg, ver: ver + 1 }));
+
   const withOp = async (fn, ...args) => {
     const opId = genOpId();
     markSentOp(opId);
@@ -104,6 +114,8 @@ export default function Ideas() {
 
   useEffect(() => {
     let cancel = false;
+    setLoading(true);
+
     (async () => {
       try {
         const [inbox, act, arc] = await Promise.all([
@@ -112,20 +124,33 @@ export default function Ideas() {
           fetchStories({ archive: true,  limit: 200, fields: 'id,title,archive,updatedAt' }),
         ]);
         if (cancel) return;
-        setItems((inbox || []).map(it => ({ ...it, uiKey: it.id })));
+
+        const nextItems = (inbox || []).map(it => ({ ...it, uiKey: it.id }));
         const mapRows = (r) => (Array.isArray(r) ? r : (r?.rows || []));
-        setStories({ active: mapRows(act), archive: mapRows(arc) });
+        const nextStories = { active: mapRows(act), archive: mapRows(arc) };
+
+        setItems(nextItems);
+        setStories(nextStories);
       } catch {
         if (!cancel) {
-          setItems([]);
-          setStories({ active: [], archive: [] });
+          setItems(prev => prev || []);
+          setStories(prev => prev || { active: [], archive: [] });
         }
       } finally {
         if (!cancel) setLoading(false);
       }
     })();
+
     return () => { cancel = true; };
   }, []);
+
+  useEffect(() => {
+    writeIdeaDraftsInbox(items);
+  }, [items]);
+
+  useEffect(() => {
+    writeIdeaDraftsStories(stories);
+  }, [stories]);
 
   useEffect(() => {
     startRealtime();
@@ -303,18 +328,15 @@ export default function Ideas() {
     navigate(`${STORY_ROUTE}/${slug || storyId}`);
   };
 
-  const filteredActive = useMemo(() => stories.active, [stories.active]);
-  const filteredArchive = useMemo(() => stories.archive, [stories.archive]);
-
   const handleLamp = useCallback(() => addQuick(), []);
 
-  if (loading) {
-    return (
-      <div className={classes.center}>
-        <div className={classes.spinner} />
-      </div>
-    );
-  }
+  const activeStories = stories.active || [];
+  const archivedStories = stories.archive || [];
+
+  const showOverlay = useSmartDelay(loading, {
+    delayIn: 200,
+    minVisible: 400,
+  });
 
   return (
     <>
@@ -326,8 +348,8 @@ export default function Ideas() {
             selectMode={selectMode}
             selectedCount={selectedIds.size}
             onToggleSelectMode={toggleSelectMode}
-            onLampClick={handleLamp}      
-            onMoveClick={openBulkMenu}    
+            onLampClick={handleLamp}
+            onMoveClick={openBulkMenu}
             onOpenSidebar={onOpenSidebar}
             isSidebarOpen={isSidebarOpen}
           />
@@ -353,13 +375,15 @@ export default function Ideas() {
         </div>
       </div>
 
+      <BlockLoader show={showOverlay} />
+
       <IdeaMoveModal
         open={!!menuFor}
         onClose={() => setMenuFor(null)}
         onMoveTo={(storyId) => (menuFor === 'bulk' ? moveSelectedTo(storyId) : moveTo(storyId))}
         onCreateStory={menuFor === 'bulk' ? createStoryFromSelected : createStory}
-        activeStories={filteredActive}
-        archivedStories={filteredArchive}
+        activeStories={activeStories}
+        archivedStories={archivedStories}
       />
     </>
   );

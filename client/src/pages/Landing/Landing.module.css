@@ -1,5 +1,5 @@
 :root { scroll-padding-top: var(--header-h); }  
-body { padding-top: var(--header-h); }
+
 :root{
   --accent:#16a34a;
   --accent-700:#15803d;
@@ -73,6 +73,7 @@ p{ margin:0; }
   display:flex;
   min-height:100%;
   flex-direction:column;
+  padding-top: var(--header-h); /* 👈 отступ под фикс-хедер */
 }
 
 /* header */
@@ -515,9 +516,14 @@ p{ margin:0; }
   }
 }
 
-:global(html.landing-white),
-:global(html.landing-white) body {
+:global(html.landing-white.pwa-standalone),
+:global(html.landing-white.pwa-standalone) body {
   background:#fff !important;
+  overflow-y:auto !important;      /* вернуть вертикальный скролл */
+  overflow-x:hidden;
+  height:auto !important;
+  min-height:100vh !important;
 }
+
 
 html.no-smooth { scroll-behavior: auto !important; }

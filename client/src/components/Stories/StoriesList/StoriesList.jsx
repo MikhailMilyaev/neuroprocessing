@@ -1,5 +1,4 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import { flushSync } from "react-dom";
 
 import StoryCard from "./StoryCard/StoryCard";
@@ -12,7 +11,6 @@ import { writeStoriesIndex as replaceStoriesIndex } from "../../../utils/cache/s
 
 import classes from "./StoriesList.module.css";
 
-/* ===================== utils ===================== */
 const getTs = (s) => {
   const v = s?.updatedAt ?? s?.updated_at ?? s?.createdAt ?? s?.created_at ?? 0;
   const t = Date.parse(v);
@@ -39,24 +37,16 @@ const isMobileDevice = () =>
   window.matchMedia("(hover: none)").matches &&
   window.matchMedia("(pointer: coarse)").matches;
 
-/* ================================================= */
-
 export default function StoriesList({
-  searchInput,
   storiesList,
   isLoading,
   onDeleteStory,
   showArchive = false,
   onAddStory,
   onToggleArchive,
-  closeKey = 0,
   onRenameStory,
   onTempCommit,
-  newlyCreatedId = null,
-  clearNewlyCreated = () => {},
 }) {
-  const navigate = useNavigate();
-
   const showSpinner = useDelayedVisible(
     isLoading && (storiesList?.length ?? 0) === 0,
     200
@@ -66,105 +56,78 @@ export default function StoriesList({
     replaceStoriesIndex(Array.isArray(storiesList) ? storiesList : []);
   }, [storiesList]);
 
-  const q = (searchInput || "").trim().toLocaleLowerCase("ru-RU");
-
   const activeStories = useMemo(() => {
     const base = (storiesList || []).filter((s) => !s.archive);
-    const filtered = q ? base.filter((s) => (s.title ?? "").toLocaleLowerCase("ru-RU").includes(q)) : base;
-    return sortByUpdated(filtered);
-  }, [storiesList, q]);
+    return sortByUpdated(base);
+  }, [storiesList]);
 
   const archiveStories = useMemo(() => {
     const base = (storiesList || []).filter((s) => s.archive);
-    const filtered = q ? base.filter((s) => (s.title ?? "").toLocaleLowerCase("ru-RU").includes(q)) : base;
-    return sortByUpdated(filtered);
-  }, [storiesList, q]);
+    return sortByUpdated(base);
+  }, [storiesList]);
 
   /* ================== inline rename/create ================== */
   const [editingId, setEditingId] = useState(null);
   const [draftId, setDraftId] = useState(null);
 
-  const hadTitleOnEditRef = useRef(new Map());
   const suppressReopenRef = useRef(false);
-
-  const rememberHadTitle = (id, title) => {
-    const had = !!(title && title.trim().length > 0);
-    hadTitleOnEditRef.current.set(String(id), had);
-  };
-  const forgetHadTitle = (id) => hadTitleOnEditRef.current.delete(String(id));
-
-  useEffect(() => { /* closeKey был для свайпов — сейчас no-op */ }, [closeKey]);
-
-  useEffect(() => {
-    if (!newlyCreatedId) return;
-    clearNewlyCreated?.();
-  }, [newlyCreatedId, clearNewlyCreated]);
 
   const finishEditing = (id) => {
     if (editingId === id) setEditingId(null);
-    forgetHadTitle(id);
-    if (newlyCreatedId && String(newlyCreatedId) === String(id)) {
-      clearNewlyCreated?.();
-    }
   };
 
-  const beginRename = useCallback((id, title) => {
+  const beginRename = useCallback((id) => {
     setEditingId(String(id));
-    rememberHadTitle(id, title);
+  }, []);
+
+  // десктопный «призрак» по клику “Добавить”
+  useEffect(() => {
+    const onBeginDraft = () => {
+      if (isMobileDevice()) return;
+      const id = `draft-${Date.now()}`;
+      flushSync(() => {
+        setDraftId(id);
+        setEditingId(id);
+      });
+      const tryFocus = (retries = 6) => {
+        const row = document.querySelector(`[data-story-id="${id}"]`);
+        const input = row?.querySelector('input[aria-label="Заголовок истории"]');
+        if (input) {
+          row?.scrollIntoView?.({ behavior: "auto", block: "center" });
+          try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+          const len = input.value?.length ?? 0;
+          try { input.setSelectionRange(len, len); } catch {}
+          return;
+        }
+        if (retries > 0) requestAnimationFrame(() => tryFocus(retries - 1));
+      };
+      tryFocus();
+    };
+    document.addEventListener("stories:begin-create-draft", onBeginDraft);
+    return () => document.removeEventListener("stories:begin-create-draft", onBeginDraft);
   }, []);
 
   const submitDraft = async (title) => {
     const t = (title || "").trim();
-    if (!t) { setEditingId(null); return; }
+    if (!t) {
+      flushSync(() => { setEditingId(null); setDraftId(null); });
+      try { document.activeElement?.blur?.(); } catch {}
+      return;
+    }
     try {
       suppressReopenRef.current = true;
       if (isMobileDevice()) {
         flushSync(() => { setEditingId(null); setDraftId(null); });
         try { document.activeElement?.blur?.(); } catch {}
       }
-      const created = await onAddStory?.(t);
-      if (!isMobileDevice() && created) {
-        const idOrSlug = created.slug || created.id;
-        if (idOrSlug != null) navigate(`/story/${idOrSlug}`);
-      }
-      clearNewlyCreated?.();
-    } catch (e) {
-      console.error("[create story]", e);
+      await onAddStory?.(t, { inline: true });
+      flushSync(() => { setDraftId(null); setEditingId(null); });
     } finally {
       setTimeout(() => { suppressReopenRef.current = false; }, 120);
     }
   };
 
-  useEffect(() => {
-    const onTempResolved = (e) => {
-      const { tempId, realId } = e?.detail || {};
-      if (!tempId || !realId) return;
-      if (suppressReopenRef.current) return;
-
-      const wasEditing = String(editingId) === String(tempId);
-      if (!wasEditing) return;
-
-      flushSync(() => {
-        setEditingId(String(realId));
-        const had = hadTitleOnEditRef.current.get(String(tempId));
-        if (had !== undefined) {
-          hadTitleOnEditRef.current.delete(String(tempId));
-          hadTitleOnEditRef.current.set(String(realId), had);
-        }
-      });
-
-      const row = document.querySelector(`[data-story-id="${realId}"]`);
-      row?.scrollIntoView?.({ behavior: "auto", block: "center" });
-      const input = row?.querySelector('input[aria-label="Заголовок истории"]');
-      input?.focus?.({ preventScroll: true });
-      const len = input?.value?.length ?? 0;
-      try { input?.setSelectionRange?.(len, len); } catch {}
-    };
-
-    document.addEventListener("stories:temp-resolved", onTempResolved);
-    return () => document.removeEventListener("stories:temp-resolved", onTempResolved);
-  }, [editingId]);
-
+  // ✅ rename: выходим из режима редактирования сразу, до запроса к серверу
   const submitRename = async (id, value) => {
     const trimmed = (value || "").trim();
     const isTemp = String(id).startsWith("temp-");
@@ -175,9 +138,10 @@ export default function StoriesList({
         if (isMobileDevice()) {
           flushSync(() => { setEditingId(null); });
           try { document.activeElement?.blur?.(); } catch {}
+        } else {
+          flushSync(() => { setEditingId(null); });
         }
         await onTempCommit?.(id, trimmed);
-        if (!isMobileDevice()) finishEditing(id);
       } finally {
         setTimeout(() => { suppressReopenRef.current = false; }, 120);
       }
@@ -186,12 +150,10 @@ export default function StoriesList({
 
     try {
       suppressReopenRef.current = true;
-      if (isMobileDevice()) {
-        flushSync(() => { setEditingId(null); });
-        try { document.activeElement?.blur?.(); } catch {}
-      }
+      flushSync(() => { setEditingId(null); });
+      try { document.activeElement?.blur?.(); } catch {}
+
       await onRenameStory?.(id, trimmed);
-      if (!isMobileDevice()) finishEditing(id);
     } finally {
       setTimeout(() => { suppressReopenRef.current = false; }, 120);
     }
@@ -253,13 +215,11 @@ export default function StoriesList({
 
   const [createOverlayOpen, setCreateOverlayOpen] = useState(false);
 
-  // слушатель «создать в оверлее» — вызывается ТОЛЬКО по клику (не touchstart)
   useEffect(() => {
     const onOpenCreate = () => {
       if (!isMobileDevice()) return;
       armKeyboardKeeper();
       setCreateOverlayOpen(true);
-      // переведём фокус в реальный input StoryModal после маунта
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           try { document.dispatchEvent(new Event("stories:force-focus-create")); } catch {}
@@ -271,7 +231,6 @@ export default function StoriesList({
     return () => document.removeEventListener("stories:open-create-overlay", onOpenCreate);
   }, [armKeyboardKeeper, removeKeeperSoon]);
 
-  // helper для моб. редактирования (скролл к карточке и фокус)
   const focusForEditMobile = useCallback((id) => {
     if (!isMobileDevice()) return;
     const scroller = document.querySelector('div[role="region"][aria-label="Список историй"]');
@@ -408,21 +367,14 @@ export default function StoriesList({
                   ? () => {
                       if (editingId) return;
                       if (isMobileDevice()) {
-                        armKeyboardKeeper();
-                        setCreateOverlayOpen(true);
-                        requestAnimationFrame(() => {
-                          requestAnimationFrame(() => {
-                            try { document.dispatchEvent(new Event("stories:force-focus-create")); } catch {}
-                          });
-                        });
-                        removeKeeperSoon(2000);
+                        const ev = new Event("stories:open-create-overlay");
+                        document.dispatchEvent(ev);
                         return;
                       }
                       const id = `draft-${Date.now()}`;
                       flushSync(() => {
                         setDraftId(id);
                         setEditingId(id);
-                        rememberHadTitle(id, "");
                       });
                       const tryFocus = (retries = 6) => {
                         const row = document.querySelector(`[data-story-id="${id}"]`);
@@ -446,37 +398,33 @@ export default function StoriesList({
               onSecondaryClick={() => onToggleArchive?.(!showArchive)}
             />
           ) : (
-            <div className={classes.listWrap} role="region" aria-label="Список историй">
+            <div className={classes.listWrap}>
               {listWithNoDupes.map((s) => {
                 const idStr = String(s.id);
                 const isEditingThis = String(editingId) === idStr;
-                const mobileSelected = isMobileMode && isModalOpen && selectedId === s.id;
+                const mobileSelected = isMobileDevice() && isModalOpen && selectedId === s.id;
 
                 return (
                   <StoryCard
                     key={s.id}
                     {...s}
                     isHighlighted={false}
-                    onDelete={onDeleteStory}
-                    closeKey={closeKey}
-                    /* инлайн-режимы */
-                    isDraft={!!s._draft}
                     isEditing={isEditingThis}
                     onBeginRename={() => beginRename(s.id, s.title)}
-                    onSubmitTitle={(value) =>
-                      s._draft ? submitDraft(value) : submitRename(s.id, value, s.title)
+                    onSubmitTitle={(id, value) =>
+                      s._draft ? submitDraft(value) : submitRename(id, value, s.title)
                     }
                     onCancelEdit={() => {
                       if (s._draft) {
                         setEditingId(null);
-                        forgetHadTitle(s.id);
+                        setDraftId(null);
                       } else if (isEditingThis) {
                         finishEditing(s.id);
                       }
                     }}
                     /* десктоп: клик по ⋮ */
                     onOpenMenu={(ev) => openMenuAt(ev, s.id)}
-                    menuPinned={isModalOpen && selectedId === s.id && !isMobileMode}
+                    menuPinned={isModalOpen && selectedId === s.id && !isMobileDevice()}
                     /* мобила: long-press */
                     onLongPressMobile={(id, rect) => openMenuMobile(id, rect)}
                     mobileContextActive={mobileSelected}
@@ -487,6 +435,7 @@ export default function StoriesList({
           )}
 
           {/* поповер существующих карточек */}
+
           {isModalOpen && (
             <StoryModal
               open={isModalOpen}
@@ -498,7 +447,7 @@ export default function StoriesList({
                 setAnchorRect(null);
                 setOverlayMeta(null);
               }}
-              mobile={isMobileMode}
+              mobile={isMobileDevice()}
               anchorRect={anchorRect}
               overlayMeta={overlayMeta}
               selectedId={selectedId}
@@ -506,7 +455,7 @@ export default function StoriesList({
             />
           )}
 
-          {/* оверлей создания — сразу режим редактирования */}
+          {/* оверлей создания — сразу режим редактирования (моб.) */}
           {createOverlayOpen && (
             <StoryModal
               open={createOverlayOpen}

@@ -25,8 +25,6 @@ const getHeaderH = () => {
 };
 
 const getSafeInsets = () => {
-  // На iOS PWA «нижняя» safe area заметна только когда bottom-bar есть.
-  // Возьмём env() через вычисленное значение, если браузер подставил.
   try {
     const probe = getComputedStyle(document.documentElement);
     const top = parsePx(probe.getPropertyValue('env(safe-area-inset-top)'));
@@ -44,18 +42,10 @@ const isMobileUA = () =>
 export default function StoryText({
   value,
   onChange,
-  // совместимость (не используются, оставлены)
-  storyId,
-  initialStopContentY,
   initialViewContentY = null,
   onViewYChange,
   onReady,
   vhRatio = DEFAULT_VH_RATIO,
-  onStopChange,
-  onAddIdeaFromSelection,
-  activeHighlight,
-
-  // настройки
   resizable = true,
   storageKey = DEFAULT_H_KEY,
 }) {
@@ -68,11 +58,10 @@ export default function StoryText({
     Math.max(MIN_H, Math.round(window.innerHeight * vhRatio))
   );
 
-  // Доступный максимум: высота окна - высота хедера - нижняя safe-area - небольшой отступ
   const computeMaxPx = useCallback(() => {
     const header = getHeaderH();
     const { bottom } = getSafeInsets();
-    const pad = 8; // небольшой запас, чтобы ничего не «липло»
+    const pad = 8; 
     const max = Math.max(MIN_H, Math.floor(window.innerHeight - header - bottom - pad));
     return max;
   }, []);
@@ -121,7 +110,6 @@ export default function StoryText({
       return;
     }
 
-    // авто-режим как раньше: до autoMaxH, затем собственный скролл
     const text = (el.textContent ?? '').replace(/\r\n/g, '\n');
     const last = el.lastChild;
 
@@ -144,7 +132,7 @@ export default function StoryText({
 
     const correction = hasTrailingBr && text.endsWith('\n') ? lineH : 0;
     const natural = Math.ceil(el.scrollHeight - correction);
-    const cap = Math.min(autoMaxH, maxPx); // важно: не выше доступного maxPx
+    const cap = Math.min(autoMaxH, maxPx);  
     const h = Math.max(MIN_H, Math.min(cap, natural));
 
     stage.style.height = `${h}px`;
@@ -155,7 +143,6 @@ export default function StoryText({
 
   useLayoutEffect(() => { applyHeights(); }, [localText, applyHeights]);
 
-  // Пересчёт при ресайзе, изменении ориентации, изменении высоты хедера
   useEffect(() => {
     const recalc = () => {
       setMaxPx(computeMaxPx());
@@ -175,7 +162,6 @@ export default function StoryText({
     window.addEventListener('resize', onResize);
     window.addEventListener('orientationchange', onOrient);
 
-    // слушаем изменения переменной --story-header-h (через ResizeObserver на body)
     const ro = 'ResizeObserver' in window ? new ResizeObserver(recalc) : null;
     ro?.observe(document.body);
 
@@ -186,7 +172,6 @@ export default function StoryText({
     };
   }, [vhRatio, storageKey, computeMaxPx]);
 
-  // начальная прокрутка
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
@@ -201,7 +186,6 @@ export default function StoryText({
     return () => cancelAnimationFrame(t);
   }, [initialViewContentY]);
 
-  // скролл репорт
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
@@ -210,13 +194,11 @@ export default function StoryText({
     return () => stage.removeEventListener('scroll', onScroll);
   }, [onViewYChange]);
 
-  // onReady
   useEffect(() => {
     const t = requestAnimationFrame(() => onReady?.());
     return () => cancelAnimationFrame(t);
   }, [onReady]);
 
-  // ввод текста
   const handleInput = (txt) => {
     setLocalText(txt);
     const el = editableRef.current;
@@ -225,52 +207,73 @@ export default function StoryText({
     saveTimer.current = setTimeout(() => onChange?.(txt), SAVE_DEBOUNCE);
   };
 
-  // ====== Мобильный drag-handle ======
   const dragRef = useRef({
     active: false,
     startY: 0,
     startH: 0,
   });
+  const [dragging, setDragging] = useState(false);
 
-  const beginDrag = (e) => {
-    if (!mobile) return;
-    const p = e.touches?.[0] || e;
-    dragRef.current.active = true;
-    dragRef.current.startY = p.clientY;
-    // Текущая высота
-    const stage = stageRef.current;
-    const rectH = stage?.getBoundingClientRect().height || MIN_H;
-    dragRef.current.startH = Math.round(rectH);
-    e.preventDefault();
-  };
+  const getPoint = (e) => (e?.touches?.[0] || e);
 
-  const moveDrag = (e) => {
-    if (!mobile || !dragRef.current.active) return;
-    const p = e.touches?.[0] || e;
-    const dy = p.clientY - dragRef.current.startY;
-    const raw = dragRef.current.startH + dy;
-    const clamped = Math.max(MIN_H, Math.min(maxPx, Math.round(raw)));
+  const applyUserH = useCallback((h) => {
+    const clamped = Math.max(MIN_H, Math.min(maxPx, Math.round(h)));
     setUserH((prev) => {
       if (prev === clamped) return prev;
       try { localStorage.setItem(storageKey, String(clamped)); } catch {}
       return clamped;
     });
-    e.preventDefault();
-  };
+  }, [maxPx, storageKey]);
 
-  const endDrag = () => {
-    if (!mobile) return;
+  const onMove = useCallback((e) => {
+    if (!dragRef.current.active) return;
+    const p = getPoint(e);
+    const dy = p.clientY - dragRef.current.startY;
+    const raw = dragRef.current.startH + dy;
+    applyUserH(raw);
+    e.preventDefault?.();
+  }, [applyUserH]);
+
+  const stopDrag = useCallback(() => {
+    if (!dragRef.current.active) return;
     dragRef.current.active = false;
+    setDragging(false);
+    try {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    } catch {}
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', stopDrag);
+    window.removeEventListener('touchmove', onMove, { passive: false });
+    window.removeEventListener('touchend', stopDrag);
+  }, [onMove]);
+
+  const beginDrag = (e) => {
+    if (!resizable) return;
+    const p = getPoint(e);
+    dragRef.current.active = true;
+    dragRef.current.startY = p.clientY;
+    const stage = stageRef.current;
+    const rectH = stage?.getBoundingClientRect().height || MIN_H;
+    dragRef.current.startH = Math.round(rectH);
+    setDragging(true);
+    try {
+      document.body.style.cursor = 'ns-resize';
+      document.body.style.userSelect = 'none';
+    } catch {}
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', stopDrag);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', stopDrag);
+    e.preventDefault?.();
   };
 
-  // двойной тап — сброс в авто
   const handleDoubleClick = () => {
     setUserH(null);
     try { localStorage.removeItem(storageKey); } catch {}
     setTimeout(applyHeights, 0);
   };
 
-  // инлайн style-ограничения (на случай принудительного resize у десктопа)
   const stageStyle = userH != null
     ? {
         height: Math.max(MIN_H, Math.min(maxPx, Math.round(userH))),
@@ -286,7 +289,7 @@ export default function StoryText({
     <div className={classes.wrapper}>
       <div
         ref={stageRef}
-        className={`${classes.stage} ${resizable && !mobile ? classes.stageResizable : ''}`}
+        className={`${classes.stage} ${dragging ? classes.stageDragging : ''}`}
         style={stageStyle}
         onDoubleClick={handleDoubleClick}
       >
@@ -300,21 +303,17 @@ export default function StoryText({
           data-empty={isEmpty(localText) ? 'true' : 'false'}
           onInput={(e) => handleInput(e.currentTarget.textContent ?? '')}
         />
-        {mobile && resizable && (
+
+        {resizable && (
           <div
-            className={classes.mobileHandle}
+            className={`${classes.resizeHandle} ${dragging ? classes.handleActive : ''} ${mobile ? classes.isMobile : classes.isDesktop}`}
             onMouseDown={beginDrag}
-            onMouseMove={moveDrag}
-            onMouseUp={endDrag}
-            onMouseLeave={endDrag}
             onTouchStart={beginDrag}
-            onTouchMove={moveDrag}
-            onTouchEnd={endDrag}
             role="separator"
             aria-orientation="horizontal"
             aria-label="Потяните, чтобы изменить высоту"
           >
-            <div className={classes.mobileHandleBar} />
+            <div className={classes.resizeHandleBar} />
           </div>
         )}
       </div>

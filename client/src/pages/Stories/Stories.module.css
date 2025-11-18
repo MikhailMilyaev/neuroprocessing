@@ -17,14 +17,19 @@
 }
 
 @media (min-width: 701px) {
-  .contentInner { max-width: 1000px; margin: 0 auto; padding: 0 16px; }
+  .contentInner {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 16px;
+  }
 }
 
 @media (max-width: 700px) and (hover: none) and (pointer: coarse) {
   .storiesViewport {
     position: fixed;
-    left: 0; right: 0;
-    top: 0;                                
+    left: 0;
+    right: 0;
+    top: 0;
     bottom: var(--bottom-nav-h, 56px);
     background: var(--bg);
     overflow: hidden;
@@ -43,29 +48,32 @@
 
   .scrollArea {
     position: absolute;
-    left: 0; right: 0;
+    left: 0;
+    right: 0;
     top: var(--stories-header-h, 120px);
     bottom: 0;
     overflow: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     background: var(--bg);
-
-    scrollbar-width: thin !important;                  
+    scrollbar-width: thin !important;
   }
 
   .scrollArea::-webkit-scrollbar {
     width: 6px !important;
     height: 6px !important;
-    display: block !important;                         
+    display: block !important;
   }
+
   .scrollArea::-webkit-scrollbar-track {
     background: var(--scrollbar-track, transparent) !important;
   }
+
   .scrollArea::-webkit-scrollbar-thumb {
     background-color: var(--scrollbar-thumb, #bbb) !important;
     border-radius: 3px !important;
   }
+
   .scrollArea::-webkit-scrollbar-thumb:hover {
     background-color: var(--scrollbar-thumb-hover, #a8a8a8) !important;
   }
@@ -74,7 +82,12 @@
 .flashHighlight {
   animation: flashBg 2s ease;
 }
+
 @keyframes flashBg {
-  0%   { box-shadow: 0 0 0 3px rgba(18,183,106,.35) inset; }
-  100% { box-shadow: none; }
+  0% {
+    box-shadow: 0 0 0 3px rgba(18, 183, 106, 0.35) inset;
+  }
+  100% {
+    box-shadow: none;
+  }
 }

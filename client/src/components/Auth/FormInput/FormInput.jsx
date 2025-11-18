@@ -10,11 +10,11 @@ import {
 import styles from './FormInput.module.css';
 
 const DIGIT_KEYS = new Set([
-  '0','1','2','3','4','5','6','7','8','9',
+  '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 ]);
 const CONTROL_KEYS = new Set([
-  'Backspace','Delete','ArrowLeft','ArrowRight','ArrowUp','ArrowDown',
-  'Home','End','Tab','Enter',
+  'Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+  'Home', 'End', 'Tab', 'Enter',
 ]);
 
 const FormInput = ({
@@ -28,7 +28,6 @@ const FormInput = ({
   containerStyle,
   className,
 }) => {
-  const [isFocus, setIsFocus] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const inputRef = useRef(null);
 
@@ -55,15 +54,15 @@ const FormInput = ({
   const handleEyeClick = () => setShowPassword(prev => !prev);
 
   const normalizePhoneInput = (raw) => {
-  let v = String(raw || '').replace(/\D/g, '');
-  if (!v) return '';
+    let v = String(raw || '').replace(/\D/g, '');
+    if (!v) return '';
 
-  if (v[0] !== '8') v = '8' + v.slice(1);
+    if (v[0] !== '8') v = '8' + v.slice(1);
 
-  if (v.length > 11) v = v.slice(0, 11);
+    if (v.length > 11) v = v.slice(0, 11);
 
-  return v;
-};
+    return v;
+  };
 
   const handleTelChange = (e) => {
     const normalized = normalizePhoneInput(e.target.value);
@@ -71,7 +70,7 @@ const FormInput = ({
   };
 
   const handleKeyDown = (e) => {
-    if (!isTel) return; 
+    if (!isTel) return;
     const { key, ctrlKey, metaKey } = e;
 
     if (ctrlKey || metaKey) return;
@@ -114,7 +113,6 @@ const FormInput = ({
     >
       <LeftIcon
         className={styles.leftIcon}
-        style={{ color: isFocus ? 'black' : undefined }}
         aria-hidden="true"
       />
 
@@ -131,10 +129,8 @@ const FormInput = ({
         pattern={isTel ? '\\d*' : undefined}
         onKeyDown={isTel ? handleKeyDown : undefined}
         onPaste={isTel ? handlePaste : undefined}
-        onFocus={() => setIsFocus(true)}
-        onBlur={() => setIsFocus(false)}
         aria-label={placeholder}
-        maxLength={isTel ? 11 : undefined} 
+        maxLength={isTel ? 11 : undefined}
       />
 
       {isPassword && value && (
@@ -145,7 +141,6 @@ const FormInput = ({
           aria-pressed={showPassword}
           onMouseDown={handleEyeMouseDown}
           onClick={handleEyeClick}
-          style={{ color: isFocus ? 'black' : undefined }}
         >
           {showPassword ? <IoEyeOffOutline /> : <IoEyeOutline />}
         </button>

@@ -1,12 +1,12 @@
-.listWrap { 
-  margin-top: 0;               /* раньше: 20px — убрали */
-  padding-top: 12px;           /* «отступ у первой» эквивалентно */
+.listWrap {
+  margin-top: 0;
+  padding-top: 12px;
 }
 
 @media (max-width: 700px) {
   .listWrap {
-    margin-top: 0;             /* раньше: 14px — убрали */
-    padding-top: 10px;         /* «отступ у первой» на мобилке */
+    margin-top: 0;
+    padding-top: 10px;
     padding-inline: 12px;
     padding-bottom: 12px;
   }

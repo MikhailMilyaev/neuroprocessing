@@ -22,7 +22,6 @@ const Auth = observer(() => {
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [confirmedPassword, setConfirmedPassword] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
@@ -31,7 +30,6 @@ const Auth = observer(() => {
   const [errorKey, setErrorKey] = useState(0)
   const [messageType, setMessageType] = useState('error')
 
-  // сообщение об успешной верификации
   useEffect(() => {
     const sp = new URLSearchParams(location.search)
     if (isLogin && sp.get('verified') === '1') {
@@ -42,7 +40,6 @@ const Auth = observer(() => {
     }
   }, [isLogin, location.search])
 
-  // ГЛОБАЛЬНО отключаем скролл на экране авторизации (ПК и мобила)
   useEffect(() => {
     const prevHtml = document.documentElement.style.overflow
     const prevBody = document.body.style.overflow
@@ -61,7 +58,7 @@ const Auth = observer(() => {
 
     const error = isLogin
       ? validateLogin({ email, password })
-      : validateRegistration({ name, email, password, confirmedPassword, phone })
+      : validateRegistration({ name, email, password, confirmedPassword })
 
     if (error) {
       setErrorMessage(error)
@@ -81,7 +78,7 @@ const Auth = observer(() => {
         setTimeout(() => navigate(STORIES_ROUTE), 1000)
       } else {
         try {
-          const data = await registration(name, email, password, phone)
+          const data = await registration(name, email, password)
           if (data?.needsVerification) {
             sessionStorage.setItem('pendingEmail', email)
             navigate('/check-email?email=' + encodeURIComponent(email), { replace: true })
@@ -115,12 +112,10 @@ const Auth = observer(() => {
     }
   }
 
-  // сброс локал. стейта при переключении маршрута
   useEffect(() => {
     setWasSubmitted(false)
     setName('')
     setEmail('')
-    setPhone('')
     setPassword('')
     setConfirmedPassword('')
   }, [location.pathname])
@@ -162,13 +157,6 @@ const Auth = observer(() => {
             onChange={(e) => setEmail(e.target.value)}
             type='email'
             placeholder='Электронная почта'
-          />
-          <FormInput
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            type='tel'
-            autoComplete='tel'
-            placeholder='Телефон (РФ: 8XXXXXXXXXX)'
           />
           <FormInput
             value={password}

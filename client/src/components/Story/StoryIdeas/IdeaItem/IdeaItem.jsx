@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, useLayoutEffect } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { IoChevronDown } from 'react-icons/io5';
 import PracticePanel from '../PracticePanel/PracticePanel';
 import classes from './IdeaItem.module.css';
+import { PRACTICES } from '../../../../http/practiceApi';
 
 export default function IdeaItem({
   id,
@@ -18,9 +19,6 @@ export default function IdeaItem({
   onScoreChange,
   onBlurEmpty,
   practices = [],
-  onClick,
-  onFocusAny,
-  onBlurAll,
   registerScoreRef,
   onScoreFinalized,
   registerTextRef,
@@ -37,22 +35,16 @@ export default function IdeaItem({
 
   const bannedKeys = new Set(['+', '-', 'e', 'E', ',', '.']);
 
-  const hasPractices = Array.isArray(practices) && practices.length > 0;
-  const canShowPracticesUI = hasPractices && !isArchived;
-
+  const effPractices = Array.isArray(practices) && practices.length > 0 ? practices : PRACTICES;
   const hasText = !!(text && text.trim().length);
 
-  // ⬇️ Панель можно открывать, если есть практики и идея не в архиве — текст не обязателен
-  const canOpenPractices = canShowPracticesUI;
+  // можно показать UI практик, но сам переключатель может быть disabled, когда нет текста
+  const canShowPracticesUI = !isArchived && effPractices.length > 0;
+
   const isOpen = canShowPracticesUI && open;
 
   const toggleOpen = () => {
-    setOpen(prev => {
-      const next = !prev;
-      if (next) onFocusAny?.(id);
-      else requestAnimationFrame(() => onBlurAll?.(id));
-      return next;
-    });
+    setOpen(prev => !prev);
   };
 
   useEffect(() => {
@@ -61,7 +53,6 @@ export default function IdeaItem({
 
   const handleFieldFocus = () => {
     setFieldFocused(true);
-    onFocusAny?.(id);
   };
 
   const handleFieldBlur = () => {
@@ -70,7 +61,6 @@ export default function IdeaItem({
       const a = document.activeElement;
       const stillInside = el && a && el.contains(a);
       setFieldFocused(!!stillInside);
-      if (!stillInside) onBlurAll?.(id);
     });
   };
 
@@ -98,7 +88,7 @@ export default function IdeaItem({
     if (!isOpen) return;
     const slot = practiceSlotRef.current;
     if (!slot) return;
-  }, [isOpen, practices.length]);
+  }, [isOpen, effPractices.length]);
 
   useEffect(() => {
     if (typeof registerScoreRef === 'function') {
@@ -131,7 +121,6 @@ export default function IdeaItem({
     if (document.activeElement !== scoreInputRef.current) return;
 
     let delay = 100;
-
     finalizeTimerRef.current = setTimeout(() => {
       if (document.activeElement !== scoreInputRef.current) return;
       onScoreFinalized?.(id, str, opts);
@@ -163,7 +152,6 @@ export default function IdeaItem({
       ].filter(Boolean).join(' ')}
       onMouseDownCapture={stopFocusOnRight}
       onTouchStartCapture={stopFocusOnRight}
-      onClick={() => onClick?.(id)}
     >
       <input
         ref={textInputRef}
@@ -185,13 +173,29 @@ export default function IdeaItem({
         {canShowPracticesUI && (
           <button
             type="button"
-            className={`${classes.iconBtn} ${classes.toggleBtn} ${open ? classes.open : ''}`}
-            aria-label={open ? 'Скрыть практики' : 'Показать практики'}
-            title={open ? 'Скрыть практики' : 'Показать практики'}
+            className={`${classes.iconBtn} ${classes.scoreToggleBtn} ${open ? classes.open : ''}`}
+            aria-label={
+              !hasText
+                ? 'Сначала введите текст идеи'
+                : open
+                  ? 'Скрыть практики'
+                  : 'Показать практики'
+            }
+            title={
+              !hasText
+                ? 'Сначала введите текст идеи, чтобы увидеть практики'
+                : open
+                  ? 'Скрыть практики'
+                  : 'Показать практики'
+            }
             aria-expanded={open}
-            onClick={toggleOpen}
-            disabled={!canOpenPractices} // блокируем только если практик нет или архив
-            onFocus={() => onFocusAny?.(id)}
+            disabled={!hasText}
+            onClick={(e) => {
+              if (!hasText) return;
+              e.stopPropagation();
+              toggleOpen();
+            }}
+            onFocus={handleFieldFocus}
             onBlur={handleFieldBlur}
           >
             <IoChevronDown />
@@ -271,7 +275,7 @@ export default function IdeaItem({
 
       {isOpen && (
         <div className={classes.practiceSlot} ref={practiceSlotRef}>
-          <PracticePanel practices={practices} ideaText={text} />
+          <PracticePanel practices={effPractices} ideaText={text} />
         </div>
       )}
     </div>

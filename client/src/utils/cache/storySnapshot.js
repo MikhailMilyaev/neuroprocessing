@@ -19,26 +19,20 @@ export function readSnapshot(id) {
 export function writeSnapshot(id, snap) {
   try {
     const prev = readSnapshot(id) || {};
-    const payload = {
-      ...prev,
-      id,
-      updatedAt: snap?.updatedAt || new Date().toISOString(),
-      stopContentY:       snap?.stopContentY       ?? prev.stopContentY       ?? null,
-      lastViewContentY:   snap?.lastViewContentY   ?? prev.lastViewContentY   ?? null,
-      content:            (snap?.content ?? prev.content ?? ''),
-      baselineContent:    snap?.baselineContent    ?? prev.baselineContent    ?? '',
-      reevalCount:        snap?.reevalCount        ?? prev.reevalCount        ?? 0,
-      showArchiveSection: snap?.showArchiveSection ?? prev.showArchiveSection ?? true,
-      remindersEnabled:   snap?.remindersEnabled   ?? prev.remindersEnabled   ?? false,
-      remindersFreqSec:   snap?.remindersFreqSec   ?? prev.remindersFreqSec   ?? 30,
-      remindersIndex:     snap?.remindersIndex     ?? prev.remindersIndex     ?? 0,
-      remindersPaused:    snap?.remindersPaused    ?? prev.remindersPaused    ?? false,
-      archive:               (snap?.archive               !== undefined ? snap.archive               : (prev.archive ?? false)),
-      reevalDueAt:           (snap?.reevalDueAt           !== undefined ? snap.reevalDueAt           : (prev.reevalDueAt ?? null)),
-      rereviewToken:         (snap?.rereviewToken         !== undefined ? snap.rereviewToken         : (prev.rereviewToken ?? null)),
-      rereviewStartedRound:  (snap?.rereviewStartedRound  !== undefined ? snap.rereviewStartedRound  : (prev.rereviewStartedRound ?? null)),
 
-      title:   snap?.title   ?? prev.title   ?? '',
+    const payload = {
+      id,
+      updatedAt: snap?.updatedAt || prev.updatedAt || new Date().toISOString(),
+      lastViewContentY: snap?.lastViewContentY ?? prev.lastViewContentY ?? null,
+      content: snap?.content ?? prev.content ?? '',
+      reevalCount: snap?.reevalCount ?? prev.reevalCount ?? 0,
+      showArchiveSection: snap?.showArchiveSection ?? prev.showArchiveSection ?? true,
+      archive: snap?.archive ?? (prev.archive ?? false),
+      reevalDueAt: snap?.reevalDueAt ?? (prev.reevalDueAt ?? null),
+      rereviewToken: snap?.rereviewToken ?? (prev.rereviewToken ?? null),
+      rereviewStartedRound:
+        snap?.rereviewStartedRound ?? (prev.rereviewStartedRound ?? null),
+      title: snap?.title ?? prev.title ?? '',
 
       ideas: Array.isArray(snap?.ideas)
         ? snap.ideas.map(i => ({
@@ -47,16 +41,15 @@ export function writeSnapshot(id, snap) {
             score: i.score ?? null,
             introducedRound: i.introducedRound ?? 0,
             sortOrder: i.sortOrder ?? 0,
-            ...(typeof i.srcStart === 'number' && typeof i.srcEnd === 'number'
-              ? { srcStart: i.srcStart, srcEnd: i.srcEnd }
-              : {}),
           }))
         : (Array.isArray(prev.ideas) ? prev.ideas : []),
     };
 
     localStorage.setItem(SNAP_KEY(id), JSON.stringify(payload));
     return payload;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 export function markSeenThisSession(id) {
@@ -69,7 +62,6 @@ export function isSeenThisSession(id) {
 export function markStoryDirty(id)   { try { localStorage.setItem(DIRTY_KEY(id), '1'); } catch {} }
 export function clearStoryDirty(id)  { try { localStorage.removeItem(DIRTY_KEY(id)); } catch {} }
 export function isStoryDirty(id)     { try { return localStorage.getItem(DIRTY_KEY(id)) === '1'; } catch { return false; } }
-
 
 export function purgeStoryLocal(id) {
   try { localStorage.removeItem(SNAP_KEY(id)); } catch {}

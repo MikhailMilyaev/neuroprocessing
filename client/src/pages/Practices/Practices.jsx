@@ -1,4 +1,3 @@
-// src/pages/Practices/Practices.jsx
 import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { listRuns, createRunIfNeeded, deleteRun } from "../../http/practiceRunsApi";
@@ -8,23 +7,39 @@ import PracticesList from "../../components/Practices/PracticesList/PracticesLis
 import AddIdeaModal from "../../components/Practices/PracticesHeader/AddIdeaModal/AddIdeaModal";
 import PracticesHeader from "../../components/Practices/PracticesHeader/PracticesHeader";
 import EmptyState from "../../components/Practices/EmptyState/EmptyState";
+import BlockLoader from "../../components/BlockLoader/BlockLoader";
+
 import styles from "./Practices.module.css";
 
 import { startRealtime, subscribe, getActorChannel } from "../../utils/realtime";
+import {
+  readPracticeRunsIndex,
+  writePracticeRunsIndex,
+  removeFromPracticeRunsIndex,
+} from "../../utils/cache/practiceRunsCache";
+import { useSmartDelay } from "../../hooks/useSmartDelay";
 
 export default function Practices() {
   const navigate = useNavigate();
   const { onOpenSidebar, isSidebarOpen } =
-    (typeof useOutletContext === "function" ? (useOutletContext() || {}) : {}) ||
-    { onOpenSidebar: () => {}, isSidebarOpen: false };
+    (typeof useOutletContext === "function" ? useOutletContext() || {} : {}) || {
+      onOpenSidebar: () => {},
+      isSidebarOpen: false,
+    };
 
-  const [runs, setRuns] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [runs, setRuns] = useState(() => readPracticeRunsIndex());
+  const [loading, setLoading] = useState(() => readPracticeRunsIndex().length === 0);
+  const [refreshing, setRefreshing] = useState(false);
   const [err, setErr] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
 
   const hasRuns = useMemo(() => runs.length > 0, [runs]);
   const isEmpty = useMemo(() => !loading && !hasRuns, [loading, hasRuns]);
+
+  const showBlockLoader = useSmartDelay(refreshing, {
+    delayIn: 150,
+    minVisible: 400,
+  });
 
   const headerRef = useRef(null);
   useEffect(() => {
@@ -46,7 +61,6 @@ export default function Practices() {
     };
   }, []);
 
-  // мобилка: фикс скролла под нижнюю навигацию (как в Stories)
   useEffect(() => {
     if (!window.matchMedia("(max-width:700px)").matches) return;
     const prevHtml = document.documentElement.style.overflow;
@@ -59,22 +73,41 @@ export default function Practices() {
     };
   }, []);
 
-  const refresh = useCallback(async () => {
-    try {
-      setErr(null);
-      setLoading(true);
-      const data = await listRuns();
-      setRuns(Array.isArray(data) ? data : []);
-    } catch (e) {
-      setErr(e?.message || "Не удалось загрузить практики");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const refresh = useCallback(
+    async ({ initial = false } = {}) => {
+      try {
+        setErr(null);
 
-  useEffect(() => { refresh(); }, [refresh]);
+        const hasCache = initial ? readPracticeRunsIndex().length > 0 : true;
 
-  // realtime: обновление списка по событиям
+        if (initial && !hasCache) {
+          setLoading(true);
+        } else {
+          setRefreshing(true);
+        }
+
+        const data = await listRuns();
+        const arr = Array.isArray(data) ? data : [];
+        setRuns(arr);
+        writePracticeRunsIndex(arr);
+      } catch (e) {
+        setErr(e?.message || "Не удалось загрузить практики");
+        if (initial && runs.length === 0) {
+          const cached = readPracticeRunsIndex();
+          setRuns(cached);
+        }
+      } finally {
+        if (initial) setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [runs.length]
+  );
+
+  useEffect(() => {
+    refresh({ initial: true });
+  }, [refresh]);
+
   useEffect(() => {
     startRealtime();
     const ch = getActorChannel();
@@ -84,7 +117,9 @@ export default function Practices() {
       const t = msg?.type || "";
       if (t.startsWith("practice_runs.")) {
         if (timer) clearTimeout(timer);
-        timer = setTimeout(() => { refresh(); }, 150);
+        timer = setTimeout(() => {
+          refresh();
+        }, 150);
       }
     };
     const unsub = subscribe(ch, onMsg);
@@ -97,24 +132,40 @@ export default function Practices() {
   const handleCreateRun = useCallback(
     async (ideaText) => {
       try {
+        setErr(null);
+        setRefreshing(true);
         const run = await createRunIfNeeded("good-bad", ideaText);
         await refresh();
         navigate(`${PRACTICES_ROUTE}/${run.practiceSlug}/${run.ideaSlug}`);
       } catch (e) {
         setErr(e?.message || "Не удалось создать запуск");
+      } finally {
+        setRefreshing(false);
       }
     },
     [navigate, refresh]
   );
 
-  // удаление запуска (без промежуточной модалки)
   const handleDeleteRun = useCallback(
-    async (id /*, rect */) => {
+    async (id) => {
       try {
+        setErr(null);
+
+        setRuns((prev) => {
+          const next = prev.filter((r) => Number(r.id) !== Number(id));
+          writePracticeRunsIndex(next);
+          return next;
+        });
+        removeFromPracticeRunsIndex(id);
+
+        setRefreshing(true);
         await deleteRun(id);
         await refresh();
       } catch (e) {
         setErr(e?.message || "Не удалось удалить");
+        refresh();
+      } finally {
+        setRefreshing(false);
       }
     },
     [refresh]
@@ -122,6 +173,8 @@ export default function Practices() {
 
   return (
     <div className={styles.viewport}>
+      <BlockLoader show={showBlockLoader} />
+
       <header ref={headerRef} className={styles.headerSticky} data-lock-scroll="true">
         <PracticesHeader
           onAdd={() => setAddOpen(true)}
@@ -133,8 +186,10 @@ export default function Practices() {
 
       <main className={`${styles.content} ${isEmpty ? styles.contentEmpty : ""}`}>
         <div className={`${styles.wrap} ${isEmpty ? styles.wrapEmpty : ""}`}>
-          {loading ? (
-            <div className={styles.empty}><p>Загрузка…</p></div>
+          {loading && !hasRuns ? (
+            <div className={styles.empty}>
+              <p>Загрузка…</p>
+            </div>
           ) : !hasRuns ? (
             <div className={styles.emptyContainer}>
               <EmptyState
@@ -155,7 +210,6 @@ export default function Practices() {
             />
           )}
 
-          {/* ⬇️ подкладку рендерим ТОЛЬКО если есть список, чтобы не плодить скролл на пустом состоянии */}
           {hasRuns && <div className={styles.bottomPad} />}
         </div>
       </main>
