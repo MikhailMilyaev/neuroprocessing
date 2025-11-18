@@ -10,8 +10,10 @@ import { registration, login } from '../../../http/userApi'
 import classes from './Auth.module.css'
 import { useContext, useState, useEffect } from 'react'
 import { validateLogin, validateRegistration } from '../../../components/Auth/authValidator'
-import { Context }  from '../../../utils/context'
+import { Context } from '../../../utils/context'
 import { observer } from 'mobx-react-lite'
+
+import { clearAllStoryCaches } from '../../../utils/cache/clearAllStoryCaches'
 
 const Auth = observer(() => {
   const { user } = useContext(Context)
@@ -29,6 +31,14 @@ const Auth = observer(() => {
   const [wasSubmitted, setWasSubmitted] = useState(false)
   const [errorKey, setErrorKey] = useState(0)
   const [messageType, setMessageType] = useState('error')
+
+  const clearUserLocalData = () => {
+    try {
+      clearAllStoryCaches()
+    } catch (e) {
+      console.warn('Failed to clear user local cache', e)
+    }
+  }
 
   useEffect(() => {
     const sp = new URLSearchParams(location.search)
@@ -72,6 +82,9 @@ const Auth = observer(() => {
 
       if (isLogin) {
         await login(email, password, user)
+
+        clearUserLocalData()
+
         setMessageType('success')
         setErrorMessage('Успешный вход')
         setErrorKey(prev => prev + 1)
